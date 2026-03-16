@@ -57,34 +57,44 @@ jobs:
           git tag -d "${{ env.tag }}"
           git tag "${{ env.tag }}"
 
-      - name: Disable branch protection
+      - name: Disable repository rulesets
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          # Save current required-review settings so we can restore them exactly
-          gh api repos/${{ github.repository }}/branches/main/protection/required_pull_request_reviews \
-            > /tmp/branch_protection.json || echo "{}" > /tmp/branch_protection.json
-          # Remove the required-PR-review rule so the bot can push directly
-          gh api repos/${{ github.repository }}/branches/main/protection/required_pull_request_reviews \
-            --method DELETE || true
+          mkdir -p /tmp/rulesets
+          # Find all active rulesets and disable them temporarily
+          gh api repos/${{ github.repository }}/rulesets \
+            --jq '.[] | select(.enforcement == "active") | .id' | \
+          while read id; do
+            # Save the full ruleset so we can restore it exactly
+            gh api repos/${{ github.repository }}/rulesets/$id > /tmp/rulesets/$id.json
+            # Rebuild the payload with just the fields the PUT endpoint accepts, enforcement set to disabled
+            jq '{name,target,enforcement: "disabled",bypass_actors,conditions,rules}' \
+              /tmp/rulesets/$id.json | \
+              gh api repos/${{ github.repository }}/rulesets/$id \
+                --method PUT --input - > /dev/null
+            echo "Disabled ruleset $id"
+          done
 
       - name: Push changes
         run: |
           git push --follow-tags origin main
           git push --tags
 
-      - name: Re-enable branch protection
+      - name: Re-enable repository rulesets
         if: always()
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
-          # Restore required-review settings from saved snapshot
-          SETTINGS=$(cat /tmp/branch_protection.json)
-          if [ "$SETTINGS" != "{}" ]; then
-            echo "$SETTINGS" | gh api repos/${{ github.repository }}/branches/main/protection/required_pull_request_reviews \
-              --method PUT \
-              --input -
-          fi
+          # Restore every ruleset we disabled
+          for file in /tmp/rulesets/*.json; do
+            [ -f "$file" ] || continue
+            id=$(jq -r '.id' "$file")
+            jq '{name,target,enforcement,bypass_actors,conditions,rules}' "$file" | \
+              gh api repos/${{ github.repository }}/rulesets/$id \
+                --method PUT --input - > /dev/null
+            echo "Re-enabled ruleset $id"
+          done
 
       - name: Setup Flutter Dependencies
         run: flutter pub get
