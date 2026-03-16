@@ -1,7 +1,7 @@
 name: curling_scoreboard_flutter
 description: A simple app to keep setup, track, and report the scoreboard of a game of curling.
 publish_to: "none"
-version: 0.0.31
+version: 0.0.32
 environment:
   sdk: ">=3.8.0 <4.0.0"
   flutter: 3.41.4
