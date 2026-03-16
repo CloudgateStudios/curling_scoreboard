@@ -33,7 +33,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.21.0
         with:
-          flutter-version: "3.41.1"
+          flutter-version: "3.41.4"
           channel: "stable"
       - name: Get Flutter Packages
         run: flutter pub get
@@ -65,7 +65,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.21.0
         with:
-          flutter-version: "3.41.1"
+          flutter-version: "3.41.4"
           channel: "stable"
       - name: Setup Translations Cleaner
         run: flutter pub global activate translations_cleaner
@@ -82,7 +82,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.21.0
         with:
-          flutter-version: "3.41.1"
+          flutter-version: "3.41.4"
           channel: "stable"
       - name: Get Flutter Packages
         run: flutter pub get
