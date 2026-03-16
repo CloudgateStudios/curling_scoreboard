@@ -1,6 +1,13 @@
 Changelog
 
 
+### [0.0.31](https://github.com/tomarra/curling_scoreboard_flutter/compare/0.0.30...0.0.31) (2026-03-16)
+
+
+### Features
+
+* new icon ([#149](https://github.com/tomarra/curling_scoreboard_flutter/issues/149)) ([8490ccd](https://github.com/tomarra/curling_scoreboard_flutter/commit/8490ccd20a947671a570ba69c53027b2bf27e952))
+
 ### [0.0.30](https://github.com/tomarra/curling_scoreboard_flutter/compare/0.0.29...0.0.30) (2026-02-09)
 
 
