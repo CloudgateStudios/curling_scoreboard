@@ -11,7 +11,7 @@ jobs:
     name: Deploy App - Web - Dev
     steps:
       - uses: actions/checkout@v6
-      - uses: subosito/flutter-action@v2.21.0
+      - uses: subosito/flutter-action@v2.22.0
         with:
           flutter-version: "3.41.4"
           channel: "stable"
