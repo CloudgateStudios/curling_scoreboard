@@ -7,7 +7,7 @@ environment:
   flutter: 3.41.4
 dependencies:
   # Not actually used, but needed to suppress warnings. Gets tree shaken out at build time.
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
   flutter:
     sdk: flutter
   flutter_localizations:
