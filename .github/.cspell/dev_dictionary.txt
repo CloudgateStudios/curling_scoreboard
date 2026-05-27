@@ -1,5 +1,6 @@
 ltrb
 notmain
+subshell
 xcassets
 xcode
 xcworkspace
