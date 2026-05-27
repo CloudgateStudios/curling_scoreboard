@@ -9,24 +9,22 @@ class CurlingGame {
     required this.numberOfPlayersPerTeam,
     this.ends = const [],
     this.scoreboardStyle = ScoreboardStyle.baseball,
+    this.currentPlayingEnd = 1,
   });
 
-  factory CurlingGame.fromJson(Map<String, dynamic> json) {
-    final game = CurlingGame(
-      team1: CurlingTeam.fromJson(json['team1'] as Map<String, dynamic>),
-      team2: CurlingTeam.fromJson(json['team2'] as Map<String, dynamic>),
-      numberOfEnds: json['numberOfEnds'] as int,
-      numberOfPlayersPerTeam: json['numberOfPlayersPerTeam'] as int,
-      scoreboardStyle: ScoreboardStyle.values.byName(
-        json['scoreboardStyle'] as String,
-      ),
-      ends: (json['ends'] as List<dynamic>)
-          .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-    game.currentPlayingEnd = json['currentPlayingEnd'] as int;
-    return game;
-  }
+  factory CurlingGame.fromJson(Map<String, dynamic> json) => CurlingGame(
+    team1: CurlingTeam.fromJson(json['team1'] as Map<String, dynamic>),
+    team2: CurlingTeam.fromJson(json['team2'] as Map<String, dynamic>),
+    numberOfEnds: json['numberOfEnds'] as int,
+    numberOfPlayersPerTeam: json['numberOfPlayersPerTeam'] as int,
+    scoreboardStyle: ScoreboardStyle.values.byName(
+      json['scoreboardStyle'] as String,
+    ),
+    ends: (json['ends'] as List<dynamic>)
+        .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    currentPlayingEnd: json['currentPlayingEnd'] as int,
+  );
 
   CurlingTeam team1;
   CurlingTeam team2;
@@ -34,7 +32,7 @@ class CurlingGame {
   int numberOfPlayersPerTeam;
   List<CurlingEnd> ends;
   ScoreboardStyle scoreboardStyle;
-  int currentPlayingEnd = 1;
+  int currentPlayingEnd;
 
   Map<String, dynamic> toJson() => {
     'team1': team1.toJson(),
