@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.tomarra.curling_scoreboard_flutter">
+    package="com.cloudgatestudios.curling_scoreboard">
    <application
         android:label="curling_scoreboard_flutter"
         android:name="${applicationName}"
