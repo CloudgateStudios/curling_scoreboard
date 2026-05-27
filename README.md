@@ -8,12 +8,18 @@ This project is a basic [Flutter](http://www.flutter.dev) application so [enviro
 
 After cloning the repo and opening the project in [VSCode](https://code.visualstudio.com/) you should be able to run the `Launch Web` target to see everything up and working.
 
-## Making Releases
+## Deployments
 
-### Version Bump
+### PR Previews
 
-This is handled by the [version_increment](https://github.com/tomarra/curling_scoreboard_flutter/actions/workflows/version_increment.yaml) workflow. This will automatically read the commits, create the [changelog](https://github.com/tomarra/curling_scoreboard_flutter/blob/main/CHANGELOG.md) and [release notes](https://github.com/tomarra/curling_scoreboard_flutter/blob/main/RELEASE_NOTES.md) and commit it all back to the `main` branch.
+When a pull request is opened, the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow runs all checks (code, formatting, tests, spelling). Once all checks pass, a preview build is automatically deployed to a temporary Firebase Hosting channel named after the branch. Previews expire after 10 days and a link is posted directly on the PR.
 
-1. Remove the branch protection on `main` by changing the [branch protection rules](https://github.com/tomarra/curling_scoreboard_flutter/settings/branches). Just change the branch name pattern to something like `notmain`.
-2. Go to the [version_increment action](https://github.com/tomarra/curling_scoreboard_flutter/actions/workflows/version_increment.yaml) and click on "Run Workflow". Ensure it is on the `main` branch and click "Run Workflow" to start it.
-3. When the build completes, turn the branch protection back on by reverting the pattern to `main`
+### Dev System
+
+Any push to `main` automatically triggers the [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml) workflow, which builds and deploys to the live dev environment.
+
+### Prod System
+
+You first need to do ensure you have a new tagged version. This is handled by the [version_increment](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/version_increment.yaml) workflow. This will automatically read the commits, create the [changelog](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/CHANGELOG.md) and [release notes](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/RELEASE_NOTES.md) and commit it all back to the `main` branch.
+
+Production deploys are manual. Go to the [deploy_web_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_prod.yaml) action, click "Run Workflow", and enter the version tag to deploy (e.g. `0.0.34`). The workflow checks out that exact tag and deploys it to the live prod environment.
