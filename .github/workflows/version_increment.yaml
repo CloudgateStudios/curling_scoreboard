@@ -35,8 +35,8 @@ jobs:
 
       - name: Generate release notes only
         run: |
-          rm RELEASE_NOTES.md && touch RELEASE_NOTES.md
-          standard-changelog -i RELEASE_NOTES.md -o RELEASE_NOTES.md -a false
+          rm docs/RELEASE_NOTES.md && touch docs/RELEASE_NOTES.md
+          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md -a false
 
       - name: Run standard-version
         run: standard-version
@@ -48,11 +48,11 @@ jobs:
 
       - name: Update version
         run: |
-          yq eval '.version = "${{ env.tag }}"' -i pubspec.yaml
-          flutter packages get && flutter pub run build_runner build --delete-conflicting-outputs
-          git add pubspec.yaml
-          git add RELEASE_NOTES.md
-          git add lib/src/version.dart
+          yq eval '.version = "${{ env.tag }}"' -i app/pubspec.yaml
+          cd app && flutter packages get && flutter pub run build_runner build --delete-conflicting-outputs
+          git add app/pubspec.yaml
+          git add docs/RELEASE_NOTES.md
+          git add app/lib/src/version.dart
           git commit --amend --no-edit
           git tag -d "${{ env.tag }}"
           git tag "${{ env.tag }}"
@@ -97,12 +97,12 @@ jobs:
           done
 
       - name: Setup Flutter Dependencies
-        run: flutter pub get
+        run: cd app && flutter pub get
 
       - name: Make Web Build Asset
         run: |
-          flutter build web -t lib/main.dart
-          zip -r web_${{ env.tag }}.zip build/web
+          cd app && flutter build web -t lib/main.dart
+          zip -r web_${{ env.tag }}.zip app/build/web
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -112,18 +112,18 @@ jobs:
 
       - name: Make Android APK Build Asset
         run: |
-          flutter build apk --release
-          cp build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
+          cd app && flutter build apk --release
+          cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
 
       - name: Make Android App Bundle Build Asset
         run: |
-          flutter build appbundle --release
-          cp build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
+          cd app && flutter build appbundle --release
+          cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
       - name: Make GitHub release
         uses: ncipollo/release-action@v1
         with:
-          bodyFile: RELEASE_NOTES.md
+          bodyFile: docs/RELEASE_NOTES.md
           tag: ${{ env.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: "web_${{ env.tag }}.zip,app-release_${{ env.tag }}.apk,app-release_${{ env.tag }}.aab"
