@@ -101,7 +101,7 @@ jobs:
 
       - name: Make Web Build Asset
         run: |
-          cd app && flutter build web -t lib/main.dart
+          (cd app && flutter build web -t lib/main.dart)
           zip -r web_${{ env.tag }}.zip app/build/web
 
       - name: Set up Java
@@ -112,12 +112,12 @@ jobs:
 
       - name: Make Android APK Build Asset
         run: |
-          cd app && flutter build apk --release
+          (cd app && flutter build apk --release)
           cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
 
       - name: Make Android App Bundle Build Asset
         run: |
-          cd app && flutter build appbundle --release
+          (cd app && flutter build appbundle --release)
           cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
       - name: Make GitHub release
