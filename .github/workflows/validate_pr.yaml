@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  valdiate_pr_title:
+  validate_pr_title:
     name: Validate PR Title
     runs-on: ubuntu-latest
     steps:
@@ -79,7 +79,7 @@ jobs:
         run: flutter pub run translations_cleaner list-unused-terms --abort-on-unused
   deploy_preview_to_firebase:
     needs:
-      [valdiate_pr_title, validate_code, validate_spelling, validate_strings]
+      [validate_pr_title, validate_code, validate_spelling, validate_strings]
     name: Deploy Preview to Firebase
     runs-on: ubuntu-latest
     defaults:
