@@ -11,6 +11,23 @@ class CurlingGame {
     this.scoreboardStyle = ScoreboardStyle.baseball,
   });
 
+  factory CurlingGame.fromJson(Map<String, dynamic> json) {
+    final game = CurlingGame(
+      team1: CurlingTeam.fromJson(json['team1'] as Map<String, dynamic>),
+      team2: CurlingTeam.fromJson(json['team2'] as Map<String, dynamic>),
+      numberOfEnds: json['numberOfEnds'] as int,
+      numberOfPlayersPerTeam: json['numberOfPlayersPerTeam'] as int,
+      scoreboardStyle: ScoreboardStyle.values.byName(
+        json['scoreboardStyle'] as String,
+      ),
+      ends: (json['ends'] as List<dynamic>)
+          .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+    game.currentPlayingEnd = json['currentPlayingEnd'] as int;
+    return game;
+  }
+
   CurlingTeam team1;
   CurlingTeam team2;
   int numberOfEnds;
@@ -18,6 +35,16 @@ class CurlingGame {
   List<CurlingEnd> ends;
   ScoreboardStyle scoreboardStyle;
   int currentPlayingEnd = 1;
+
+  Map<String, dynamic> toJson() => {
+    'team1': team1.toJson(),
+    'team2': team2.toJson(),
+    'numberOfEnds': numberOfEnds,
+    'numberOfPlayersPerTeam': numberOfPlayersPerTeam,
+    'scoreboardStyle': scoreboardStyle.name,
+    'currentPlayingEnd': currentPlayingEnd,
+    'ends': ends.map((e) => e.toJson()).toList(),
+  };
 
   String get currentPlayingEndForDisplay {
     if (currentPlayingEnd <= numberOfEnds) {
