@@ -4,7 +4,7 @@ publish_to: "none"
 version: 0.0.32
 environment:
   sdk: ">=3.8.0 <4.0.0"
-  flutter: 3.41.9
+  flutter: 3.44.0
 dependencies:
   # Not actually used, but needed to suppress warnings. Gets tree shaken out at build time.
   cupertino_icons: ^1.0.9
