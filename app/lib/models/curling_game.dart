@@ -20,10 +20,9 @@ class CurlingGame {
     scoreboardStyle: ScoreboardStyle.values.byName(
       json['scoreboardStyle'] as String,
     ),
-    ends:
-        (json['ends'] as List<dynamic>)
-            .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
-            .toList(),
+    ends: (json['ends'] as List<dynamic>)
+        .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
+        .toList(),
     currentPlayingEnd: json['currentPlayingEnd'] as int,
   );
 
