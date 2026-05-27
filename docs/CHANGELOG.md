@@ -1,6 +1,13 @@
 Changelog
 
 
+### [0.0.33](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.32...0.0.33) (2026-05-27)
+
+
+### Bug Fixes
+
+* wrap flutter build in subshell to preserve working directory ([#165](https://github.com/CloudgateStudios/curling_scoreboard/issues/165)) ([318f271](https://github.com/CloudgateStudios/curling_scoreboard/commit/318f2718f08b8c5b344049ccab96fa84bd09f44f))
+
 ### [0.0.32](https://github.com/CloudgateStudios/curling_scoreboard_flutter/compare/0.0.31...0.0.32) (2026-03-16)
 
 ### [0.0.31](https://github.com/tomarra/curling_scoreboard_flutter/compare/0.0.30...0.0.31) (2026-03-16)
