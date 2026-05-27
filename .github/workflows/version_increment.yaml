@@ -49,7 +49,7 @@ jobs:
       - name: Update version
         run: |
           yq eval '.version = "${{ env.tag }}"' -i app/pubspec.yaml
-          cd app && flutter packages get && flutter pub run build_runner build --delete-conflicting-outputs
+          (cd app && flutter packages get && flutter pub run build_runner build --delete-conflicting-outputs)
           git add app/pubspec.yaml
           git add docs/RELEASE_NOTES.md
           git add app/lib/src/version.dart
