@@ -7,5 +7,6 @@
     {"type":"ci","hidden":true}
   ],
   "tag-prefix": "",
-  "header": "Changelog\n\n"
+  "header": "Changelog\n\n",
+  "infile": "docs/CHANGELOG.md"
 }

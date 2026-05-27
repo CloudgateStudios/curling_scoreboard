@@ -27,6 +27,9 @@ jobs:
   validate_code:
     name: Validate Code
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -59,6 +62,9 @@ jobs:
   validate_strings:
     name: Validate String Usage
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -76,6 +82,9 @@ jobs:
       [valdiate_pr_title, validate_code, validate_spelling, validate_strings]
     name: Deploy Preview to Firebase
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -100,3 +109,4 @@ jobs:
           projectId: curling-scoreboard-dev
           expires: 10d
           channelId: "${{ steps.extract_branch.outputs.branch }}"
+          entryPoint: ./app
