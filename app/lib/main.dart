@@ -32,7 +32,7 @@ Future<void> main() async {
 }
 
 class CurlingScoreboardApp extends StatelessWidget {
-  const CurlingScoreboardApp({super.key, required this.registrationService});
+  const CurlingScoreboardApp({required this.registrationService, super.key});
 
   final RegistrationService registrationService;
 
@@ -54,8 +54,8 @@ class CurlingScoreboardApp extends StatelessWidget {
 
 class CurlingScoreboardScreen extends StatefulWidget {
   const CurlingScoreboardScreen({
-    super.key,
     required this.registrationService,
+    super.key,
   });
 
   final RegistrationService registrationService;

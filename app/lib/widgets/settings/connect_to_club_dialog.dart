@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 
 class ConnectToClubDialog extends StatefulWidget {
   const ConnectToClubDialog({
-    super.key,
     required this.registrationService,
+    super.key,
   });
 
   final RegistrationService registrationService;
