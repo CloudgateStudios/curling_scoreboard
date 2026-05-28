@@ -24,6 +24,7 @@
     ".github/workflows/**",
     ".gitignore",
     "**.gen.dart",
-    "**.g.dart"
+    "**.g.dart",
+    "**/firebase_options_*.dart"
   ]
 }
