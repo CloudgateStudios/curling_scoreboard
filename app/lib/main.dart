@@ -1,17 +1,40 @@
 import 'dart:async';
 
 import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/firebase_options_dev.dart' as dev;
+import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
 import 'package:curling_scoreboard/models/models.dart';
+import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const CurlingScoreboardApp());
+const _firebaseEnv = String.fromEnvironment(
+  'FIREBASE_ENV',
+  defaultValue: 'dev',
+);
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: _firebaseEnv == 'prod'
+        ? prod.DefaultFirebaseOptions.currentPlatform
+        : dev.DefaultFirebaseOptions.currentPlatform,
+  );
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    CurlingScoreboardApp(
+      registrationService: RegistrationService(prefs),
+    ),
+  );
 }
 
 class CurlingScoreboardApp extends StatelessWidget {
-  const CurlingScoreboardApp({super.key});
+  const CurlingScoreboardApp({super.key, required this.registrationService});
+
+  final RegistrationService registrationService;
 
   @override
   Widget build(BuildContext context) {
@@ -22,13 +45,20 @@ class CurlingScoreboardApp extends StatelessWidget {
         colorSchemeSeed: Constants.primaryThemeColor,
         useMaterial3: true,
       ),
-      home: const CurlingScoreboardScreen(),
+      home: CurlingScoreboardScreen(
+        registrationService: registrationService,
+      ),
     );
   }
 }
 
 class CurlingScoreboardScreen extends StatefulWidget {
-  const CurlingScoreboardScreen({super.key});
+  const CurlingScoreboardScreen({
+    super.key,
+    required this.registrationService,
+  });
+
+  final RegistrationService registrationService;
 
   @override
   State<CurlingScoreboardScreen> createState() =>
@@ -342,48 +372,126 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            final l10n = AppLocalizations.of(context)!;
+            final reg = widget.registrationService;
+
             return AlertDialog(
-              title: Text(AppLocalizations.of(context)!.settingsDialogTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.settingsDialogLabelScoreboardStyle,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  RadioGroup<ScoreboardStyle>(
-                    groupValue: gameObject.scoreboardStyle,
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        gameObject.scoreboardStyle = value!;
-                      });
-                      setState(() {});
-                    },
-                    child: Column(
-                      children: [
-                        RadioListTile<ScoreboardStyle>(
-                          title: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.settingsDialogScoreboardStyleBaseball,
-                          ),
-                          value: ScoreboardStyle.baseball,
-                        ),
-                        RadioListTile<ScoreboardStyle>(
-                          title: Text(
-                            AppLocalizations.of(
-                              context,
-                            )!.settingsDialogScoreboardStyleCurlingClub,
-                          ),
-                          value: ScoreboardStyle.club,
-                        ),
-                      ],
+              title: Text(l10n.settingsDialogTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.settingsDialogLabelScoreboardStyle,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  ),
-                ],
+                    RadioGroup<ScoreboardStyle>(
+                      groupValue: gameObject.scoreboardStyle,
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          gameObject.scoreboardStyle = value!;
+                        });
+                        setState(() {});
+                      },
+                      child: Column(
+                        children: [
+                          RadioListTile<ScoreboardStyle>(
+                            title: Text(
+                              l10n.settingsDialogScoreboardStyleBaseball,
+                            ),
+                            value: ScoreboardStyle.baseball,
+                          ),
+                          RadioListTile<ScoreboardStyle>(
+                            title: Text(
+                              l10n.settingsDialogScoreboardStyleCurlingClub,
+                            ),
+                            value: ScoreboardStyle.club,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
+                    Text(
+                      l10n.settingsDialogConnectionSectionTitle,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    if (reg.isRegistered) ...[
+                      Text(
+                        l10n.settingsDialogConnectedClub(
+                          reg.clubName ?? '',
+                        ),
+                      ),
+                      Text(
+                        l10n.settingsDialogConnectedSheet(
+                          reg.sheetName ?? '',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: Text(
+                                l10n.disconnectConfirmationTitle,
+                              ),
+                              content: Text(
+                                l10n.disconnectConfirmationContent(
+                                  reg.clubName ?? '',
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(ctx).pop(false),
+                                  child: Text(l10n.buttonLabelNo),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(ctx).pop(true),
+                                  child: Text(
+                                    l10n.disconnectConfirmationButton,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed ?? false) {
+                            await reg.disconnect();
+                            if (context.mounted) {
+                              setStateDialog(() {});
+                              setState(() {});
+                            }
+                          }
+                        },
+                        child: Text(
+                          l10n.settingsDialogDisconnectButtonLabel,
+                        ),
+                      ),
+                    ] else
+                      TextButton(
+                        onPressed: () async {
+                          final connected = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => ConnectToClubDialog(
+                              registrationService: reg,
+                            ),
+                          );
+                          if (connected ?? false) {
+                            if (context.mounted) {
+                              setStateDialog(() {});
+                              setState(() {});
+                            }
+                          }
+                        },
+                        child: Text(
+                          l10n.settingsDialogConnectButtonLabel,
+                        ),
+                      ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -391,9 +499,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                     Navigator.of(context).pop();
                   },
                   child: Text(
-                    AppLocalizations.of(
-                      context,
-                    )!.settingsDialogButtonLabelClose,
+                    l10n.settingsDialogButtonLabelClose,
                   ),
                 ),
               ],

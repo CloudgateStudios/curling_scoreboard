@@ -141,5 +141,83 @@
   "settingsDialogButtonLabelClose": "Close",
   "@settingsDialogButtonLabelClose": {
     "description": "Button label to close the settings dialog."
+  },
+  "settingsDialogConnectionSectionTitle": "Club Connection",
+  "@settingsDialogConnectionSectionTitle": {
+    "description": "Title for the club connection section in the settings dialog."
+  },
+  "settingsDialogConnectButtonLabel": "Connect to Club",
+  "@settingsDialogConnectButtonLabel": {
+    "description": "Button label to open the connect to club dialog."
+  },
+  "settingsDialogConnectedClub": "Club: {clubName}",
+  "@settingsDialogConnectedClub": {
+    "description": "Shows the club the scoreboard is connected to.",
+    "placeholders": {
+      "clubName": {
+        "type": "String",
+        "example": "Maple Leaf CC"
+      }
+    }
+  },
+  "settingsDialogConnectedSheet": "Sheet: {sheetName}",
+  "@settingsDialogConnectedSheet": {
+    "description": "Shows the sheet the scoreboard is connected to.",
+    "placeholders": {
+      "sheetName": {
+        "type": "String",
+        "example": "Sheet 3"
+      }
+    }
+  },
+  "settingsDialogDisconnectButtonLabel": "Disconnect",
+  "@settingsDialogDisconnectButtonLabel": {
+    "description": "Button label to disconnect the scoreboard from its club."
+  },
+  "connectToClubDialogTitle": "Connect to Club",
+  "@connectToClubDialogTitle": {
+    "description": "Title of the connect to club dialog."
+  },
+  "connectToClubDialogPairingCodeLabel": "Pairing Code",
+  "@connectToClubDialogPairingCodeLabel": {
+    "description": "Label for the pairing code input field."
+  },
+  "connectToClubDialogPairingCodeHint": "Enter code from your club admin",
+  "@connectToClubDialogPairingCodeHint": {
+    "description": "Hint text for the pairing code input field."
+  },
+  "connectToClubDialogConnectButton": "Connect",
+  "@connectToClubDialogConnectButton": {
+    "description": "Button label to submit the pairing code."
+  },
+  "connectToClubDialogCancelButton": "Cancel",
+  "@connectToClubDialogCancelButton": {
+    "description": "Button label to cancel the connect to club dialog."
+  },
+  "connectToClubDialogErrorNotFound": "Pairing code not found. Please check the code and try again.",
+  "@connectToClubDialogErrorNotFound": {
+    "description": "Error shown when the pairing code is not found in Firestore."
+  },
+  "connectToClubDialogErrorGeneric": "Connection failed. Please try again.",
+  "@connectToClubDialogErrorGeneric": {
+    "description": "Generic error shown when the connection attempt fails."
+  },
+  "disconnectConfirmationTitle": "Disconnect Sheet",
+  "@disconnectConfirmationTitle": {
+    "description": "Title of the disconnect confirmation dialog."
+  },
+  "disconnectConfirmationContent": "This will stop syncing scores to {clubName}. Local scoring will continue.",
+  "@disconnectConfirmationContent": {
+    "description": "Body text of the disconnect confirmation dialog.",
+    "placeholders": {
+      "clubName": {
+        "type": "String",
+        "example": "Maple Leaf CC"
+      }
+    }
+  },
+  "disconnectConfirmationButton": "Disconnect",
+  "@disconnectConfirmationButton": {
+    "description": "Button label to confirm disconnecting from the club."
   }
 }
