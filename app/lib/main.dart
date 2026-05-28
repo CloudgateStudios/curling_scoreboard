@@ -444,13 +444,11 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                               ),
                               actions: [
                                 TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(ctx).pop(false),
+                                  onPressed: () => Navigator.of(ctx).pop(false),
                                   child: Text(l10n.buttonLabelNo),
                                 ),
                                 TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(ctx).pop(true),
+                                  onPressed: () => Navigator.of(ctx).pop(true),
                                   child: Text(
                                     l10n.disconnectConfirmationButton,
                                   ),

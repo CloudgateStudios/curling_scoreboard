@@ -74,8 +74,7 @@ class _ConnectToClubDialogState extends State<ConnectToClubDialog> {
       ),
       actions: [
         TextButton(
-          onPressed:
-              _isLoading ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
           child: Text(l10n.connectToClubDialogCancelButton),
         ),
         TextButton(
