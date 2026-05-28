@@ -1,9 +1,9 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/l10n/app_localizations.dart';
-import 'package:curling_scoreboard_flutter/models/curling_end.dart';
-import 'package:curling_scoreboard_flutter/models/curling_game.dart';
-import 'package:curling_scoreboard_flutter/models/curling_team.dart';
-import 'package:curling_scoreboard_flutter/widgets/game_end/game_end_dialog.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/models/curling_end.dart';
+import 'package:curling_scoreboard/models/curling_game.dart';
+import 'package:curling_scoreboard/models/curling_team.dart';
+import 'package:curling_scoreboard/widgets/game_end/game_end_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

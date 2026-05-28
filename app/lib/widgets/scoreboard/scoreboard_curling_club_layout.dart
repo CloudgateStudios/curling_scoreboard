@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
+import 'package:curling_scoreboard/constants.dart';
 import 'package:flutter/material.dart';
 
 class ScoreboardCurlingClubLayout extends StatelessWidget {

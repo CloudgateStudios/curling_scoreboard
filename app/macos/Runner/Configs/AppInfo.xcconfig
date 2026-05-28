@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = curling_scoreboard_flutter
+PRODUCT_NAME = curling_scoreboard
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.tomarra.curlingScoreboardFlutter
+PRODUCT_BUNDLE_IDENTIFIER = com.cloudgatestudios.curlingScoreboard
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2023 com.tomarra. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2023 Cloudgate Studios. All rights reserved.

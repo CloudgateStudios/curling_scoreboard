@@ -1,3 +1,6 @@
+# Firebase - do not commit platform credentials to a public repo
+GoogleService-Info.plist
+
 # Flutter-related
 **/Flutter/ephemeral/
 **/Pods/

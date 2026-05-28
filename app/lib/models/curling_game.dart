@@ -1,5 +1,5 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/models/models.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/models/models.dart';
 
 class CurlingGame {
   CurlingGame({
@@ -9,7 +9,22 @@ class CurlingGame {
     required this.numberOfPlayersPerTeam,
     this.ends = const [],
     this.scoreboardStyle = ScoreboardStyle.baseball,
+    this.currentPlayingEnd = 1,
   });
+
+  factory CurlingGame.fromJson(Map<String, dynamic> json) => CurlingGame(
+    team1: CurlingTeam.fromJson(json['team1'] as Map<String, dynamic>),
+    team2: CurlingTeam.fromJson(json['team2'] as Map<String, dynamic>),
+    numberOfEnds: json['numberOfEnds'] as int,
+    numberOfPlayersPerTeam: json['numberOfPlayersPerTeam'] as int,
+    scoreboardStyle: ScoreboardStyle.values.byName(
+      json['scoreboardStyle'] as String,
+    ),
+    ends: (json['ends'] as List<dynamic>)
+        .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    currentPlayingEnd: json['currentPlayingEnd'] as int,
+  );
 
   CurlingTeam team1;
   CurlingTeam team2;
@@ -17,7 +32,17 @@ class CurlingGame {
   int numberOfPlayersPerTeam;
   List<CurlingEnd> ends;
   ScoreboardStyle scoreboardStyle;
-  int currentPlayingEnd = 1;
+  int currentPlayingEnd;
+
+  Map<String, dynamic> toJson() => {
+    'team1': team1.toJson(),
+    'team2': team2.toJson(),
+    'numberOfEnds': numberOfEnds,
+    'numberOfPlayersPerTeam': numberOfPlayersPerTeam,
+    'scoreboardStyle': scoreboardStyle.name,
+    'currentPlayingEnd': currentPlayingEnd,
+    'ends': ends.map((e) => e.toJson()).toList(),
+  };
 
   String get currentPlayingEndForDisplay {
     if (currentPlayingEnd <= numberOfEnds) {
@@ -125,7 +150,4 @@ class CurlingGame {
   }
 }
 
-enum ScoreboardStyle {
-  baseball,
-  club,
-}
+enum ScoreboardStyle { baseball, club }

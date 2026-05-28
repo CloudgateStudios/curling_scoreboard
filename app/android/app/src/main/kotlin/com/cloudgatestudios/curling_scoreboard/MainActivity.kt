@@ -1,4 +1,4 @@
-package com.tomarra.curling_scoreboard_flutter
+package com.cloudgatestudios.curling_scoreboard
 
 import io.flutter.embedding.android.FlutterActivity
 

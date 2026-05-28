@@ -1,3 +1,4 @@
+firestore
 ltrb
 notmain
 subshell

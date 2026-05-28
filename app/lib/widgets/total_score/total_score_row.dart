@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/widgets/total_score/total_score.dart';
+import 'package:curling_scoreboard/widgets/total_score/total_score.dart';
 import 'package:flutter/material.dart';
 
 class TotalScoreRow extends StatelessWidget {

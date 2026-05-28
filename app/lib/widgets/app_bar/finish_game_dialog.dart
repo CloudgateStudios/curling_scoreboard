@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class FinishGameDialog extends StatelessWidget {
