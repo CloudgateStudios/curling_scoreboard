@@ -276,6 +276,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get settingsDialogButtonLabelClose;
+
+  /// Title for the club connection section in the settings dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Club Connection'**
+  String get settingsDialogConnectionSectionTitle;
+
+  /// Button label to open the connect to club dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to Club'**
+  String get settingsDialogConnectButtonLabel;
+
+  /// Shows the club the scoreboard is connected to.
+  ///
+  /// In en, this message translates to:
+  /// **'Club: {clubName}'**
+  String settingsDialogConnectedClub(String clubName);
+
+  /// Shows the sheet the scoreboard is connected to.
+  ///
+  /// In en, this message translates to:
+  /// **'Sheet: {sheetName}'**
+  String settingsDialogConnectedSheet(String sheetName);
+
+  /// Button label to disconnect the scoreboard from its club.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get settingsDialogDisconnectButtonLabel;
+
+  /// Title of the connect to club dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to Club'**
+  String get connectToClubDialogTitle;
+
+  /// Label for the pairing code input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing Code'**
+  String get connectToClubDialogPairingCodeLabel;
+
+  /// Hint text for the pairing code input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code from your club admin'**
+  String get connectToClubDialogPairingCodeHint;
+
+  /// Button label to submit the pairing code.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get connectToClubDialogConnectButton;
+
+  /// Button label to cancel the connect to club dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get connectToClubDialogCancelButton;
+
+  /// Error shown when the pairing code is not found in Firestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing code not found. Please check the code and try again.'**
+  String get connectToClubDialogErrorNotFound;
+
+  /// Generic error shown when the connection attempt fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed. Please try again.'**
+  String get connectToClubDialogErrorGeneric;
+
+  /// Title of the disconnect confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect Sheet'**
+  String get disconnectConfirmationTitle;
+
+  /// Body text of the disconnect confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'This will stop syncing scores to {clubName}. Local scoring will continue.'**
+  String disconnectConfirmationContent(String clubName);
+
+  /// Button label to confirm disconnecting from the club.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get disconnectConfirmationButton;
 }
 
 class _AppLocalizationsDelegate

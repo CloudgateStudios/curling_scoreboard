@@ -108,4 +108,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDialogButtonLabelClose => 'Close';
+
+  @override
+  String get settingsDialogConnectionSectionTitle => 'Club Connection';
+
+  @override
+  String get settingsDialogConnectButtonLabel => 'Connect to Club';
+
+  @override
+  String settingsDialogConnectedClub(String clubName) {
+    return 'Club: $clubName';
+  }
+
+  @override
+  String settingsDialogConnectedSheet(String sheetName) {
+    return 'Sheet: $sheetName';
+  }
+
+  @override
+  String get settingsDialogDisconnectButtonLabel => 'Disconnect';
+
+  @override
+  String get connectToClubDialogTitle => 'Connect to Club';
+
+  @override
+  String get connectToClubDialogPairingCodeLabel => 'Pairing Code';
+
+  @override
+  String get connectToClubDialogPairingCodeHint =>
+      'Enter code from your club admin';
+
+  @override
+  String get connectToClubDialogConnectButton => 'Connect';
+
+  @override
+  String get connectToClubDialogCancelButton => 'Cancel';
+
+  @override
+  String get connectToClubDialogErrorNotFound =>
+      'Pairing code not found. Please check the code and try again.';
+
+  @override
+  String get connectToClubDialogErrorGeneric =>
+      'Connection failed. Please try again.';
+
+  @override
+  String get disconnectConfirmationTitle => 'Disconnect Sheet';
+
+  @override
+  String disconnectConfirmationContent(String clubName) {
+    return 'This will stop syncing scores to $clubName. '
+        'Local scoring will continue.';
+  }
+
+  @override
+  String get disconnectConfirmationButton => 'Disconnect';
 }
