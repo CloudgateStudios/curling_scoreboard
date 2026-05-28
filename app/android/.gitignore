@@ -1,3 +1,6 @@
+# Firebase - do not commit platform credentials to a public repo
+google-services.json
+
 gradle-wrapper.jar
 /.gradle
 /captures/
