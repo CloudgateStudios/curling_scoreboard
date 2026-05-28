@@ -8,7 +8,7 @@
 PRODUCT_NAME = curling_scoreboard
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.cloudgatestudios.curling_scoreboard
+PRODUCT_BUNDLE_IDENTIFIER = com.cloudgatestudios.curlingScoreboard
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2023 Cloudgate Studios. All rights reserved.
