@@ -32,3 +32,9 @@ jobs:
           expires: 30d
           channelId: live
           entryPoint: ./app
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}"
+      - name: Deploy Firestore Rules and Indexes
+        run: npx firebase-tools@latest deploy --only firestore --project curling-scoreboard-prod
