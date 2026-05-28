@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "513864345938",
+    "project_id": "curling-scoreboard-prod",
+    "storage_bucket": "curling-scoreboard-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:513864345938:android:025e8bf3a1108da002b28b",
+        "android_client_info": {
+          "package_name": "com.cloudgatestudios.curling_scoreboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZ0MxOmq0NOJMtnkaG4r-zIR18-OkHGXI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
