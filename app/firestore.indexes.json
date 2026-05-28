@@ -1,15 +1,15 @@
 {
-  "indexes": [
+  "indexes": [],
+  "fieldOverrides": [
     {
       "collectionGroup": "sheets",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
+      "fieldPath": "pairingCode",
+      "indexes": [
         {
-          "fieldPath": "pairingCode",
-          "order": "ASCENDING"
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
         }
       ]
     }
-  ],
-  "fieldOverrides": []
+  ]
 }
