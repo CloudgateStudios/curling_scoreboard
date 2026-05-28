@@ -1,5 +1,5 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/widgets/scoreboard/scoreboard.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/widgets/scoreboard/scoreboard.dart';
 import 'package:flutter/material.dart';
 
 class ScoreboardBaseballLayout extends StatelessWidget {

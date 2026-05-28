@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/models/curling_end.dart';
+import 'package:curling_scoreboard/models/curling_end.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

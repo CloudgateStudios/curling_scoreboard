@@ -1,7 +1,7 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/models/curling_end.dart';
-import 'package:curling_scoreboard_flutter/models/curling_game.dart';
-import 'package:curling_scoreboard_flutter/models/curling_team.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/models/curling_end.dart';
+import 'package:curling_scoreboard/models/curling_game.dart';
+import 'package:curling_scoreboard/models/curling_team.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

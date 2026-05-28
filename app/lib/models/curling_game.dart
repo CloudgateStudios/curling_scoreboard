@@ -1,5 +1,5 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/models/models.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/models/models.dart';
 
 class CurlingGame {
   CurlingGame({

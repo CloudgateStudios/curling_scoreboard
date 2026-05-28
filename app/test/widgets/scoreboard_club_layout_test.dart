@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/widgets/scoreboard/scoreboard_curling_club_layout.dart';
+import 'package:curling_scoreboard/widgets/scoreboard/scoreboard_curling_club_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

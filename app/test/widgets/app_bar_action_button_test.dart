@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/widgets/app_bar/app_bar_action_button.dart';
+import 'package:curling_scoreboard/widgets/app_bar/app_bar_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

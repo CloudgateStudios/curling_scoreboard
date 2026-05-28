@@ -1,6 +1,6 @@
-import 'package:curling_scoreboard_flutter/constants.dart';
-import 'package:curling_scoreboard_flutter/l10n/app_localizations.dart';
-import 'package:curling_scoreboard_flutter/models/models.dart';
+import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
 

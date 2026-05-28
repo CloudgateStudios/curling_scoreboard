@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard_flutter/widgets/total_score/team_total_score_widget.dart';
+import 'package:curling_scoreboard/widgets/total_score/team_total_score_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
