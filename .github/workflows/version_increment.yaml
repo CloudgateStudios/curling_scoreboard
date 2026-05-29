@@ -110,6 +110,9 @@ jobs:
           java-version: 17
           distribution: "temurin"
 
+      - name: Setup Google Services for Android
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/android/app/google-services.json
+
       - name: Make Android APK Build Asset
         run: |
           (cd app && flutter build apk --release)
