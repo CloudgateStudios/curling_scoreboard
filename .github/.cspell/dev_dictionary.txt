@@ -1,6 +1,7 @@
 firestore
 ltrb
 notmain
+prefs
 subshell
 xcassets
 xcode

@@ -45,7 +45,7 @@ jobs:
       - name: Analyze
         run: flutter analyze
       - name: Build
-        run: flutter build web -t lib/main.dart
+        run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=dev
       - name: Test
         run: flutter test
   validate_spelling:
@@ -96,7 +96,7 @@ jobs:
       - name: Get Flutter Packages
         run: flutter pub get
       - name: Build Web
-        run: flutter build web -t lib/main.dart
+        run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=dev
       - name: Extract branch name
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT

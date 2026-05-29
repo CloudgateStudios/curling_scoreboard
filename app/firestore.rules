@@ -1,10 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deny all reads and writes by default.
-    // Rules will be opened up incrementally as each phase is implemented.
-    match /{document=**} {
-      allow read, write: if false;
+    // Required for collectionGroup('sheets') queries.
+    match /{path=**}/sheets/{sheetId} {
+      allow read: if request.auth != null;
+    }
+
+    match /clubs/{clubId} {
+      // Authenticated users can read club info (e.g. to retrieve the club name).
+      allow read: if request.auth != null;
+
+      match /sheets/{sheetId} {
+        // Authenticated users can read sheets to validate a pairing code.
+        allow read: if request.auth != null;
+
+        // Authenticated users can clear the pairingCode field after pairing.
+        allow update: if request.auth != null
+            && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['pairingCode']);
+
+        // Games — opened up in Phase 3.
+        match /games/{gameId} {
+          allow read, write: if false;
+        }
+      }
     }
   }
 }
