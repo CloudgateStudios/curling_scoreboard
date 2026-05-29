@@ -41,4 +41,4 @@ jobs:
       - name: Build Functions
         run: cd functions && npm run build
       - name: Deploy Firestore and Functions
-        run: npx firebase-tools@latest deploy --only firestore,functions --project curling-scoreboard-dev
+        run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-dev
