@@ -8,12 +8,12 @@ class SyncService {
 
   final RegistrationService _registration;
 
-  DocumentReference<Map<String, dynamic>> get _sheetRef =>
-      FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(_registration.clubId)
-          .collection('sheets')
-          .doc(_registration.sheetId);
+  DocumentReference<Map<String, dynamic>> get _sheetRef => FirebaseFirestore
+      .instance
+      .collection('clubs')
+      .doc(_registration.clubId)
+      .collection('sheets')
+      .doc(_registration.sheetId);
 
   Future<void> pushLiveGame(CurlingGame game) async {
     if (!_registration.isRegistered) return;
