@@ -1,76 +1,55 @@
 # Curling Scoreboard
 
-A simple Curling Scoreboard, written in Flutter, meant to be used in any curling club that has an electronic scoreboard.
+A simple Curling Scoreboard, written in Flutter, meant to be used in any curling club that has an electronic scoreboard. Allows for live polling of scores as well as historical games as needed.
 
 ## Project Setup
 
 ### Prerequisites
 
-- [Flutter 3.44.0](https://docs.flutter.dev/get-started/install) (stable channel)
-- [Firebase CLI](https://firebase.google.com/docs/cli) (`npm install -g firebase-tools`)
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gcloud`) for local credentials
-- [VS Code](https://code.visualstudio.com/) with the [Dart extension](https://marketplace.visualstudio.com/items?itemName=Dart-Code.dart-code)
+- [Flutter](https://docs.flutter.dev/get-started/install) - typically latest stable
+- [Firebase CLI](https://firebase.google.com/docs/cli) - `npm install -g firebase-tools`
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) - `gcloud` for local credentials
 
 ### First-time setup
 
 1. Clone the repo and open the root folder in VS Code.
 
 2. Install Flutter dependencies:
+
    ```bash
    cd app
    flutter pub get
    ```
 
 3. Authenticate with Firebase:
+
    ```bash
    firebase login
    gcloud auth application-default login
    ```
 
 4. Select the dev project:
+
    ```bash
    firebase use default   # targets curling-scoreboard-dev
-   ```
-
-5. Deploy Firestore rules and indexes to dev (first time only, or after changes):
-   ```bash
-   cd app
-   firebase deploy --only firestore
    ```
 
 ### Running locally
 
 Open the project in VS Code and use the **Launch Web** run configuration (`.vscode/launch.json`). This launches the app in Chrome against the dev Firebase project.
 
-Alternatively, from the command line:
-```bash
-cd app
-flutter run -d chrome
-```
-
-### Running tests
-
-```bash
-cd app
-flutter test
-```
-
 ---
 
-## Seeding Dev Data
+### Seeding Dev Data
 
 A Node.js seed script populates the dev Firestore with realistic test data:
 
-- **Windy City Curling** — 3 sheets
-- **Milwaukee Curling Club** — 5 sheets
-- **3 completed game records per sheet**, spread across the past 3 weeks
-
-### Prerequisites
+#### Prerequisites
 
 - Node.js 18+
 - Authenticated via `gcloud auth application-default login` (see setup above)
 
-### Running the seed script
+#### Running the seed script
 
 ```bash
 cd scripts
@@ -79,6 +58,7 @@ node seed-dev.js
 ```
 
 The script targets `curling-scoreboard-dev` by default. To target a different project:
+
 ```bash
 FIREBASE_PROJECT_ID=my-other-project node seed-dev.js
 ```
