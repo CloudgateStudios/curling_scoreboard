@@ -1,26 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Required for collectionGroup('sheets') queries.
+    // Required for collectionGroup('sheets') queries during pairing.
+    // Only allow reads when a pairingCode exists (i.e. the sheet is awaiting pairing).
     match /{path=**}/sheets/{sheetId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && resource.data.pairingCode != null;
     }
 
     match /clubs/{clubId} {
-      // Authenticated users can read club info (e.g. to retrieve the club name).
+      // Authenticated users can read club info to retrieve the club name during pairing.
       allow read: if request.auth != null;
 
       match /sheets/{sheetId} {
-        // Authenticated users can read sheets to validate a pairing code.
-        allow read: if request.auth != null;
+        // Only the registered scoreboard (matched by UID) can read the sheet.
+        allow read: if request.auth != null
+            && request.auth.uid == resource.data.scoreboardUid;
 
-        // Authenticated users can clear the pairingCode field after pairing.
+        // An unregistered scoreboard can claim a sheet by writing its UID and
+        // clearing the pairingCode in a single update.
         allow update: if request.auth != null
+            && resource.data.scoreboardUid == null
             && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['pairingCode', 'liveGame']);
+                .affectedKeys().hasOnly(['pairingCode', 'scoreboardUid']);
+
+        // The registered scoreboard can update liveGame or clear its UID on disconnect.
+        allow update: if request.auth != null
+            && request.auth.uid == resource.data.scoreboardUid
+            && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid']);
 
         match /games/{gameId} {
-          allow create: if request.auth != null;
+          // Only the registered scoreboard can write game records.
+          allow create: if request.auth != null
+              && request.auth.uid ==
+                  get(/databases/$(database)/documents/clubs/$(clubId)/sheets/$(sheetId)).data.scoreboardUid;
         }
       }
     }
