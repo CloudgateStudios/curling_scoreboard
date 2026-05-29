@@ -1,0 +1,332 @@
+openapi: 3.1.0
+info:
+  title: Curling Scoreboard API
+  version: 1.0.0
+  description: |
+    REST API for querying live and historical game data for registered curling clubs.
+
+    All endpoints require a valid `X-API-Key` header. API keys are scoped per club —
+    contact your club administrator to obtain one.
+
+servers:
+  - url: https://curling-scoreboard-prod.web.app/api/v1
+    description: Production
+  - url: https://curling-scoreboard-dev.web.app/api/v1
+    description: Development
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Clubs
+    description: Club-level information including all sheets and their live game status.
+  - name: Sheets
+    description: Individual sheet data with the current live game, if one is in progress.
+  - name: Games
+    description: Historical completed game records for a specific sheet.
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Per-club API key. Include in every request as the `X-API-Key` header.
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Invalid API key
+
+    LiveGameTeam:
+      type: object
+      required: [name, score, hasHammer]
+      properties:
+        name:
+          type: string
+          example: Red
+        score:
+          type: integer
+          minimum: 0
+          example: 3
+        hasHammer:
+          type: boolean
+          description: Whether this team has last stone in the current end.
+
+    LiveGame:
+      type: object
+      required: [currentEnd, team1, team2]
+      properties:
+        currentEnd:
+          type: integer
+          minimum: 1
+          example: 5
+        team1:
+          $ref: '#/components/schemas/LiveGameTeam'
+        team2:
+          $ref: '#/components/schemas/LiveGameTeam'
+
+    Sheet:
+      type: object
+      required: [id, name, hasLiveGame, liveGame]
+      properties:
+        id:
+          type: string
+          example: sheet-1
+        name:
+          type: string
+          example: Sheet 1
+        hasLiveGame:
+          type: boolean
+          description: Convenience flag — true when liveGame is not null.
+        liveGame:
+          oneOf:
+            - $ref: '#/components/schemas/LiveGame'
+            - type: 'null'
+          description: Current live game data, or null if no game is in progress.
+
+    Club:
+      type: object
+      required: [id, name, sheets]
+      properties:
+        id:
+          type: string
+          example: windy-city-curling
+        name:
+          type: string
+          example: Windy City Curling
+        sheets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sheet'
+          description: All sheets, ordered by name.
+
+    GameTeam:
+      type: object
+      required: [name, totalScore, hadLastStoneFirstEnd]
+      properties:
+        name:
+          type: string
+          example: Red
+        totalScore:
+          type: integer
+          minimum: 0
+          example: 8
+        hadLastStoneFirstEnd:
+          type: boolean
+          description: Whether this team had last stone (hammer) in end 1.
+
+    End:
+      type: object
+      required: [endNumber, scoringTeam, score, gameTimeInSeconds]
+      properties:
+        endNumber:
+          type: integer
+          minimum: 1
+          example: 3
+        scoringTeam:
+          type: string
+          nullable: true
+          description: Name of the team that scored, or null for a blank end.
+          example: Red
+        score:
+          type: integer
+          minimum: 0
+          example: 2
+        gameTimeInSeconds:
+          type: integer
+          minimum: 0
+          description: Elapsed game time at the end of this end, in seconds.
+          example: 1620
+
+    Game:
+      type: object
+      required: [id, startedAt, finishedAt, numberOfEnds, team1, team2, ends]
+      properties:
+        id:
+          type: string
+          example: abc123xyz
+        startedAt:
+          type: string
+          format: date-time
+          example: '2024-01-15T19:00:00.000Z'
+        finishedAt:
+          type: string
+          format: date-time
+          example: '2024-01-15T21:00:00.000Z'
+        numberOfEnds:
+          type: integer
+          example: 8
+        team1:
+          $ref: '#/components/schemas/GameTeam'
+        team2:
+          $ref: '#/components/schemas/GameTeam'
+        ends:
+          type: array
+          items:
+            $ref: '#/components/schemas/End'
+
+paths:
+  /clubs/{clubId}:
+    get:
+      summary: Get club
+      description: |
+        Returns the club's name and all sheets, each with their current live game status.
+        Useful for building an overview display of all sheets in a club.
+      operationId: getClub
+      tags: [Clubs]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+      responses:
+        '200':
+          description: Club found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Club'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clubs/{clubId}/sheets/{sheetId}:
+    get:
+      summary: Get sheet
+      description: |
+        Returns a single sheet and its current live game, if one is in progress.
+        Poll this endpoint to drive a real-time scoreboard display for a specific sheet.
+      operationId: getSheet
+      tags: [Sheets]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+        - name: sheetId
+          in: path
+          required: true
+          description: Unique identifier for the sheet within the club.
+          schema:
+            type: string
+          example: sheet-1
+      responses:
+        '200':
+          description: Sheet found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sheet'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club or sheet not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /clubs/{clubId}/sheets/{sheetId}/games:
+    get:
+      summary: List completed games
+      description: |
+        Returns completed games for a sheet, ordered most-recent first.
+        Use the `limit` parameter to control how many records are returned (default 20, max 100).
+      operationId: listGames
+      tags: [Games]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+        - name: sheetId
+          in: path
+          required: true
+          description: Unique identifier for the sheet within the club.
+          schema:
+            type: string
+          example: sheet-1
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of games to return. Clamped to the range 1–100.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 10
+      responses:
+        '200':
+          description: List of completed games.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [games, limit]
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Game'
+                  limit:
+                    type: integer
+                    description: The effective limit that was applied.
+                    example: 20
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club or sheet not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
