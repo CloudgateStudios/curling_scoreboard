@@ -24,8 +24,8 @@ jobs:
             chore
             revert
           requireScope: false
-  validate_code:
-    name: Validate Code
+  validate_scoreboard_app_code:
+    name: Validate Scoreboard App Code
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -98,7 +98,13 @@ jobs:
         run: npm run build
   deploy_preview_to_firebase:
     needs:
-      [validate_pr_title, validate_code, validate_spelling, validate_strings, validate_functions]
+      [
+        validate_pr_title,
+        validate_scoreboard_app_code,
+        validate_spelling,
+        validate_strings,
+        validate_functions,
+      ]
     name: Deploy Preview to Firebase
     runs-on: ubuntu-latest
     defaults:
