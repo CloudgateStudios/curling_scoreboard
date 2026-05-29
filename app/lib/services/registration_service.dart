@@ -82,7 +82,9 @@ class RegistrationService {
             .update({'scoreboardUid': FieldValue.delete()});
       }
     } on Exception catch (e) {
-      debugPrint('RegistrationService.disconnect scoreboardUid clear error: $e');
+      debugPrint(
+        'RegistrationService.disconnect scoreboardUid clear error: $e',
+      );
     }
 
     await FirebaseAuth.instance.signOut();
