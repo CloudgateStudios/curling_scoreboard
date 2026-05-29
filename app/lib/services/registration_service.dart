@@ -60,7 +60,6 @@ class RegistrationService {
       ),
     ]);
 
-    // Claim the sheet by binding our anonymous UID and clearing the pairing code.
     await sheetRef.update({
       'scoreboardUid': uid,
       'pairingCode': FieldValue.delete(),
