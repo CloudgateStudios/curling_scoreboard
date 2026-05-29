@@ -34,6 +34,7 @@ const CLUBS = [
   {
     id: 'windy-city-curling',
     name: 'Windy City Curling',
+    apiKey: 'dev-wcc-key-a1b2c3d4e5f6',
     sheets: [
       { id: 'sheet-1', name: 'Sheet 1' },
       { id: 'sheet-2', name: 'Sheet 2' },
@@ -43,6 +44,7 @@ const CLUBS = [
   {
     id: 'milwaukee-curling',
     name: 'Milwaukee Curling Club',
+    apiKey: 'dev-mcc-key-g7h8i9j0k1l2',
     sheets: [
       { id: 'sheet-1', name: 'Sheet 1' },
       { id: 'sheet-2', name: 'Sheet 2' },
@@ -172,8 +174,8 @@ async function seed() {
 
   for (const club of CLUBS) {
     const clubRef = db.collection('clubs').doc(club.id);
-    await clubRef.set({ name: club.name }, { merge: true });
-    console.log(`Club: ${club.name}`);
+    await clubRef.set({ name: club.name, apiKey: club.apiKey }, { merge: true });
+    console.log(`Club: ${club.name} (API key: ${club.apiKey})`);
 
     for (let si = 0; si < club.sheets.length; si++) {
       const sheet = club.sheets[si];

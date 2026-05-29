@@ -36,5 +36,11 @@ jobs:
         uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}"
-      - name: Deploy Firestore Rules and Indexes
-        run: npx firebase-tools@latest deploy --only firestore --project curling-scoreboard-prod
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Function Dependencies
+        run: cd functions && npm ci
+      - name: Deploy Firestore and Functions
+        run: npx firebase-tools@latest deploy --only firestore,functions --project curling-scoreboard-prod
