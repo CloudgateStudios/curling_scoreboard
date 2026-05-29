@@ -38,14 +38,11 @@ class SyncService {
     }
   }
 
-  Future<void> saveCompletedGame(
-    CurlingGame game, {
-    required DateTime startedAt,
-  }) async {
+  Future<void> saveCompletedGame(CurlingGame game) async {
     if (!_registration.isRegistered) return;
     try {
       await _sheetRef.collection('games').add({
-        'startedAt': Timestamp.fromDate(startedAt),
+        'startedAt': Timestamp.fromDate(game.startedAt),
         'finishedAt': Timestamp.now(),
         'numberOfEnds': game.numberOfEnds,
         'team1': {
@@ -58,16 +55,15 @@ class SyncService {
           'totalScore': game.team2TotalScore,
           'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
         },
-        'ends': game.ends
-            .map(
-              (e) => {
-                'endNumber': e.endNumber,
-                'scoringTeam': e.scoringTeamName,
-                'score': e.score,
-                'gameTimeInSeconds': e.gameTimeInSeconds,
-              },
-            )
-            .toList(),
+        'ends': [
+          for (final e in game.ends)
+            {
+              'endNumber': e.endNumber,
+              'scoringTeam': e.scoringTeamName,
+              'score': e.score,
+              'gameTimeInSeconds': e.gameTimeInSeconds,
+            },
+        ],
       });
       await _sheetRef.update({'liveGame': FieldValue.delete()});
     } on Exception catch (e) {

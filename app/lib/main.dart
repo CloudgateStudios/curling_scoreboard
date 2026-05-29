@@ -69,7 +69,6 @@ class CurlingScoreboardScreen extends StatefulWidget {
 class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   late CurlingGame gameObject;
   late final SyncService _syncService;
-  DateTime _gameStartedAt = DateTime.now();
 
   Timer? timer;
   int totalTimerSeconds = 0;
@@ -116,7 +115,6 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       },
     ).then((value) {
       gameObject = value as CurlingGame;
-      _gameStartedAt = DateTime.now();
       startTimer();
     });
   }
@@ -193,12 +191,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       timer!.cancel();
     });
 
-    unawaited(
-      _syncService.saveCompletedGame(
-        gameObject,
-        startedAt: _gameStartedAt,
-      ),
-    );
+    unawaited(_syncService.saveCompletedGame(gameObject));
 
     await showDialog(
       context: context,
