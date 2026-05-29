@@ -156,7 +156,7 @@
     "placeholders": {
       "clubName": {
         "type": "String",
-        "example": "Maple Leaf CC"
+        "example": "Windy City CC"
       }
     }
   },
@@ -212,7 +212,7 @@
     "placeholders": {
       "clubName": {
         "type": "String",
-        "example": "Maple Leaf CC"
+        "example": "Windy City CC"
       }
     }
   },
