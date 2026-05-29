@@ -13,12 +13,6 @@ sheetsRouter.get('/sheets/:sheetId', async (req: Request, res: Response) => {
   const db = admin.firestore();
 
   try {
-    const clubSnap = await db.collection('clubs').doc(clubId).get();
-    if (!clubSnap.exists) {
-      res.status(404).json({ error: 'Club not found' });
-      return;
-    }
-
     const sheetSnap = await db
       .collection('clubs')
       .doc(clubId)

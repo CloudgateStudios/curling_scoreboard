@@ -1,24 +1,26 @@
-import { Router, Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import * as admin from 'firebase-admin';
-import { sheetsRouter, buildSheetResponse } from './sheets';
+import { validateApiKey } from '../middleware/apiKey';
+import { buildSheetResponse, sheetsRouter } from './sheets';
 
 export const clubsRouter = Router();
 
-// Nest sheet and game routes under each club.
-clubsRouter.use('/clubs/:clubId', sheetsRouter);
+// Per-club router so validateApiKey runs once for the club GET and all
+// nested sheet/game routes, with the fetched club doc shared via res.locals.
+const clubRouter = Router({ mergeParams: true });
+clubRouter.use(validateApiKey);
+clubRouter.use(sheetsRouter);
 
-clubsRouter.get('/clubs/:clubId', async (req: Request, res: Response) => {
+clubRouter.get('/', async (req: Request, res: Response) => {
   const { clubId } = req.params;
-  const db = admin.firestore();
+  const { data: clubData } = res.locals['club'] as {
+    id: string;
+    data: FirebaseFirestore.DocumentData;
+  };
 
   try {
-    const clubSnap = await db.collection('clubs').doc(clubId).get();
-    if (!clubSnap.exists) {
-      res.status(404).json({ error: 'Club not found' });
-      return;
-    }
-
-    const sheetsSnap = await db
+    const sheetsSnap = await admin
+      .firestore()
       .collection('clubs')
       .doc(clubId)
       .collection('sheets')
@@ -31,7 +33,7 @@ clubsRouter.get('/clubs/:clubId', async (req: Request, res: Response) => {
 
     res.json({
       id: clubId,
-      name: (clubSnap.data() ?? {})['name'] as string,
+      name: clubData['name'] as string,
       sheets,
     });
   } catch (err) {
@@ -39,3 +41,5 @@ clubsRouter.get('/clubs/:clubId', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+clubsRouter.use('/clubs/:clubId', clubRouter);
