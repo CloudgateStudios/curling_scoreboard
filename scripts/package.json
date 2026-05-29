@@ -1,0 +1,11 @@
+{
+  "name": "curling-scoreboard-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "seed-dev": "node seed-dev.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
