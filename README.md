@@ -38,8 +38,6 @@ A simple Curling Scoreboard, written in Flutter, meant to be used in any curling
 
 Open the project in VS Code and use the **Launch Web** run configuration (`.vscode/launch.json`). This launches the app in Chrome against the dev Firebase project.
 
----
-
 ### Seeding Dev Data
 
 A Node.js seed script populates the dev Firestore with realistic test data:
