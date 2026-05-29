@@ -42,5 +42,5 @@ jobs:
           node-version: "20"
       - name: Install Function Dependencies
         run: cd functions && npm ci
-      - name: Deploy Firestore, Functions, and Hosting Rewrites
-        run: npx firebase-tools@latest deploy --only firestore,functions,hosting --project curling-scoreboard-prod
+      - name: Deploy Firestore and Functions
+        run: npx firebase-tools@latest deploy --only firestore,functions --project curling-scoreboard-prod
