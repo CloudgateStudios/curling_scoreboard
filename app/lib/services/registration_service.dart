@@ -17,6 +17,8 @@ class RegistrationService {
   static const _sheetNameKey = 'sheetName';
 
   bool get isRegistered => _prefs.getString(_clubIdKey) != null;
+  String? get clubId => _prefs.getString(_clubIdKey);
+  String? get sheetId => _prefs.getString(_sheetIdKey);
   String? get clubName => _prefs.getString(_clubNameKey);
   String? get sheetName => _prefs.getString(_sheetNameKey);
 

@@ -6,6 +6,7 @@ import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
+import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +68,8 @@ class CurlingScoreboardScreen extends StatefulWidget {
 
 class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   late CurlingGame gameObject;
+  late final SyncService _syncService;
+  DateTime _gameStartedAt = DateTime.now();
 
   Timer? timer;
   int totalTimerSeconds = 0;
@@ -77,6 +80,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   @override
   void initState() {
     super.initState();
+    _syncService = SyncService(widget.registrationService);
 
     // Setup a dummy game object to start with, none of this is actually used
     // as we will be setting the game object in the game start dialog.
@@ -112,6 +116,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       },
     ).then((value) {
       gameObject = value as CurlingGame;
+      _gameStartedAt = DateTime.now();
       startTimer();
     });
   }
@@ -161,6 +166,8 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         ..evaluateHammer();
     });
 
+    unawaited(_syncService.pushLiveGame(gameObject));
+
     if (gameObject.isGameComplete) {
       await finishGame(context);
     }
@@ -177,12 +184,21 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       gameObject.ends[end - 1] = originalEndScore;
       gameObject.evaluateHammer();
     });
+
+    unawaited(_syncService.pushLiveGame(gameObject));
   }
 
   Future<void> finishGame(BuildContext context) async {
     setState(() {
       timer!.cancel();
     });
+
+    unawaited(
+      _syncService.saveCompletedGame(
+        gameObject,
+        startedAt: _gameStartedAt,
+      ),
+    );
 
     await showDialog(
       context: context,
