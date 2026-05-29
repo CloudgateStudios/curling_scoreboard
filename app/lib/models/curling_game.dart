@@ -10,7 +10,8 @@ class CurlingGame {
     this.ends = const [],
     this.scoreboardStyle = ScoreboardStyle.baseball,
     this.currentPlayingEnd = 1,
-  });
+    DateTime? startedAt,
+  }) : startedAt = startedAt ?? DateTime.now();
 
   factory CurlingGame.fromJson(Map<String, dynamic> json) => CurlingGame(
     team1: CurlingTeam.fromJson(json['team1'] as Map<String, dynamic>),
@@ -24,6 +25,9 @@ class CurlingGame {
         .map((e) => CurlingEnd.fromJson(e as Map<String, dynamic>))
         .toList(),
     currentPlayingEnd: json['currentPlayingEnd'] as int,
+    startedAt: json['startedAt'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(json['startedAt'] as int),
   );
 
   CurlingTeam team1;
@@ -33,6 +37,7 @@ class CurlingGame {
   List<CurlingEnd> ends;
   ScoreboardStyle scoreboardStyle;
   int currentPlayingEnd;
+  DateTime startedAt;
 
   Map<String, dynamic> toJson() => {
     'team1': team1.toJson(),
@@ -42,6 +47,7 @@ class CurlingGame {
     'scoreboardStyle': scoreboardStyle.name,
     'currentPlayingEnd': currentPlayingEnd,
     'ends': ends.map((e) => e.toJson()).toList(),
+    'startedAt': startedAt.millisecondsSinceEpoch,
   };
 
   String get currentPlayingEndForDisplay {
