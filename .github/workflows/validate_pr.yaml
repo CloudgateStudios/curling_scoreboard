@@ -135,7 +135,7 @@ jobs:
       - name: Build Functions
         run: cd functions && npm run build
       - name: Deploy Functions
-        run: npx firebase-tools@latest deploy --only functions --project curling-scoreboard-dev
+        run: npx firebase-tools@latest deploy --only functions --force --project curling-scoreboard-dev
       - name: Extract branch name
         shell: bash
         run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
