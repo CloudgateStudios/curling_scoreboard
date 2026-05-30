@@ -1,6 +1,13 @@
 Changelog
 
 
+### [0.0.37](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.36...0.0.37) (2026-05-30)
+
+
+### Bug Fixes
+
+* resolve Android build failures in version increment workflow ([#179](https://github.com/CloudgateStudios/curling_scoreboard/issues/179)) ([2a44a02](https://github.com/CloudgateStudios/curling_scoreboard/commit/2a44a024da4b346c4bc8dcca6810a4a9651ff618))
+
 ### [0.0.36](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.35...0.0.36) (2026-05-29)
 
 ### [0.0.35](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.34...0.0.35) (2026-05-29)
