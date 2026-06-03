@@ -3,17 +3,26 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
-// Dev config — prod values injected via environment variables in CI
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyBvXa4W2zUJCFgH0Lz2fL_dev_placeholder',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'curling-scoreboard-dev.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'curling-scoreboard-dev',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? 'curling-scoreboard-dev.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? '233388384349',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? '1:233388384349:web:089c4df4fd9230c9076db4',
+const devConfig = {
+  apiKey: 'AIzaSyDev_placeholder_replace_with_real_key',
+  authDomain: 'curling-scoreboard-dev.firebaseapp.com',
+  projectId: 'curling-scoreboard-dev',
+  storageBucket: 'curling-scoreboard-dev.appspot.com',
+  messagingSenderId: '233388384349',
+  appId: '1:233388384349:web:089c4df4fd9230c9076db4',
 };
 
-const app = initializeApp(firebaseConfig);
+const prodConfig = {
+  apiKey: 'AIzaSyProd_placeholder_replace_with_real_key',
+  authDomain: 'curling-scoreboard-prod.firebaseapp.com',
+  projectId: 'curling-scoreboard-prod',
+  storageBucket: 'curling-scoreboard-prod.appspot.com',
+  messagingSenderId: '513864345938',
+  appId: '1:513864345938:web:38ea0259c2b9099002b28b',
+};
+
+const isProd = import.meta.env.VITE_ENV === 'prod';
+const app = initializeApp(isProd ? prodConfig : devConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
