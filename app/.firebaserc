@@ -3,6 +3,19 @@
     "default": "curling-scoreboard-dev",
     "prod": "curling-scoreboard-prod"
   },
-  "targets": {},
+  "targets": {
+    "curling-scoreboard-dev": {
+      "hosting": {
+        "app": ["curling-scoreboard-dev"],
+        "admin": ["curling-scoreboard-admin-dev"]
+      }
+    },
+    "curling-scoreboard-prod": {
+      "hosting": {
+        "app": ["curling-scoreboard-prod"],
+        "admin": ["curling-scoreboard-admin-prod"]
+      }
+    }
+  },
   "etags": {}
 }

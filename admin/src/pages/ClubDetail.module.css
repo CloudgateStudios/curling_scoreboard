@@ -1,0 +1,250 @@
+.breadcrumb {
+  margin-bottom: 1.5rem;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.backButton:hover {
+  text-decoration: underline;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.clubId {
+  font-size: 0.8rem;
+  color: #999;
+  font-family: monospace;
+  margin-top: 0.25rem;
+}
+
+.section {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.sectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.apiKeyRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.apiKey {
+  background: #f4f6f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.sheetRow {
+  border: 1px solid #efefef;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sheetInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sheetName {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.sheetMeta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.liveChip {
+  background: #e6f4ea;
+  color: #137333;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.idleChip {
+  background: #f4f6f9;
+  color: #999;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.pairedChip {
+  background: #e8f0fe;
+  color: #1967d2;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.unpairedChip {
+  background: #fef7e0;
+  color: #b06000;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.sheetActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pairingCodeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pairingCode {
+  background: #f4f6f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.addSheetForm {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.input {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  flex: 1;
+  min-width: 200px;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: #1a73e8;
+}
+
+.primaryButton {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: #1557b0;
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ghostButton {
+  background: transparent;
+  color: #444;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  white-space: nowrap;
+}
+
+.ghostButton:hover {
+  border-color: #aaa;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.empty {
+  color: #999;
+  padding: 1rem 0;
+  font-size: 0.9rem;
+}

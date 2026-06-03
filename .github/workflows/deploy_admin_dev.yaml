@@ -1,0 +1,45 @@
+name: Deploy Admin Portal - Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'admin/**'
+      - 'app/firestore.rules'
+      - 'app/functions/**'
+
+jobs:
+  deploy-admin-dev:
+    runs-on: ubuntu-latest
+    name: Deploy Admin Portal - Dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install admin portal dependencies
+        working-directory: ./admin
+        run: npm ci
+
+      - name: Build admin portal
+        working-directory: ./admin
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY_DEV }}
+          VITE_FIREBASE_AUTH_DOMAIN: curling-scoreboard-dev.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: curling-scoreboard-dev
+          VITE_FIREBASE_STORAGE_BUCKET: curling-scoreboard-dev.appspot.com
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID_DEV }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID_DEV }}
+        run: npm run build
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}'
+          projectId: curling-scoreboard-dev
+          channelId: live
+          target: admin
+          entryPoint: ./app
