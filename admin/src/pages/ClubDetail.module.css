@@ -456,3 +456,31 @@
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
 }
+
+.adminList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.adminRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  background: #fafafa;
+  border: 1px solid #efefef;
+  border-radius: 8px;
+}
+
+.adminName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-right: 0.5rem;
+}
+
+.adminEmail {
+  font-size: 0.85rem;
+  color: #666;
+}
