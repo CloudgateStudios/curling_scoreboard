@@ -41,9 +41,9 @@ jobs:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
     outputs:
-      scoreboard: ${{ steps.filter.outputs.scoreboard }}
-      functions: ${{ steps.filter.outputs.functions }}
-      admin: ${{ steps.filter.outputs.admin }}
+      scoreboard: ${{ steps.filter.outputs.scoreboard_any_changed }}
+      functions: ${{ steps.filter.outputs.functions_any_changed }}
+      admin: ${{ steps.filter.outputs.admin_any_changed }}
     steps:
       - uses: actions/checkout@v6
       - name: Filter changed paths
@@ -62,7 +62,7 @@ jobs:
   validate_scoreboard_app_code:
     name: Validate Scoreboard App Code
     needs: changes
-    if: needs.changes.outputs.scoreboard_any_changed == 'true'
+    if: needs.changes.outputs.scoreboard == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -89,7 +89,7 @@ jobs:
   validate_scoreboard_strings:
     name: Validate Scoreboard String Usage
     needs: changes
-    if: needs.changes.outputs.scoreboard_any_changed == 'true'
+    if: needs.changes.outputs.scoreboard == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -110,7 +110,7 @@ jobs:
   validate_functions:
     name: Validate Functions
     needs: changes
-    if: needs.changes.outputs.functions_any_changed == 'true'
+    if: needs.changes.outputs.functions == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -132,7 +132,7 @@ jobs:
   validate_admin_app:
     name: Validate Admin App
     needs: changes
-    if: needs.changes.outputs.admin_any_changed == 'true'
+    if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
