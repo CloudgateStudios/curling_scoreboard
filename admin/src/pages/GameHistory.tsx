@@ -127,8 +127,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team1.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === 1 ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === 1 ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={e.scoringTeam === game.team1.name ? styles.scoringEnd : ''}>
+                          {e.scoringTeam === game.team1.name ? e.score : e.scoringTeam === null ? '—' : '0'}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team1.totalScore}</td>
@@ -136,8 +136,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team2.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === 2 ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === 2 ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={e.scoringTeam === game.team2.name ? styles.scoringEnd : ''}>
+                          {e.scoringTeam === game.team2.name ? e.score : e.scoringTeam === null ? '—' : '0'}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team2.totalScore}</td>
