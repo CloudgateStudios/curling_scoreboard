@@ -1,6 +1,6 @@
 # Curling Scoreboard
 
-A platform for curling clubs to run and display live scoreboards, track game history, and manage club administration. It's built as a monorepo with three products sharing a Firebase backend:
+A platform for curling clubs to run and display live scoreboards, track game history, and manage scoring. It's built as a monorepo with three products sharing a Firebase backend:
 
 | Product | Stack | Purpose |
 |---|---|---|
@@ -23,15 +23,19 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 
 ## First-time setup
 
+### 1. Authenticate
 ```bash
-# 1. Authenticate
 firebase login
 gcloud auth application-default login
+```
 
-# 2. Select the dev project
+### 2. Select the dev project
+```bash
 firebase use default   # targets curling-scoreboard-dev
+```
 
-# 3. Install dependencies for each product you're working on
+### 3. Install dependencies
+```bash
 cd app && flutter pub get
 cd admin && npm install
 cd functions && npm install
