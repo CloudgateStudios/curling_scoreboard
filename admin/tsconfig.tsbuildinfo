@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/Layout.tsx","./src/hooks/useAuth.ts","./src/lib/firebase.ts","./src/pages/ClubAdminDashboard.tsx","./src/pages/ClubDetail.tsx","./src/pages/GameHistory.tsx","./src/pages/LoginPage.tsx","./src/pages/SuperAdminDashboard.tsx","./src/types/index.ts"],"version":"6.0.3"}
