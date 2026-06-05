@@ -12,7 +12,7 @@ clubRouter.use(validateApiKey);
 clubRouter.use(sheetsRouter);
 
 clubRouter.get('/', async (req: Request, res: Response) => {
-  const { clubId } = req.params;
+  const clubId = req.params['clubId'] as string;
   const { data: clubData } = res.locals['club'] as {
     id: string;
     data: FirebaseFirestore.DocumentData;

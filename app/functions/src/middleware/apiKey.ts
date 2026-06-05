@@ -13,7 +13,7 @@ export async function validateApiKey(
   }
 
   try {
-    const { clubId } = req.params;
+    const clubId = req.params['clubId'] as string;
     const clubSnap = await admin
       .firestore()
       .collection('clubs')
