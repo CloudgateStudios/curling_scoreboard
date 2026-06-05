@@ -28,6 +28,7 @@ jobs:
           expires: 30d
           channelId: live
           entryPoint: .
+          target: app
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
