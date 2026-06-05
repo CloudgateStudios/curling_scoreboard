@@ -37,7 +37,7 @@ jobs:
           projectId: curling-scoreboard-prod
           channelId: live
           target: admin
-          entryPoint: ./app
+          entryPoint: .
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
@@ -53,5 +53,5 @@ jobs:
         run: npm run build
 
       - name: Deploy Firestore Rules and Functions
-        working-directory: ./app
+        working-directory: ${{ github.workspace }}
         run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-prod

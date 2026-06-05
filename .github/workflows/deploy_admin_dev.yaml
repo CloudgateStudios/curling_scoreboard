@@ -35,4 +35,4 @@ jobs:
           projectId: curling-scoreboard-dev
           channelId: live
           target: admin
-          entryPoint: ./app
+          entryPoint: .
