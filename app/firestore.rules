@@ -1,6 +1,22 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.role == 'superadmin';
+    }
+
+    function isClubAdmin(clubId) {
+      return request.auth != null
+          && request.auth.token.role == 'clubadmin'
+          && request.auth.token.clubId == clubId;
+    }
+
+    // Super admins can read and write everything.
+    match /{document=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
     // Required for collectionGroup('sheets') queries during pairing.
     match /{path=**}/sheets/{sheetId} {
       allow read: if request.auth != null;
@@ -8,15 +24,21 @@ service cloud.firestore {
 
     match /clubs/{clubId} {
       // Authenticated users can read club info to retrieve the club name during pairing.
+      // Club admins can read their own club.
       allow read: if request.auth != null;
 
       match /sheets/{sheetId} {
+        // Club admins can read any sheet in their club.
+        allow read: if isClubAdmin(clubId);
+
+        // Club admins can manage sheets in their club (add pairing codes, add sheets).
+        allow write: if isClubAdmin(clubId);
+
         // Only the registered scoreboard (matched by UID) can read the sheet.
         allow read: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid;
 
         // Any authenticated device can claim a sheet when a pairingCode is present.
-        // Admin re-enables pairing by writing a new pairingCode to the sheet document.
         allow update: if request.auth != null
             && resource.data.pairingCode != null
             && request.resource.data.diff(resource.data)
@@ -29,6 +51,9 @@ service cloud.firestore {
                 .affectedKeys().hasOnly(['liveGame', 'scoreboardUid']);
 
         match /games/{gameId} {
+          // Club admins can read game history.
+          allow read: if isClubAdmin(clubId);
+
           // Only the registered scoreboard can write game records.
           allow create: if request.auth != null
               && request.auth.uid ==

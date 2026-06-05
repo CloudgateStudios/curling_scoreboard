@@ -1,0 +1,57 @@
+name: Deploy Admin Portal - Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version Tag to Deploy
+        required: true
+
+jobs:
+  deploy-admin-prod:
+    runs-on: ubuntu-latest
+    name: Deploy Admin Portal - Prod
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.version }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install admin portal dependencies
+        working-directory: ./admin
+        run: npm ci
+
+      - name: Build admin portal
+        working-directory: ./admin
+        env:
+          VITE_ENV: prod
+        run: npm run build
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}'
+          projectId: curling-scoreboard-prod
+          channelId: live
+          target: admin
+          entryPoint: ./app
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}'
+
+      - name: Install Function Dependencies
+        working-directory: ./app/functions
+        run: npm ci
+
+      - name: Build Functions
+        working-directory: ./app/functions
+        run: npm run build
+
+      - name: Deploy Firestore Rules and Functions
+        working-directory: ./app
+        run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-prod
