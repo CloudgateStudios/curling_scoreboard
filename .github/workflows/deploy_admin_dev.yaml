@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/trusting-knuth-5y6FO
     paths:
       - 'admin/**'
       - 'app/firestore.rules'
