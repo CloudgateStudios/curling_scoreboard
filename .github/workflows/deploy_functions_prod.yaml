@@ -1,0 +1,38 @@
+name: Deploy Functions - Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version Tag to Deploy
+        required: true
+
+jobs:
+  deploy-functions-prod:
+    runs-on: ubuntu-latest
+    name: Deploy Functions - Prod
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.version }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./functions
+        run: npm ci
+
+      - name: Build
+        working-directory: ./functions
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}"
+
+      - name: Deploy Firestore and Functions
+        working-directory: ${{ github.workspace }}
+        run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-prod
