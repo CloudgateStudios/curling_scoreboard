@@ -60,6 +60,21 @@
   margin-bottom: 0;
 }
 
+.apiDocsBlurb {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.apiDocsBlurb a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.apiDocsBlurb a:hover {
+  text-decoration: underline;
+}
+
 .apiKeyRow {
   display: flex;
   align-items: center;

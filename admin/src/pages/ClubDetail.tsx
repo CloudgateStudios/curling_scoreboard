@@ -301,6 +301,12 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
 
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>API Access</h2>
+        <p className={styles.apiDocsBlurb}>
+          Want to know how to use the API?{' '}
+          <a href="https://curlingscoreboard.app/api-docs/" target="_blank" rel="noopener noreferrer">
+            View the API documentation
+          </a>
+        </p>
         <div className={styles.apiKeyRow}>
           <code className={styles.apiKey}>{club.apiKey || '—'}</code>
           <button className={styles.ghostButton} onClick={handleRegenerateApiKey}>
