@@ -25,6 +25,18 @@ jobs:
             revert
           requireScope: false
 
+  validate_spelling:
+    name: Validate Spelling
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - name: Check Spelling
+        uses: streetsidesoftware/cspell-action@v8
+        with:
+          files: "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"
+          config: .github/cspell.json
+
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
@@ -73,20 +85,8 @@ jobs:
       - name: Test
         run: flutter test
 
-  validate_spelling:
-    name: Validate Spelling
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-      - name: Check Spelling
-        uses: streetsidesoftware/cspell-action@v8
-        with:
-          files: "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"
-          config: .github/cspell.json
-
-  validate_strings:
-    name: Validate String Usage
+  validate_scoreboard_strings:
+    name: Validate Scoreboard String Usage
     needs: changes
     if: needs.changes.outputs.scoreboard == 'true'
     runs-on: ubuntu-latest
