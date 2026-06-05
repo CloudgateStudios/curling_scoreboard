@@ -46,10 +46,11 @@ jobs:
       admin: ${{ steps.filter.outputs.admin }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - name: Filter changed paths
         id: filter
+        uses: tj-actions/changed-files@v46
         with:
-          filters: |
+          files_yaml: |
             scoreboard:
               - 'app/**'
               - '!app/functions/**'
@@ -61,7 +62,7 @@ jobs:
   validate_scoreboard_app_code:
     name: Validate Scoreboard App Code
     needs: changes
-    if: needs.changes.outputs.scoreboard == 'true'
+    if: needs.changes.outputs.scoreboard_any_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -88,7 +89,7 @@ jobs:
   validate_scoreboard_strings:
     name: Validate Scoreboard String Usage
     needs: changes
-    if: needs.changes.outputs.scoreboard == 'true'
+    if: needs.changes.outputs.scoreboard_any_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -109,7 +110,7 @@ jobs:
   validate_functions:
     name: Validate Functions
     needs: changes
-    if: needs.changes.outputs.functions == 'true'
+    if: needs.changes.outputs.functions_any_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -118,7 +119,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -131,7 +132,7 @@ jobs:
   validate_admin_app:
     name: Validate Admin App
     needs: changes
-    if: needs.changes.outputs.admin == 'true'
+    if: needs.changes.outputs.admin_any_changed == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -140,7 +141,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
