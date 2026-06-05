@@ -1,8 +1,11 @@
+clubadmin
+firebaseapp
 firestore
 ltrb
 notmain
 prefs
 subshell
+superadmin
 xcassets
 xcode
 xcworkspace
