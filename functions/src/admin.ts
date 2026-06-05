@@ -50,6 +50,11 @@ export const provisionClub = onCall(async (request) => {
     clubId: clubRef.id,
   });
 
+  await clubRef.collection('admins').doc(userRecord.uid).set({
+    email: adminEmail,
+    displayName: userRecord.displayName ?? null,
+  });
+
   return { clubId: clubRef.id, uid: userRecord.uid };
 });
 
@@ -87,6 +92,11 @@ export const addClubAdmin = onCall(async (request) => {
     role: 'clubadmin',
     clubId,
   });
+
+  await admin.firestore()
+    .collection('clubs').doc(clubId)
+    .collection('admins').doc(userRecord.uid)
+    .set({ email: adminEmail, displayName: userRecord.displayName ?? null });
 
   return { uid: userRecord.uid };
 });

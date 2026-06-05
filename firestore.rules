@@ -27,6 +27,10 @@ service cloud.firestore {
       // Club admins can read their own club.
       allow read: if request.auth != null;
 
+      match /admins/{uid} {
+        allow read: if isClubAdmin(clubId);
+      }
+
       match /sheets/{sheetId} {
         // Club admins can read any sheet in their club.
         allow read: if isClubAdmin(clubId);

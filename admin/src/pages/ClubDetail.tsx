@@ -59,6 +59,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const [addingSheet, setAddingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
 
+  const [clubAdmins, setClubAdmins] = useState<{ uid: string; email: string; displayName: string | null }[]>([]);
+
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -91,6 +93,15 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       );
     });
   }, [resolvedClubId]);
+
+  useEffect(() => {
+    if (isClubAdmin) return;
+    return onSnapshot(collection(db, 'clubs', resolvedClubId, 'admins'), (snap) => {
+      setClubAdmins(
+        snap.docs.map((d) => ({ uid: d.id, ...(d.data() as { email: string; displayName: string | null }) }))
+      );
+    });
+  }, [resolvedClubId, isClubAdmin]);
 
   // Keep sheetMeta stable — only update when sheet ids or names change (not liveGame)
   useEffect(() => {
@@ -318,10 +329,20 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       {!isClubAdmin && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>Admins</h2>
+            <h2 className={styles.sectionTitle}>Admins ({clubAdmins.length})</h2>
             <button className={styles.primaryButton} onClick={() => { setShowAddAdmin(true); setAddAdminError(''); setAddAdminSuccess(''); }}>
               + Add Admin
             </button>
+          </div>
+
+          <div className={styles.adminList}>
+            {clubAdmins.map((a) => (
+              <div key={a.uid} className={styles.adminRow}>
+                {a.displayName && <span className={styles.adminName}>{a.displayName}</span>}
+                <span className={styles.adminEmail}>{a.email}</span>
+              </div>
+            ))}
+            {clubAdmins.length === 0 && <p className={styles.empty}>No admins yet.</p>}
           </div>
 
           {showAddAdmin && (
