@@ -1,4 +1,4 @@
-// cspell:ignore DXCUM VDBJ DKWD FGUK
+// cspell:ignore DXCUM VDBJ DKWD FGUK Mrhl
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
