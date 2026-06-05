@@ -21,9 +21,10 @@ function generateApiKey(): string {
 interface Props {
   // Optional: club admin dashboard passes the club directly to avoid an extra fetch
   club?: Club;
+  isClubAdmin?: boolean;
 }
 
-export function ClubDetail({ club: clubProp }: Props) {
+export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const { clubId } = useParams<{ clubId: string }>();
   const navigate = useNavigate();
 
@@ -124,9 +125,11 @@ export function ClubDetail({ club: clubProp }: Props) {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Sheets ({sheets.length})</h2>
-          <button className={styles.primaryButton} onClick={() => setAddingSheet(true)}>
-            + Add Sheet
-          </button>
+          {!isClubAdmin && (
+            <button className={styles.primaryButton} onClick={() => setAddingSheet(true)}>
+              + Add Sheet
+            </button>
+          )}
         </div>
 
         {addingSheet && (
