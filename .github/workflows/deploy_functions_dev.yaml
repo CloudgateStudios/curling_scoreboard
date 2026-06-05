@@ -1,0 +1,39 @@
+name: Deploy Functions - Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+
+jobs:
+  deploy-functions-dev:
+    runs-on: ubuntu-latest
+    name: Deploy Functions - Dev
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: ./functions
+        run: npm ci
+
+      - name: Build
+        working-directory: ./functions
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}"
+
+      - name: Deploy Firestore and Functions
+        working-directory: ${{ github.workspace }}
+        run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-dev
