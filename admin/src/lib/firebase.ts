@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
 
 const devConfig = {
-  apiKey: 'AIzaSyDev_placeholder_replace_with_real_key',
+  apiKey: 'AIzaSyDXCUM2AxKD73rQIy53ArxDspVYbVDBJ68',
   authDomain: 'curling-scoreboard-dev.firebaseapp.com',
   projectId: 'curling-scoreboard-dev',
   storageBucket: 'curling-scoreboard-dev.appspot.com',
@@ -13,7 +13,7 @@ const devConfig = {
 };
 
 const prodConfig = {
-  apiKey: 'AIzaSyProd_placeholder_replace_with_real_key',
+  apiKey: 'AIzaSyDKWdlQbyMrhlVd7IvzXlFGukUHeGgHZh4',
   authDomain: 'curling-scoreboard-prod.firebaseapp.com',
   projectId: 'curling-scoreboard-prod',
   storageBucket: 'curling-scoreboard-prod.appspot.com',
