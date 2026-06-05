@@ -45,11 +45,11 @@ jobs:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}'
 
       - name: Install Function Dependencies
-        working-directory: ./app/functions
+        working-directory: ./functions
         run: npm ci
 
       - name: Build Functions
-        working-directory: ./app/functions
+        working-directory: ./functions
         run: npm run build
 
       - name: Deploy Firestore Rules and Functions

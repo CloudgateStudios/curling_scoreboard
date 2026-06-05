@@ -1,6 +1,6 @@
 {
   "functions": {
-    "source": "app/functions"
+    "source": "functions"
   },
   "hosting": [
     {
@@ -27,8 +27,8 @@
     }
   ],
   "firestore": {
-    "rules": "app/firestore.rules",
-    "indexes": "app/firestore.indexes.json"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "flutter": {
     "platforms": {
