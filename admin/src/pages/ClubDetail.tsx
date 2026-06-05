@@ -3,8 +3,9 @@ import {
   collection, doc, onSnapshot, updateDoc, deleteField, addDoc,
   getDocs, query, where, orderBy, Timestamp,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../lib/firebase';
+import { db, functions } from '../lib/firebase';
 import type { Club, Sheet, Game } from '../types';
 import styles from './ClubDetail.module.css';
 
@@ -57,6 +58,13 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const [newSheetName, setNewSheetName] = useState('');
   const [addingSheet, setAddingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
+
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [addAdminError, setAddAdminError] = useState('');
+  const [addAdminSuccess, setAddAdminSuccess] = useState('');
 
   // Stable sheet metadata (id + name only) — insulated from liveGame updates
   const [sheetMeta, setSheetMeta] = useState<{ id: string; name: string }[]>([]);
@@ -165,6 +173,24 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       navigate(`/sheets/${sheetId}/games`);
     } else {
       navigate(`/clubs/${resolvedClubId}/sheets/${sheetId}/games`);
+    }
+  }
+
+  async function handleAddAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    setAddingAdmin(true);
+    setAddAdminError('');
+    setAddAdminSuccess('');
+    try {
+      const addClubAdmin = httpsCallable(functions, 'addClubAdmin');
+      await addClubAdmin({ clubId: resolvedClubId, adminEmail, adminPassword });
+      setAddAdminSuccess(`Admin account created for ${adminEmail}.`);
+      setAdminEmail('');
+      setAdminPassword('');
+    } catch (err) {
+      setAddAdminError(err instanceof Error ? err.message : 'Failed to add admin.');
+    } finally {
+      setAddingAdmin(false);
     }
   }
 
@@ -282,6 +308,58 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
           </button>
         </div>
       </div>
+
+      {!isClubAdmin && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>Admins</h2>
+            <button className={styles.primaryButton} onClick={() => { setShowAddAdmin(true); setAddAdminError(''); setAddAdminSuccess(''); }}>
+              + Add Admin
+            </button>
+          </div>
+
+          {showAddAdmin && (
+            <div className={styles.modal}>
+              <div className={styles.modalCard}>
+                <h2 className={styles.modalTitle}>Add Admin to {club.name}</h2>
+                <form onSubmit={handleAddAdmin} className={styles.form}>
+                  <label className={styles.label}>
+                    Admin Email
+                    <input
+                      type="email"
+                      className={styles.input}
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className={styles.label}>
+                    Password
+                    <input
+                      type="password"
+                      className={styles.input}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      required
+                      minLength={8}
+                    />
+                  </label>
+                  {addAdminError && <p className={styles.error}>{addAdminError}</p>}
+                  {addAdminSuccess && <p className={styles.success}>{addAdminSuccess}</p>}
+                  <div className={styles.modalActions}>
+                    <button type="button" className={styles.ghostButton} onClick={() => setShowAddAdmin(false)}>
+                      Close
+                    </button>
+                    <button type="submit" className={styles.primaryButton} disabled={addingAdmin}>
+                      {addingAdmin ? 'Adding…' : 'Add Admin'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={styles.section}>
         <div className={styles.sectionHeader}>

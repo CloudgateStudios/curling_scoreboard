@@ -53,6 +53,44 @@ export const provisionClub = onCall(async (request) => {
   return { clubId: clubRef.id, uid: userRecord.uid };
 });
 
+// Adds a new admin user to an existing club.
+export const addClubAdmin = onCall(async (request) => {
+  requireSuperAdmin(request.auth);
+
+  const { clubId, adminEmail, adminPassword } = request.data as {
+    clubId: string;
+    adminEmail: string;
+    adminPassword: string;
+  };
+
+  if (!clubId || !adminEmail || !adminPassword) {
+    throw new HttpsError('invalid-argument', 'clubId, adminEmail and adminPassword are required.');
+  }
+
+  const clubSnap = await admin.firestore().collection('clubs').doc(clubId).get();
+  if (!clubSnap.exists) {
+    throw new HttpsError('not-found', 'Club not found.');
+  }
+
+  let userRecord: admin.auth.UserRecord;
+  try {
+    userRecord = await admin.auth().createUser({
+      email: adminEmail,
+      password: adminPassword,
+      displayName: `${(clubSnap.data() as { name: string }).name} Admin`,
+    });
+  } catch (err) {
+    throw new HttpsError('already-exists', `Could not create user: ${(err as Error).message}`);
+  }
+
+  await admin.auth().setCustomUserClaims(userRecord.uid, {
+    role: 'clubadmin',
+    clubId,
+  });
+
+  return { uid: userRecord.uid };
+});
+
 // Sets a user as super admin. Call this once manually via Firebase SDK or Console
 // to bootstrap the first super admin account.
 export const setSuperAdminClaim = onCall(async (request) => {

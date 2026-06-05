@@ -393,3 +393,66 @@
   font-weight: 700;
   border-left: 1px solid #efefef;
 }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modalCard {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.error {
+  font-size: 0.85rem;
+  color: #d93025;
+  background: #fce8e6;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.success {
+  font-size: 0.85rem;
+  color: #137333;
+  background: #e6f4ea;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
