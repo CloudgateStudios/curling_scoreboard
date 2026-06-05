@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "admin/**"
-      - "app/firestore.rules"
-      - "app/functions/**"
 
 jobs:
   deploy-admin-dev:
@@ -35,4 +31,4 @@ jobs:
           projectId: curling-scoreboard-dev
           channelId: live
           target: admin
-          entryPoint: ./app
+          entryPoint: .
