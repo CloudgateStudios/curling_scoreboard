@@ -27,7 +27,7 @@ jobs:
           projectId: curling-scoreboard-dev
           expires: 30d
           channelId: live
-          entryPoint: ./app
+          entryPoint: .
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -42,3 +42,4 @@ jobs:
         run: cd functions && npm run build
       - name: Deploy Firestore and Functions
         run: npx firebase-tools@latest deploy --only firestore,functions --force --project curling-scoreboard-dev
+        working-directory: ${{ github.workspace }}
