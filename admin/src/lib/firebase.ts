@@ -1,3 +1,4 @@
+// cspell:ignore DXCUM VDBJ appspot DKWD FGUK
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
