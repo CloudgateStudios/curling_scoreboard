@@ -1,3 +1,4 @@
+appspot
 clubadmin
 firebaseapp
 firestore
