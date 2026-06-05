@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy Admin Portal - Prod
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.version }}
 
