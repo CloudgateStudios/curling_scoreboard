@@ -1,5 +1,6 @@
 appspot
 clubadmin
+cupertino
 firebaseapp
 firestore
 ltrb
