@@ -27,7 +27,7 @@ export interface Game {
   team2: { name: string; totalScore: number; hadLastStoneFirstEnd: boolean };
   ends: Array<{
     endNumber: number;
-    scoringTeam: 1 | 2 | null;
+    scoringTeam: string | null;
     score: number;
     gameTimeInSeconds: number;
   }>;

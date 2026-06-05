@@ -1,11 +1,11 @@
 {
   "functions": {
-    "source": "functions"
+    "source": "app/functions"
   },
   "hosting": [
     {
       "target": "app",
-      "public": "build/web",
+      "public": "app/build/web",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
         {
@@ -16,7 +16,7 @@
     },
     {
       "target": "admin",
-      "public": "../admin/dist",
+      "public": "admin/dist",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "rewrites": [
         {
@@ -27,8 +27,8 @@
     }
   ],
   "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "rules": "app/firestore.rules",
+    "indexes": "app/firestore.indexes.json"
   },
   "flutter": {
     "platforms": {
