@@ -12,8 +12,9 @@ function requireSuperAdmin(auth: { token: admin.auth.DecodedIdToken } | undefine
 export const provisionClub = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubName, adminEmail, adminPassword } = request.data as {
+  const { clubName, clubId, adminEmail, adminPassword } = request.data as {
     clubName: string;
+    clubId?: string;
     adminEmail: string;
     adminPassword: string;
   };
@@ -24,11 +25,17 @@ export const provisionClub = onCall(async (request) => {
 
   const apiKey = crypto.randomBytes(16).toString('hex');
 
-  // Create club document with auto-generated ID
-  const clubRef = await admin.firestore().collection('clubs').add({
-    name: clubName,
-    apiKey,
-  });
+  let clubRef: admin.firestore.DocumentReference;
+  if (clubId) {
+    clubRef = admin.firestore().collection('clubs').doc(clubId);
+    const existing = await clubRef.get();
+    if (existing.exists) {
+      throw new HttpsError('already-exists', `A club with id "${clubId}" already exists.`);
+    }
+    await clubRef.set({ name: clubName, apiKey });
+  } else {
+    clubRef = await admin.firestore().collection('clubs').add({ name: clubName, apiKey });
+  }
 
   // Create the Firebase Auth user
   let userRecord: admin.auth.UserRecord;
