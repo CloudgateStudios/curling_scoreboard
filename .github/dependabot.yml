@@ -13,3 +13,15 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+  - package-ecosystem: "npm"
+    directory: "/app/functions"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "npm"
+    directory: "/admin"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "npm"
+    directory: "/scripts"
+    schedule:
+      interval: "daily"
