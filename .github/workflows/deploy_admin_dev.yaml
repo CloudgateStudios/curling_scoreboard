@@ -4,11 +4,10 @@ on:
   push:
     branches:
       - main
-      - claude/trusting-knuth-5y6FO
     paths:
-      - 'admin/**'
-      - 'app/firestore.rules'
-      - 'app/functions/**'
+      - "admin/**"
+      - "app/firestore.rules"
+      - "app/functions/**"
 
 jobs:
   deploy-admin-dev:
@@ -19,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install admin portal dependencies
         working-directory: ./admin
@@ -31,8 +30,8 @@ jobs:
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}'
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}"
           projectId: curling-scoreboard-dev
           channelId: live
           target: admin
