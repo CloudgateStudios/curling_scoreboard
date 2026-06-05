@@ -2,15 +2,10 @@ import { useState, useEffect } from 'react';
 import {
   collection, doc, onSnapshot, updateDoc, deleteField, addDoc,
 } from 'firebase/firestore';
+import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { Club, Sheet } from '../types';
-import { GameHistory } from './GameHistory';
 import styles from './ClubDetail.module.css';
-
-interface Props {
-  club: Club;
-  onBack?: () => void;
-}
 
 function generatePairingCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,30 +18,50 @@ function generateApiKey(): string {
   ).join('');
 }
 
-export function ClubDetail({ club, onBack }: Props) {
+interface Props {
+  // Optional: club admin dashboard passes the club directly to avoid an extra fetch
+  club?: Club;
+}
+
+export function ClubDetail({ club: clubProp }: Props) {
+  const { clubId } = useParams<{ clubId: string }>();
+  const navigate = useNavigate();
+
+  const [club, setClub] = useState<Club | null>(clubProp ?? null);
   const [sheets, setSheets] = useState<Sheet[]>([]);
-  const [selectedSheet, setSelectedSheet] = useState<Sheet | null>(null);
   const [newSheetName, setNewSheetName] = useState('');
   const [addingSheet, setAddingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
 
+  const resolvedClubId = clubProp?.id ?? clubId!;
+
+  // Only fetch club doc when we don't have it passed in (super admin navigating by URL)
   useEffect(() => {
-    return onSnapshot(collection(db, 'clubs', club.id, 'sheets'), (snap) => {
+    if (clubProp) return;
+    return onSnapshot(doc(db, 'clubs', resolvedClubId), (snap) => {
+      if (snap.exists()) {
+        setClub({ id: snap.id, ...(snap.data() as Omit<Club, 'id'>) });
+      }
+    });
+  }, [resolvedClubId, clubProp]);
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'clubs', resolvedClubId, 'sheets'), (snap) => {
       setSheets(
         snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Sheet, 'id'>) }))
       );
     });
-  }, [club.id]);
+  }, [resolvedClubId]);
 
   async function handleGeneratePairingCode(sheetId: string) {
     const code = generatePairingCode();
-    await updateDoc(doc(db, 'clubs', club.id, 'sheets', sheetId), {
+    await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
       pairingCode: code,
     });
   }
 
   async function handleClearPairingCode(sheetId: string) {
-    await updateDoc(doc(db, 'clubs', club.id, 'sheets', sheetId), {
+    await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
       pairingCode: deleteField(),
     });
   }
@@ -54,7 +69,7 @@ export function ClubDetail({ club, onBack }: Props) {
   async function handleAddSheet(e: React.FormEvent) {
     e.preventDefault();
     setSavingSheet(true);
-    await addDoc(collection(db, 'clubs', club.id, 'sheets'), {
+    await addDoc(collection(db, 'clubs', resolvedClubId, 'sheets'), {
       name: newSheetName,
     });
     setNewSheetName('');
@@ -65,24 +80,27 @@ export function ClubDetail({ club, onBack }: Props) {
   async function handleRegenerateApiKey() {
     if (!confirm('Regenerate API key? Existing integrations using the current key will break.')) return;
     const newKey = generateApiKey();
-    await updateDoc(doc(db, 'clubs', club.id), { apiKey: newKey });
+    await updateDoc(doc(db, 'clubs', resolvedClubId), { apiKey: newKey });
   }
 
-  if (selectedSheet) {
-    return (
-      <GameHistory
-        club={club}
-        sheet={selectedSheet}
-        onBack={() => setSelectedSheet(null)}
-      />
-    );
+  function handleViewGames(sheetId: string) {
+    // Club admins don't have /clubs/:clubId in their routes
+    if (clubProp) {
+      navigate(`/sheets/${sheetId}/games`);
+    } else {
+      navigate(`/clubs/${resolvedClubId}/sheets/${sheetId}/games`);
+    }
+  }
+
+  if (!club) {
+    return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
   }
 
   return (
     <div>
       <div className={styles.breadcrumb}>
-        {onBack && (
-          <button className={styles.backButton} onClick={onBack}>← All Clubs</button>
+        {!clubProp && (
+          <button className={styles.backButton} onClick={() => navigate('/')}>← All Clubs</button>
         )}
       </div>
 
@@ -172,7 +190,7 @@ export function ClubDetail({ club, onBack }: Props) {
                 )}
                 <button
                   className={styles.linkButton}
-                  onClick={() => setSelectedSheet(sheet)}
+                  onClick={() => handleViewGames(sheet.id)}
                 >
                   View Games →
                 </button>

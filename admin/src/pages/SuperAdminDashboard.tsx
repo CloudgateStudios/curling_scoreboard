@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { useNavigate } from 'react-router-dom';
 import { db, functions } from '../lib/firebase';
 import type { Club } from '../types';
-import { ClubDetail } from './ClubDetail';
 import styles from './SuperAdminDashboard.module.css';
 
 export function SuperAdminDashboard() {
+  const navigate = useNavigate();
   const [clubs, setClubs] = useState<Club[]>([]);
-  const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [newClubName, setNewClubName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -40,11 +40,6 @@ export function SuperAdminDashboard() {
     } finally {
       setCreating(false);
     }
-  }
-
-  if (selectedClubId) {
-    const club = clubs.find((c) => c.id === selectedClubId)!;
-    return <ClubDetail club={club} onBack={() => setSelectedClubId(null)} />;
   }
 
   return (
@@ -113,7 +108,7 @@ export function SuperAdminDashboard() {
           <button
             key={club.id}
             className={styles.clubCard}
-            onClick={() => setSelectedClubId(club.id)}
+            onClick={() => navigate(`/clubs/${club.id}`)}
           >
             <span className={styles.clubName}>{club.name}</span>
             <span className={styles.clubId}>{club.id}</span>

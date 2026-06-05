@@ -26,5 +26,6 @@ export function ClubAdminDashboard({ user }: Props) {
   if (loading) return <p className={styles.loading}>Loading…</p>;
   if (!club) return <p className={styles.error}>Club not found. Contact your administrator.</p>;
 
+  // Pass club directly so ClubDetail doesn't need to re-fetch it
   return <ClubDetail club={club} />;
 }
