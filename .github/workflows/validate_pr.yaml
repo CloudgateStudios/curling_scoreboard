@@ -75,8 +75,6 @@ jobs:
 
   validate_spelling:
     name: Validate Spelling
-    needs: changes
-    if: needs.changes.outputs.scoreboard == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -84,7 +82,7 @@ jobs:
       - name: Check Spelling
         uses: streetsidesoftware/cspell-action@v8
         with:
-          files: "**/*.{md,dart}"
+          files: "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"
           config: .github/cspell.json
 
   validate_strings:
