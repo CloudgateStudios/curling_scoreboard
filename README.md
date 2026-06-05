@@ -1,53 +1,84 @@
 # Curling Scoreboard
 
-A simple Curling Scoreboard, written in Flutter, meant to be used in any curling club that has an electronic scoreboard. Allows for live polling of scores as well as historical games as needed.
+A platform for curling clubs to run and display live scoreboards, track game history, and manage scoring. It's built as a monorepo with three products sharing a Firebase backend:
 
-## Project Setup
+| Product | Stack | Purpose |
+|---|---|---|
+| `app/` | Flutter | Scoreboard app (web, mobile, desktop) |
+| `admin/` | React + Vite | Club and super-admin web portal |
+| `functions/` | Node.js + Express | REST API and callable Cloud Functions |
 
-### Prerequisites
+Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 
-- [Flutter](https://docs.flutter.dev/get-started/install) - typically latest stable
-- [Firebase CLI](https://firebase.google.com/docs/cli) - `npm install -g firebase-tools`
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) - `gcloud` for local credentials
+---
 
-### First-time setup
+## Prerequisites
 
-1. Clone the repo and open the root folder in VS Code.
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.44.0 (stable)
+- [Node.js](https://nodejs.org/) 20
+- [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
 
-2. Install Flutter dependencies:
+---
 
-   ```bash
-   cd app
-   flutter pub get
-   ```
+## First-time setup
 
-3. Authenticate with Firebase:
+### 1. Authenticate
+```bash
+firebase login
+gcloud auth application-default login
+```
 
-   ```bash
-   firebase login
-   gcloud auth application-default login
-   ```
+### 2. Select the dev project
+```bash
+firebase use default   # targets curling-scoreboard-dev
+```
 
-4. Select the dev project:
+### 3. Install dependencies
+```bash
+cd app && flutter pub get
+cd admin && npm install
+cd functions && npm install
+cd scripts && npm install
+```
 
-   ```bash
-   firebase use default   # targets curling-scoreboard-dev
-   ```
+---
 
-### Running locally
+## Running locally
 
-Open the project in VS Code and use the **Launch Web** run configuration (`.vscode/launch.json`). This launches the app in Chrome against the dev Firebase project.
+### Scoreboard app
 
-### Seeding Dev Data
+Open the repo in VS Code and use the **Launch Web** run configuration (`.vscode/launch.json`). This starts the app in Chrome pointing at the live dev Firebase project (`curling-scoreboard-dev`).
 
-A Node.js seed script populates the dev Firestore with realistic test data:
+To run from the terminal:
 
-#### Prerequisites
+```bash
+cd app
+flutter run -d chrome --dart-define=FIREBASE_ENV=dev -t lib/main.dart
+```
 
-- Node.js 18+
-- Authenticated via `gcloud auth application-default login` (see setup above)
+### Admin portal
 
-#### Running the seed script
+```bash
+cd admin
+npm run dev
+```
+
+Starts the Vite dev server. The portal uses the dev Firebase project by default.
+
+### Functions
+
+Functions run on Firebase Cloud Functions — there's no local emulator configured. During development, the app and admin portal connect directly to the live dev project's deployed functions. To deploy your changes to dev:
+
+```bash
+firebase deploy --only functions --project curling-scoreboard-dev
+```
+
+---
+
+## Seeding dev data
+
+A seed script populates the dev Firestore with realistic clubs, sheets, and game history.
 
 ```bash
 cd scripts
@@ -55,28 +86,42 @@ npm install
 node seed-dev.js
 ```
 
-The script targets `curling-scoreboard-dev` by default. To target a different project:
+The script is **idempotent for clubs and sheets** — re-running it won't create duplicates there. Each run does add a new set of game documents, so run it once unless you want additional game history.
+
+To target a different project:
 
 ```bash
 FIREBASE_PROJECT_ID=my-other-project node seed-dev.js
 ```
 
-The script is **idempotent for clubs and sheets** — re-running it won't create duplicates there. Each run does add a new set of game documents per sheet, so run it once unless you intentionally want more game history.
-
 ---
 
 ## Deployments
 
-### PR Previews
+### PR previews
 
-When a pull request is opened, the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow runs all checks (code, formatting, tests, spelling). Once all checks pass, a preview build is automatically deployed to a temporary Firebase Hosting channel named after the branch. Previews expire after 10 days and a link is posted directly on the PR.
+Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow, which runs formatting, analysis, type checking, tests, and spell checking per product (only for products whose files changed). Once checks pass, a preview build is deployed to a temporary Firebase Hosting channel and linked on the PR.
 
-### Dev System
+### Dev
 
-Any push to `main` automatically triggers the [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml) workflow, which builds and deploys the app and Firestore configuration to the live dev environment.
+Every push to `main` automatically deploys all three products to the live dev environment:
 
-### Prod System
+| Workflow | Deploys |
+|---|---|
+| [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml) | Flutter web app |
+| [deploy_admin_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_dev.yaml) | Admin portal |
+| [deploy_functions_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_dev.yaml) | Cloud Functions + Firestore rules |
 
-You first need to ensure you have a new tagged version. This is handled by the [version_increment](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/version_increment.yaml) workflow. This will automatically read the commits, create the [changelog](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/CHANGELOG.md) and [release notes](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/RELEASE_NOTES.md) and commit it all back to the `main` branch.
+### Prod
 
-Production deploys are manual. Go to the [deploy_web_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_prod.yaml) action, click "Run Workflow", and enter the version tag to deploy (e.g. `0.0.34`). The workflow checks out that exact tag and deploys it to the live prod environment.
+First, generate a version tag using the [version_increment](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/version_increment.yaml) workflow. It reads the commits since the last release, writes the [changelog](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/CHANGELOG.md) and [release notes](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/RELEASE_NOTES.md), and commits the tag back to `main`.
+
+Then trigger each prod workflow manually, entering the version tag (e.g. `0.0.37`):
+
+| Workflow | Deploys |
+|---|---|
+| [deploy_web_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_prod.yaml) | Flutter web app |
+| [deploy_admin_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_prod.yaml) | Admin portal |
+| [deploy_functions_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_prod.yaml) | Cloud Functions + Firestore rules |
+
+Each workflow checks out the exact tag and deploys it to the live prod environment (`curling-scoreboard-prod`).
