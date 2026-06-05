@@ -6,11 +6,22 @@ import { db, functions } from '../lib/firebase';
 import type { Club } from '../types';
 import styles from './SuperAdminDashboard.module.css';
 
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 export function SuperAdminDashboard() {
   const navigate = useNavigate();
   const [clubs, setClubs] = useState<Club[]>([]);
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [newClubName, setNewClubName] = useState('');
+  const [clubId, setClubId] = useState('');
+  const [clubIdEdited, setClubIdEdited] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [creating, setCreating] = useState(false);
@@ -24,14 +35,28 @@ export function SuperAdminDashboard() {
     });
   }, []);
 
+  function handleClubNameChange(name: string) {
+    setNewClubName(name);
+    if (!clubIdEdited) {
+      setClubId(toSlug(name));
+    }
+  }
+
+  function handleClubIdChange(id: string) {
+    setClubId(id);
+    setClubIdEdited(id !== toSlug(newClubName));
+  }
+
   async function handleCreateClub(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     setCreateError('');
     try {
       const provisionClub = httpsCallable(functions, 'provisionClub');
-      await provisionClub({ clubName: newClubName, adminEmail, adminPassword });
+      await provisionClub({ clubName: newClubName, clubId: clubId || undefined, adminEmail, adminPassword });
       setNewClubName('');
+      setClubId('');
+      setClubIdEdited(false);
       setAdminEmail('');
       setAdminPassword('');
       setShowCreateClub(false);
@@ -64,7 +89,18 @@ export function SuperAdminDashboard() {
                 <input
                   className={styles.input}
                   value={newClubName}
-                  onChange={(e) => setNewClubName(e.target.value)}
+                  onChange={(e) => handleClubNameChange(e.target.value)}
+                  required
+                />
+              </label>
+              <label className={styles.label}>
+                Club ID
+                <input
+                  className={styles.input}
+                  value={clubId}
+                  onChange={(e) => handleClubIdChange(e.target.value)}
+                  pattern="[a-z0-9-]+"
+                  title="Lowercase letters, numbers, and hyphens only"
                   required
                 />
               </label>
