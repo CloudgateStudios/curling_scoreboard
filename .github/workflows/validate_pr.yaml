@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Check Spelling
         uses: streetsidesoftware/cspell-action@v8
         with:
@@ -45,7 +45,7 @@ jobs:
       functions: ${{ steps.filter.outputs.functions_any_changed }}
       admin: ${{ steps.filter.outputs.admin_any_changed }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Filter changed paths
         id: filter
         uses: tj-actions/changed-files@v47
@@ -68,7 +68,7 @@ jobs:
         working-directory: ./app
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
@@ -95,7 +95,7 @@ jobs:
         working-directory: ./app
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
@@ -116,7 +116,7 @@ jobs:
         working-directory: ./functions
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -138,7 +138,7 @@ jobs:
         working-directory: ./admin
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
