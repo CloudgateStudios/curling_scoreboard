@@ -1,5 +1,5 @@
 import 'package:curling_scoreboard/constants.dart';
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
@@ -22,8 +22,9 @@ class ScoreInputDialog extends StatelessWidget {
     int? currentTeamSelectedIndex;
 
     if (defaultTeam != null) {
-      currentTeamSelectedIndex =
-          defaultTeam == AppLocalizations.of(context)!.teamNameRed ? 0 : 1;
+      currentTeamSelectedIndex = defaultTeam == context.l10n.teamNameRed
+          ? 0
+          : 1;
     }
 
     var selectedScore = defaultScore;
@@ -33,11 +34,11 @@ class ScoreInputDialog extends StatelessWidget {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
         child: EnterEditScoreDialogTeamText(
-          team: AppLocalizations.of(context)!.teamNameRed,
+          team: context.l10n.teamNameRed,
         ),
       ),
       1: EnterEditScoreDialogTeamText(
-        team: AppLocalizations.of(context)!.teamNameYellow,
+        team: context.l10n.teamNameYellow,
       ),
     };
 
@@ -60,7 +61,7 @@ class ScoreInputDialog extends StatelessWidget {
       builder: (context, setState) {
         return AlertDialog(
           title: Text(
-            AppLocalizations.of(context)!.scoreInputDialogTitle(end.toString()),
+            context.l10n.scoreInputDialogTitle(end.toString()),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -112,12 +113,8 @@ class ScoreInputDialog extends StatelessWidget {
                         currentTeamSelectedIndex = index;
 
                         index == 0
-                            ? selectedTeam = AppLocalizations.of(
-                                context,
-                              )!.teamNameRed
-                            : selectedTeam = AppLocalizations.of(
-                                context,
-                              )!.teamNameYellow;
+                            ? selectedTeam = context.l10n.teamNameRed
+                            : selectedTeam = context.l10n.teamNameYellow;
                       });
                     },
                   ),
@@ -139,7 +136,7 @@ class ScoreInputDialog extends StatelessWidget {
                       Navigator.pop(context, newEnd);
                     },
               child: Text(
-                AppLocalizations.of(context)!.scoreInputEnterButtonLabel,
+                context.l10n.scoreInputEnterButtonLabel,
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,

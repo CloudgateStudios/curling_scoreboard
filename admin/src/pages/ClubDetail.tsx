@@ -68,6 +68,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const [addAdminError, setAddAdminError] = useState('');
   const [addAdminSuccess, setAddAdminSuccess] = useState('');
 
+
   // Stable sheet metadata (id + name only) — insulated from liveGame updates
   const [sheetMeta, setSheetMeta] = useState<{ id: string; name: string }[]>([]);
   const [recentGames, setRecentGames] = useState<RecentGame[]>([]);
@@ -102,6 +103,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       );
     });
   }, [resolvedClubId, isClubAdmin]);
+
 
   // Keep sheetMeta stable — only update when sheet ids or names change (not liveGame)
   useEffect(() => {
