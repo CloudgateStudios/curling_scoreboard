@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
 class GameInfoRowWidget extends StatelessWidget {
@@ -19,9 +19,7 @@ class GameInfoRowWidget extends StatelessWidget {
         Expanded(
           child: FittedBox(
             child: Text(
-              AppLocalizations.of(
-                context,
-              )!.gameInfoGameTimeLabel(_printDuration(gameTime)),
+              context.l10n.gameInfoGameTimeLabel(_printDuration(gameTime)),
             ),
           ),
         ),

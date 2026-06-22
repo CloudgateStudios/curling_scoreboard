@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/firebase_options_dev.dart' as dev;
 import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
@@ -290,7 +290,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         actions: <Widget>[
           AppBarActionButton(
             icon: Icons.add,
-            label: AppLocalizations.of(context)!.appBarAddScoreButtonLabel,
+            label: context.l10n.appBarAddScoreButtonLabel,
             onPressed: () async {
               if (gameObject.ends.length < gameObject.numberOfEnds + 1) {
                 await showEnterScoreDialog(context);
@@ -298,7 +298,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      AppLocalizations.of(context)!.addScoreGameCompleteMessage,
+                      context.l10n.addScoreGameCompleteMessage,
                     ),
                   ),
                 );
@@ -307,7 +307,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           ),
           AppBarActionButton(
             icon: Icons.sports_score,
-            label: AppLocalizations.of(context)!.appBarFinishGameButtonLabel,
+            label: context.l10n.appBarFinishGameButtonLabel,
             onPressed: () async {
               await showFinishGameConfirmationDialog(context);
             },
@@ -381,7 +381,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            final l10n = AppLocalizations.of(context)!;
+            final l10n = context.l10n;
             final reg = widget.registrationService;
 
             return AlertDialog(
