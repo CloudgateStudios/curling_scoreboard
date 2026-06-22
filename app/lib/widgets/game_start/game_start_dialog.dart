@@ -73,15 +73,14 @@ class GameStartDialog extends StatelessWidget {
           4: GameStartSegmentControlText(
             text: '4',
             subtext: context.l10n.gameStartDialogTimePerEndByPlayersButtonLabel(
-                  Constants.minutesPerEndFourPlayers.toString(),
-                  _printDuration(
-                    Duration(
-                      minutes:
-                          Constants.minutesPerEndFourPlayers *
-                          settingsTotalEnds,
-                    ),
-                  ),
+              Constants.minutesPerEndFourPlayers.toString(),
+              _printDuration(
+                Duration(
+                  minutes:
+                      Constants.minutesPerEndFourPlayers * settingsTotalEnds,
                 ),
+              ),
+            ),
           ),
         };
 

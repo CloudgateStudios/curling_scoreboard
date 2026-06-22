@@ -22,8 +22,9 @@ class ScoreInputDialog extends StatelessWidget {
     int? currentTeamSelectedIndex;
 
     if (defaultTeam != null) {
-      currentTeamSelectedIndex =
-          defaultTeam == context.l10n.teamNameRed ? 0 : 1;
+      currentTeamSelectedIndex = defaultTeam == context.l10n.teamNameRed
+          ? 0
+          : 1;
     }
 
     var selectedScore = defaultScore;
