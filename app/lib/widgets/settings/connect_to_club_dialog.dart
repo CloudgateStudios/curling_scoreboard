@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:flutter/material.dart';
 
@@ -56,7 +56,7 @@ class _ConnectToClubDialogState extends State<ConnectToClubDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = context.l10n;
 
     return AlertDialog(
       title: Text(l10n.connectToClubDialogTitle),

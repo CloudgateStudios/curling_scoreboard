@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
 class ScoreboardStaticNumberRow extends StatelessWidget {
@@ -29,7 +29,7 @@ class ScoreboardStaticNumberRow extends StatelessWidget {
             child: StaticNumberContainer(
               number: (currentNumber != numberOfEntries)
                   ? currentNumber.toString()
-                  : AppLocalizations.of(context)!.scoreboardExtraEndLabel,
+                  : context.l10n.scoreboardExtraEndLabel,
               width: endContainerWidth,
               containerColor: containerColor,
             ),

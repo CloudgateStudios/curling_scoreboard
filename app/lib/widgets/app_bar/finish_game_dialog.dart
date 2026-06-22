@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 
 class FinishGameDialog extends StatelessWidget {
@@ -10,7 +10,7 @@ class FinishGameDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       content: Text(
-        AppLocalizations.of(context)!.finishGameConfirmationDialogDescription,
+        context.l10n.finishGameConfirmationDialogDescription,
         style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
       ),
       contentPadding: const EdgeInsets.all(50),
@@ -23,7 +23,7 @@ class FinishGameDialog extends StatelessWidget {
             finishGameAction(context);
           },
           child: Text(
-            AppLocalizations.of(context)!.buttonLabelYes,
+            context.l10n.buttonLabelYes,
             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
           ),
         ),
@@ -32,7 +32,7 @@ class FinishGameDialog extends StatelessWidget {
             Navigator.of(context).pop();
           },
           child: Text(
-            AppLocalizations.of(context)!.buttonLabelNo,
+            context.l10n.buttonLabelNo,
             style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
           ),
         ),
