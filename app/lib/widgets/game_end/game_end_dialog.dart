@@ -1,4 +1,4 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +12,7 @@ class GameEndDialog extends StatelessWidget {
     return StatefulBuilder(
       builder: (context, setState) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.gameEndDialogTitle),
+          title: Text(context.l10n.gameEndDialogTitle),
           content: GameSummaryWidget(
             team1Name: gameObject.team1.name,
             team2Name: gameObject.team2.name,
@@ -28,7 +28,7 @@ class GameEndDialog extends StatelessWidget {
                 Navigator.pop(context);
               },
               child: Text(
-                AppLocalizations.of(context)!.gameEndDialogButtonLabelDismiss,
+                context.l10n.gameEndDialogButtonLabelDismiss,
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -80,19 +80,15 @@ class GameSummaryWidget extends StatelessWidget {
         TableRow(
           children: <Widget>[
             GameEndTableHeaderText(
-              text: AppLocalizations.of(context)!.gameEndDialogEndTableHeader,
+              text: context.l10n.gameEndDialogEndTableHeader,
             ),
             GameEndTableHeaderText(text: team1Name, color: team1Color),
             GameEndTableHeaderText(text: team2Name, color: team2Color),
             GameEndTableHeaderText(
-              text: AppLocalizations.of(
-                context,
-              )!.gameEndDialogEndTimeTableHeader,
+              text: context.l10n.gameEndDialogEndTimeTableHeader,
             ),
             GameEndTableHeaderText(
-              text: AppLocalizations.of(
-                context,
-              )!.gameEndDialogGameTimeTableHeader,
+              text: context.l10n.gameEndDialogGameTimeTableHeader,
             ),
           ],
         ),
@@ -133,9 +129,7 @@ class GameSummaryWidget extends StatelessWidget {
         TableRow(
           children: <Widget>[
             GameEndTableCellText(
-              text: AppLocalizations.of(
-                context,
-              )!.gameEndDialogTotalsTableHeader,
+              text: context.l10n.gameEndDialogTotalsTableHeader,
             ),
             GameEndTableCellText(
               text: team1TotalScore.toString(),

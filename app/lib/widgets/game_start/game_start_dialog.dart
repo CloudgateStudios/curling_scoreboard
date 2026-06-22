@@ -1,5 +1,5 @@
 import 'package:curling_scoreboard/constants.dart';
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/src/version.dart';
 import 'package:flutter/material.dart';
@@ -33,11 +33,11 @@ class GameStartDialog extends StatelessWidget {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
         child: GameStartSegmentControlText(
-          text: AppLocalizations.of(context)!.teamNameRed,
+          text: context.l10n.teamNameRed,
         ),
       ),
       1: GameStartSegmentControlText(
-        text: AppLocalizations.of(context)!.teamNameYellow,
+        text: context.l10n.teamNameYellow,
       ),
     };
 
@@ -51,15 +51,13 @@ class GameStartDialog extends StatelessWidget {
         final numberOfPlayersPerTeam = {
           0: GameStartSegmentControlText(
             text: '0',
-            subtext: AppLocalizations.of(
-              context,
-            )!.gameStartDialogZeroPlayersButtonLabel,
+            subtext: context.l10n.gameStartDialogZeroPlayersButtonLabel,
           ),
           2: Padding(
             padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
             child: GameStartSegmentControlText(
               text: '2',
-              subtext: AppLocalizations.of(context)!
+              subtext: context.l10n
                   .gameStartDialogTimePerEndByPlayersButtonLabel(
                     Constants.minutesPerEndTwoPlayers.toString(),
                     _printDuration(
@@ -74,8 +72,7 @@ class GameStartDialog extends StatelessWidget {
           ),
           4: GameStartSegmentControlText(
             text: '4',
-            subtext: AppLocalizations.of(context)!
-                .gameStartDialogTimePerEndByPlayersButtonLabel(
+            subtext: context.l10n.gameStartDialogTimePerEndByPlayersButtonLabel(
                   Constants.minutesPerEndFourPlayers.toString(),
                   _printDuration(
                     Duration(
@@ -89,7 +86,7 @@ class GameStartDialog extends StatelessWidget {
         };
 
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.gameStartDialogTitle),
+          title: Text(context.l10n.gameStartDialogTitle),
           content: Form(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -97,9 +94,7 @@ class GameStartDialog extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      AppLocalizations.of(
-                        context,
-                      )!.gameStartDialogFormLabelNumberOfEnds,
+                      context.l10n.gameStartDialogFormLabelNumberOfEnds,
                       style: const TextStyle(fontSize: 40),
                     ),
                     MaterialSegmentedControl(
@@ -126,9 +121,7 @@ class GameStartDialog extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      AppLocalizations.of(
-                        context,
-                      )!.gameStartDialogFormLabelPlayersPerTeam,
+                      context.l10n.gameStartDialogFormLabelPlayersPerTeam,
                       style: const TextStyle(fontSize: 40),
                     ),
                     MaterialSegmentedControl(
@@ -156,9 +149,7 @@ class GameStartDialog extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      AppLocalizations.of(
-                        context,
-                      )!.gameStartDialogFormLabelFirstEndHammer,
+                      context.l10n.gameStartDialogFormLabelFirstEndHammer,
                       style: const TextStyle(fontSize: 40),
                     ),
                     MaterialSegmentedControl(
@@ -197,14 +188,14 @@ class GameStartDialog extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 final team1 = CurlingTeam(
-                  name: AppLocalizations.of(context)!.teamNameRed,
+                  name: context.l10n.teamNameRed,
                   color: Constants.redTeamColor,
                   textColor: Constants.textHighContrastColor,
                   hasHammer: settingsHammerTeam == 0,
                   hadLastStoneFirstEnd: settingsHammerTeam == 0,
                 );
                 final team2 = CurlingTeam(
-                  name: AppLocalizations.of(context)!.teamNameYellow,
+                  name: context.l10n.teamNameYellow,
                   color: Constants.yellowTeamColor,
                   textColor: Constants.textDefaultColor,
                   hasHammer: settingsHammerTeam == 1,
@@ -221,9 +212,7 @@ class GameStartDialog extends StatelessWidget {
                 Navigator.pop(context, newCurlingGame);
               },
               child: Text(
-                AppLocalizations.of(
-                  context,
-                )!.gameStartDialogButtonLabelStartGame,
+                context.l10n.gameStartDialogButtonLabelStartGame,
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
