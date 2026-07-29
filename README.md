@@ -2,10 +2,10 @@
 
 A platform for curling clubs to run and display live scoreboards, track game history, and manage scoring. It's built as a monorepo with three products sharing a Firebase backend:
 
-| Product | Stack | Purpose |
-|---|---|---|
-| `app/` | Flutter | Scoreboard app (web, mobile, desktop) |
-| `admin/` | React + Vite | Club and super-admin web portal |
+| Product      | Stack             | Purpose                               |
+| ------------ | ----------------- | ------------------------------------- |
+| `app/`       | Flutter           | Scoreboard app (web, mobile, desktop) |
+| `admin/`     | React + Vite      | Club and super-admin web portal       |
 | `functions/` | Node.js + Express | REST API and callable Cloud Functions |
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
@@ -14,7 +14,7 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 
 ## Prerequisites
 
-- [Flutter](https://docs.flutter.dev/get-started/install) 3.44.0 (stable)
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.44.8 (stable)
 - [Node.js](https://nodejs.org/) 20
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
@@ -24,17 +24,20 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 ## First-time setup
 
 ### 1. Authenticate
+
 ```bash
 firebase login
 gcloud auth application-default login
 ```
 
 ### 2. Select the dev project
+
 ```bash
 firebase use default   # targets curling-scoreboard-dev
 ```
 
 ### 3. Install dependencies
+
 ```bash
 cd app && flutter pub get
 cd admin && npm install
@@ -106,10 +109,10 @@ Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curl
 
 Every push to `main` automatically deploys all three products to the live dev environment:
 
-| Workflow | Deploys |
-|---|---|
-| [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml) | Flutter web app |
-| [deploy_admin_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_dev.yaml) | Admin portal |
+| Workflow                                                                                                                   | Deploys                           |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml)             | Flutter web app                   |
+| [deploy_admin_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_dev.yaml)         | Admin portal                      |
 | [deploy_functions_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_dev.yaml) | Cloud Functions + Firestore rules |
 
 ### Prod
@@ -118,10 +121,10 @@ First, generate a version tag using the [version_increment](https://github.com/C
 
 Then trigger each prod workflow manually, entering the version tag (e.g. `0.0.37`):
 
-| Workflow | Deploys |
-|---|---|
-| [deploy_web_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_prod.yaml) | Flutter web app |
-| [deploy_admin_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_prod.yaml) | Admin portal |
+| Workflow                                                                                                                     | Deploys                           |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| [deploy_web_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_prod.yaml)             | Flutter web app                   |
+| [deploy_admin_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_prod.yaml)         | Admin portal                      |
 | [deploy_functions_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_prod.yaml) | Cloud Functions + Firestore rules |
 
 Each workflow checks out the exact tag and deploys it to the live prod environment (`curling-scoreboard-prod`).
