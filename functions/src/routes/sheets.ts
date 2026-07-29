@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import * as admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 import { gamesRouter } from './games';
 
 // Mounted under /api/v1/clubs/:clubId with mergeParams.
@@ -10,7 +10,7 @@ sheetsRouter.use('/sheets/:sheetId', gamesRouter);
 
 sheetsRouter.get('/sheets/:sheetId', async (req: Request, res: Response) => {
   const { clubId, sheetId } = req.params as Record<string, string>;
-  const db = admin.firestore();
+  const db = getFirestore();
 
   try {
     const sheetSnap = await db

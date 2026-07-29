@@ -1,8 +1,9 @@
-import * as admin from 'firebase-admin';
+import { getFirestore, DocumentReference } from 'firebase-admin/firestore';
+import { getAuth, DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import crypto from 'crypto';
 
-function requireSuperAdmin(auth: { token: admin.auth.DecodedIdToken } | undefined) {
+function requireSuperAdmin(auth: { token: DecodedIdToken } | undefined) {
   if (!auth || auth.token['role'] !== 'superadmin') {
     throw new HttpsError('permission-denied', 'Super admin access required.');
   }
@@ -25,22 +26,22 @@ export const provisionClub = onCall(async (request) => {
 
   const apiKey = crypto.randomBytes(16).toString('hex');
 
-  let clubRef: admin.firestore.DocumentReference;
+  let clubRef: DocumentReference;
   if (clubId) {
-    clubRef = admin.firestore().collection('clubs').doc(clubId);
+    clubRef = getFirestore().collection('clubs').doc(clubId);
     const existing = await clubRef.get();
     if (existing.exists) {
       throw new HttpsError('already-exists', `A club with id "${clubId}" already exists.`);
     }
     await clubRef.set({ name: clubName, apiKey });
   } else {
-    clubRef = await admin.firestore().collection('clubs').add({ name: clubName, apiKey });
+    clubRef = await getFirestore().collection('clubs').add({ name: clubName, apiKey });
   }
 
   // Create the Firebase Auth user
-  let userRecord: admin.auth.UserRecord;
+  let userRecord: UserRecord;
   try {
-    userRecord = await admin.auth().createUser({
+    userRecord = await getAuth().createUser({
       email: adminEmail,
       password: adminPassword,
       displayName: `${clubName} Admin`,
@@ -52,7 +53,7 @@ export const provisionClub = onCall(async (request) => {
   }
 
   // Assign the clubId custom claim
-  await admin.auth().setCustomUserClaims(userRecord.uid, {
+  await getAuth().setCustomUserClaims(userRecord.uid, {
     role: 'clubadmin',
     clubId: clubRef.id,
   });
@@ -79,14 +80,14 @@ export const addClubAdmin = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'clubId, adminEmail and adminPassword are required.');
   }
 
-  const clubSnap = await admin.firestore().collection('clubs').doc(clubId).get();
+  const clubSnap = await getFirestore().collection('clubs').doc(clubId).get();
   if (!clubSnap.exists) {
     throw new HttpsError('not-found', 'Club not found.');
   }
 
-  let userRecord: admin.auth.UserRecord;
+  let userRecord: UserRecord;
   try {
-    userRecord = await admin.auth().createUser({
+    userRecord = await getAuth().createUser({
       email: adminEmail,
       password: adminPassword,
       displayName: `${(clubSnap.data() as { name: string }).name} Admin`,
@@ -95,12 +96,12 @@ export const addClubAdmin = onCall(async (request) => {
     throw new HttpsError('already-exists', `Could not create user: ${(err as Error).message}`);
   }
 
-  await admin.auth().setCustomUserClaims(userRecord.uid, {
+  await getAuth().setCustomUserClaims(userRecord.uid, {
     role: 'clubadmin',
     clubId,
   });
 
-  await admin.firestore()
+  await getFirestore()
     .collection('clubs').doc(clubId)
     .collection('admins').doc(userRecord.uid)
     .set({ email: adminEmail, displayName: userRecord.displayName ?? null });
@@ -116,9 +117,9 @@ export const setSuperAdminClaim = onCall(async (request) => {
   const { uid } = request.data as { uid: string };
   if (!uid) throw new HttpsError('invalid-argument', 'uid is required.');
 
-  const user = await admin.auth().getUser(uid);
+  const user = await getAuth().getUser(uid);
   const existing = (user.customClaims ?? {}) as Record<string, unknown>;
-  await admin.auth().setCustomUserClaims(uid, { ...existing, role: 'superadmin', clubId: null });
+  await getAuth().setCustomUserClaims(uid, { ...existing, role: 'superadmin', clubId: null });
 
   return { success: true };
 });

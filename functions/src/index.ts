@@ -1,11 +1,11 @@
-import * as admin from 'firebase-admin';
+import { initializeApp } from 'firebase-admin/app';
 import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
 import cors from 'cors';
 import { clubsRouter } from './routes/clubs';
 export { provisionClub, setSuperAdminClaim, addClubAdmin } from './admin';
 
-admin.initializeApp();
+initializeApp();
 
 const app = express();
 app.use(cors({ origin: true }));

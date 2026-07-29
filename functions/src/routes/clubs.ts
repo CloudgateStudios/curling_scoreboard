@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import * as admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 import { validateApiKey } from '../middleware/apiKey';
 import { buildSheetResponse, sheetsRouter } from './sheets';
 
@@ -19,8 +19,7 @@ clubRouter.get('/', async (req: Request, res: Response) => {
   };
 
   try {
-    const sheetsSnap = await admin
-      .firestore()
+    const sheetsSnap = await getFirestore()
       .collection('clubs')
       .doc(clubId)
       .collection('sheets')

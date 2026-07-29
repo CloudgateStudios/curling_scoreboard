@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import * as admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export async function validateApiKey(
   req: Request,
@@ -14,8 +14,7 @@ export async function validateApiKey(
 
   try {
     const clubId = req.params['clubId'] as string;
-    const clubSnap = await admin
-      .firestore()
+    const clubSnap = await getFirestore()
       .collection('clubs')
       .doc(clubId)
       .get();
