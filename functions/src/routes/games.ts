@@ -1,13 +1,12 @@
 import { Router, Request, Response } from 'express';
-import * as admin from 'firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 // Mounted under /api/v1/clubs/:clubId/sheets/:sheetId with mergeParams.
 export const gamesRouter = Router({ mergeParams: true });
 
 gamesRouter.get('/games', async (req: Request, res: Response) => {
   const { clubId, sheetId } = req.params as Record<string, string>;
-  const db = admin.firestore();
+  const db = getFirestore();
 
   try {
     const sheetRef = db
