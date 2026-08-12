@@ -6,10 +6,10 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
   flutter: 3.44.8
 dependencies:
-  cloud_firestore: ^6.7.1
+  cloud_firestore: ^6.8.0
   # Not actually used, but needed to suppress warnings. Gets tree shaken out at build time.
   cupertino_icons: ^1.0.9
-  firebase_auth: ^6.5.4
+  firebase_auth: ^6.5.7
   firebase_core: ^4.10.0
   flutter:
     sdk: flutter
