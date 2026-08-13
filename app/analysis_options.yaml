@@ -1,7 +1,7 @@
 include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
-  exclude: [build/**, lib/gen/]
+  exclude: [build/**, lib/gen/, android/**, ios/**, web/**, windows/**, macos/**, linux/**]
   errors:
     inference_failure_on_function_invocation: ignore
 

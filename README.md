@@ -14,7 +14,7 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 
 ## Prerequisites
 
-- [Flutter](https://docs.flutter.dev/get-started/install) 3.44.8 (stable)
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.47.0 (stable)
 - [Node.js](https://nodejs.org/) 20
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
