@@ -157,8 +157,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String disconnectConfirmationContent(String clubName) {
-    return 'This will stop syncing scores to $clubName. '
-        'Local scoring will continue.';
+    return 'This will stop syncing scores to $clubName. Local scoring will continue.';
   }
 
   @override
