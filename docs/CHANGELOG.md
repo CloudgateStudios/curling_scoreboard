@@ -1,6 +1,8 @@
 Changelog
 
 
+### [0.0.41](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.40...0.0.41) (2026-08-13)
+
 ### [0.0.40](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.39...0.0.40) (2026-07-29)
 
 ### [0.0.39](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.38...0.0.39) (2026-07-29)
