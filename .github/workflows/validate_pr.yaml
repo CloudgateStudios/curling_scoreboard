@@ -32,7 +32,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v7
       - name: Check Spelling
-        uses: streetsidesoftware/cspell-action@v8
+        uses: streetsidesoftware/cspell-action@v9
         with:
           files: "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"
           config: .github/cspell.json
