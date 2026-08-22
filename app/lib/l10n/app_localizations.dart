@@ -103,7 +103,7 @@ abstract class AppLocalizations {
   /// The text used for a team using Yellow rocks.
   ///
   /// In en, this message translates to:
-  /// **'Yellow '**
+  /// **'Yellow'**
   String get teamNameYellow;
 
   /// Generic button text for a yes/affirm action.

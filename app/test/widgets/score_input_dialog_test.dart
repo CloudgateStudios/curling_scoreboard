@@ -32,7 +32,7 @@ void main() {
     }
     // Check for team options
     expect(find.text('Red'), findsOneWidget);
-    expect(find.text('Yellow '), findsOneWidget);
+    expect(find.text('Yellow'), findsOneWidget);
   });
 
   testWidgets('ScoreInputDialog defaults to 0 and no team selected', (
