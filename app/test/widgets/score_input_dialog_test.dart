@@ -1,4 +1,5 @@
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/widgets/app_bar/score_input_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +19,7 @@ void main() {
     await tester.pumpWidget(
       wrapWithMaterialApp(
         const ScoreInputDialog(
-          defaultTeam: 'Red',
+          defaultTeam: ScoringTeam.team1,
           defaultScore: 0,
           end: 1,
         ),

@@ -3,6 +3,7 @@ import { collection, doc, onSnapshot, orderBy, query, limit, getDoc } from 'fire
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { Game } from '../types';
+import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
 import styles from './GameHistory.module.css';
 
 function formatDuration(seconds: number): string {
@@ -127,8 +128,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team1.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === game.team1.name ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === game.team1.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={endScoredBy(e, 'team1', game) ? styles.scoringEnd : ''}>
+                          {endScoreLabel(e, 'team1', game)}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team1.totalScore}</td>
@@ -136,8 +137,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team2.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === game.team2.name ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === game.team2.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={endScoredBy(e, 'team2', game) ? styles.scoringEnd : ''}>
+                          {endScoreLabel(e, 'team2', game)}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team2.totalScore}</td>
