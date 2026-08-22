@@ -242,7 +242,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showEditScoreDialog(int end) async {
-    if (end > gameObject.currentPlayingEnd) {
+    // Only ends that have actually been played can be edited. `ends` holds the
+    // completed ends, so anything outside it has no score to edit yet. Empty
+    // scoreboard cells also report a sentinel end number of -1.
+    if (end < 1 || end > gameObject.ends.length) {
       return;
     }
 
