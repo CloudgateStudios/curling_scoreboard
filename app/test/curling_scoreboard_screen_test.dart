@@ -75,4 +75,61 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(ScoreInputDialog), findsOneWidget);
   });
+
+  group('dismissing a score dialog', () {
+    testWidgets('tapping outside the enter score dialog does not crash', (
+      tester,
+    ) async {
+      await pumpScoreboardAppAndStartGame(tester);
+
+      await tester.tap(find.text('Add Score'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ScoreInputDialog), findsOneWidget);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(ScoreInputDialog), findsNothing);
+      // Nothing was entered, so the scoreboard is untouched.
+      expect(find.text('Add Score'), findsOneWidget);
+    });
+
+    testWidgets(
+      'tapping outside the edit score dialog leaves the score alone',
+      (
+        tester,
+      ) async {
+        await pumpScoreboardAppAndStartGame(tester);
+
+        // Record a score for end 1 so there is something to edit.
+        await tester.tap(find.text('Add Score'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find.byType(ScoreInputDialog),
+            matching: find.text('3'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Enter'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.descendant(
+            of: find.byType(ScoreboardStaticNumberRow),
+            matching: find.text('1'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(ScoreInputDialog), findsOneWidget);
+
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ScoreInputDialog), findsNothing);
+      },
+    );
+  });
 }
