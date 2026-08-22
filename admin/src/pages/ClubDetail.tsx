@@ -7,6 +7,7 @@ import { httpsCallable } from 'firebase/functions';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db, functions } from '../lib/firebase';
 import type { Club, Sheet, Game } from '../types';
+import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
 import styles from './ClubDetail.module.css';
 
 interface RecentGame extends Game {
@@ -286,8 +287,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
                           <tr>
                             <td className={styles.teamLabel}>{game.team1.name}</td>
                             {game.ends.map(e => (
-                              <td key={e.endNumber} className={e.scoringTeam === game.team1.name ? styles.scoringEnd : ''}>
-                                {e.scoringTeam === game.team1.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                              <td key={e.endNumber} className={endScoredBy(e, 'team1', game) ? styles.scoringEnd : ''}>
+                                {endScoreLabel(e, 'team1', game)}
                               </td>
                             ))}
                             <td className={styles.totalCell}>{game.team1.totalScore}</td>
@@ -295,8 +296,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
                           <tr>
                             <td className={styles.teamLabel}>{game.team2.name}</td>
                             {game.ends.map(e => (
-                              <td key={e.endNumber} className={e.scoringTeam === game.team2.name ? styles.scoringEnd : ''}>
-                                {e.scoringTeam === game.team2.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                              <td key={e.endNumber} className={endScoredBy(e, 'team2', game) ? styles.scoringEnd : ''}>
+                                {endScoreLabel(e, 'team2', game)}
                               </td>
                             ))}
                             <td className={styles.totalCell}>{game.team2.totalScore}</td>
