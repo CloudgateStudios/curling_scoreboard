@@ -12,9 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// are exercising.
 const scoreboardTestSurfaceSize = Size(2400, 1400);
 
-/// Pumps the full app and starts a game with the default dialog settings so
-/// tests can drive the scoreboard screen itself.
-Future<void> pumpScoreboardAppAndStartGame(WidgetTester tester) async {
+/// Pumps the full app, leaving the game start dialog on screen.
+Future<void> pumpScoreboardApp(WidgetTester tester) async {
   tester.view.physicalSize = scoreboardTestSurfaceSize;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -26,6 +25,12 @@ Future<void> pumpScoreboardAppAndStartGame(WidgetTester tester) async {
     CurlingScoreboardApp(registrationService: RegistrationService(prefs)),
   );
   await tester.pumpAndSettle();
+}
+
+/// Pumps the full app and starts a game with the default dialog settings so
+/// tests can drive the scoreboard screen itself.
+Future<void> pumpScoreboardAppAndStartGame(WidgetTester tester) async {
+  await pumpScoreboardApp(tester);
 
   await tester.tap(find.text('Start Game'));
   await tester.pumpAndSettle();

@@ -107,16 +107,28 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showGameStartDialog() async {
-    await showDialog(
+    final newGame = await showDialog<CurlingGame>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return const GameStartDialog();
+        // There is no sensible way to cancel out of starting a game: the
+        // scoreboard has nothing to show without one. barrierDismissible does
+        // not stop the system back button, so block popping outright too.
+        return const PopScope(
+          canPop: false,
+          child: GameStartDialog(),
+        );
       },
-    ).then((value) {
-      gameObject = value as CurlingGame;
-      startTimer();
-    });
+    );
+
+    // The dialog blocks every dismissal route, so this should not happen.
+    // Bail out rather than crashing if it somehow does.
+    if (newGame == null) {
+      return;
+    }
+
+    gameObject = newGame;
+    startTimer();
   }
 
   void startTimer() {
@@ -188,7 +200,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
   Future<void> finishGame(BuildContext context) async {
     setState(() {
-      timer!.cancel();
+      timer?.cancel();
     });
 
     unawaited(_syncService.saveCompletedGame(gameObject));
