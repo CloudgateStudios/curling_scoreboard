@@ -1,4 +1,5 @@
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/widgets/app_bar/score_input_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -163,4 +164,46 @@ void main() {
       expect(tester.widget<ElevatedButton>(enterButton).enabled, isTrue);
     },
   );
+
+  testWidgets('ScoreInputDialog records no scoring team for a blank end', (
+    tester,
+  ) async {
+    CurlingEnd? returned;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                returned = await showDialog<CurlingEnd>(
+                  context: context,
+                  builder: (_) => const ScoreInputDialog(
+                    defaultScore: 0,
+                    end: 1,
+                    // Seeded with the hammer team, exactly as the app does.
+                    defaultTeam: 'Yellow ',
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // Submit straight away without touching the score control.
+    await tester.tap(find.text('Enter'));
+    await tester.pumpAndSettle();
+
+    expect(returned, isNotNull);
+    expect(returned!.score, 0);
+    expect(returned!.scoringTeamName, isNull);
+  });
 }
