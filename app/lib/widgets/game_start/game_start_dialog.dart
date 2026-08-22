@@ -86,93 +86,105 @@ class GameStartDialog extends StatelessWidget {
 
         return AlertDialog(
           title: Text(context.l10n.gameStartDialogTitle),
-          content: Form(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      context.l10n.gameStartDialogFormLabelNumberOfEnds,
-                      style: const TextStyle(fontSize: 40),
-                    ),
-                    MaterialSegmentedControl(
-                      children: numberOfEnds,
-                      selectionIndex: currentNumberOfEndsSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentNumberOfEndsSelectedIndex = index;
-                          settingsTotalEnds = index;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Text(
-                      context.l10n.gameStartDialogFormLabelPlayersPerTeam,
-                      style: const TextStyle(fontSize: 40),
-                    ),
-                    MaterialSegmentedControl(
-                      children: numberOfPlayersPerTeam,
-                      selectionIndex:
-                          currentNumberOfPlayersPerTeamSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentNumberOfPlayersPerTeamSelectedIndex = index;
-                          settingsNumberOfPlayersPerTeam = index;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Text(
-                      context.l10n.gameStartDialogFormLabelFirstEndHammer,
-                      style: const TextStyle(fontSize: 40),
-                    ),
-                    MaterialSegmentedControl(
-                      children: hammerChoices,
-                      selectionIndex: currentHammerTeamSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentHammerTeamSelectedIndex = index;
-                          settingsHammerTeam = index;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ],
+          // The form is laid out at a fixed size for a large scoreboard
+          // display. Scaling it down keeps it whole on smaller screens
+          // instead of overflowing and clipping the controls.
+          content: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Form(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        context.l10n.gameStartDialogFormLabelNumberOfEnds,
+                        style: const TextStyle(fontSize: 40),
+                      ),
+                      MaterialSegmentedControl(
+                        children: numberOfEnds,
+                        selectionIndex: currentNumberOfEndsSelectedIndex,
+                        borderColor: Colors.grey,
+                        selectedColor: Colors.blueAccent,
+                        unselectedColor: Colors.white,
+                        selectedTextStyle: const TextStyle(color: Colors.white),
+                        unselectedTextStyle: const TextStyle(
+                          color: Colors.black,
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 20,
+                        horizontalPadding: const EdgeInsets.all(10),
+                        verticalOffset: 25,
+                        onSegmentTapped: (index) {
+                          setState(() {
+                            currentNumberOfEndsSelectedIndex = index;
+                            settingsTotalEnds = index;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        context.l10n.gameStartDialogFormLabelPlayersPerTeam,
+                        style: const TextStyle(fontSize: 40),
+                      ),
+                      MaterialSegmentedControl(
+                        children: numberOfPlayersPerTeam,
+                        selectionIndex:
+                            currentNumberOfPlayersPerTeamSelectedIndex,
+                        borderColor: Colors.grey,
+                        selectedColor: Colors.blueAccent,
+                        unselectedColor: Colors.white,
+                        selectedTextStyle: const TextStyle(color: Colors.white),
+                        unselectedTextStyle: const TextStyle(
+                          color: Colors.black,
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 20,
+                        horizontalPadding: const EdgeInsets.all(10),
+                        verticalOffset: 25,
+                        onSegmentTapped: (index) {
+                          setState(() {
+                            currentNumberOfPlayersPerTeamSelectedIndex = index;
+                            settingsNumberOfPlayersPerTeam = index;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        context.l10n.gameStartDialogFormLabelFirstEndHammer,
+                        style: const TextStyle(fontSize: 40),
+                      ),
+                      MaterialSegmentedControl(
+                        children: hammerChoices,
+                        selectionIndex: currentHammerTeamSelectedIndex,
+                        borderColor: Colors.grey,
+                        selectedColor: Colors.blueAccent,
+                        unselectedColor: Colors.white,
+                        selectedTextStyle: const TextStyle(color: Colors.white),
+                        unselectedTextStyle: const TextStyle(
+                          color: Colors.black,
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 20,
+                        horizontalPadding: const EdgeInsets.all(10),
+                        verticalOffset: 25,
+                        onSegmentTapped: (index) {
+                          setState(() {
+                            currentHammerTeamSelectedIndex = index;
+                            settingsHammerTeam = index;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           actionsAlignment: MainAxisAlignment.spaceBetween,
@@ -227,7 +239,6 @@ class GameStartDialog extends StatelessWidget {
   String _printDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     final twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60).abs());
-    twoDigits(duration.inSeconds.remainder(60).abs());
     return '${twoDigits(duration.inHours)}:$twoDigitMinutes';
   }
 }
