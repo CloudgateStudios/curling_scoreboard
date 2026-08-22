@@ -222,7 +222,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showEnterScoreDialog(BuildContext context) async {
-    await showDialog(
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -231,14 +231,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: gameObject.currentPlayingEnd,
         );
       },
-    ).then((value) async {
-      // Need to add in the current timer value to the end so we get it at the
-      // point of entry on the dialog, not when the dialog came up
-      final curlingEnd = value as CurlingEnd
-        ..gameTimeInSeconds = totalTimerSeconds;
+    );
 
-      await enterScore(curlingEnd);
-    });
+    // Tapping outside the dialog dismisses it without entering a score.
+    if (curlingEnd == null) {
+      return;
+    }
+
+    // Need to add in the current timer value to the end so we get it at the
+    // point of entry on the dialog, not when the dialog came up
+    curlingEnd.gameTimeInSeconds = totalTimerSeconds;
+
+    await enterScore(curlingEnd);
   }
 
   Future<void> showEditScoreDialog(int end) async {
@@ -249,7 +253,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       return;
     }
 
-    await showDialog(
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -258,14 +262,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: end,
         );
       },
-    ).then((value) {
-      final curlingEnd = value as CurlingEnd;
-      editScore(
-        curlingEnd.endNumber,
-        curlingEnd.score,
-        curlingEnd.scoringTeamName,
-      );
-    });
+    );
+
+    // Tapping outside the dialog dismisses it without changing the score.
+    if (curlingEnd == null) {
+      return;
+    }
+
+    editScore(
+      curlingEnd.endNumber,
+      curlingEnd.score,
+      curlingEnd.scoringTeamName,
+    );
   }
 
   @override
