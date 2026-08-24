@@ -50,3 +50,6 @@ app.*.map.json
 # FVM
 .fvm/*
 !.fvm/fvm_config.json
+
+# TypeScript incremental build info is a build artifact
+admin/tsconfig.tsbuildinfo
