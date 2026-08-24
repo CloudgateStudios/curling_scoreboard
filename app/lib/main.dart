@@ -107,16 +107,28 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showGameStartDialog() async {
-    await showDialog(
+    final newGame = await showDialog<CurlingGame>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return const GameStartDialog();
+        // There is no sensible way to cancel out of starting a game: the
+        // scoreboard has nothing to show without one. barrierDismissible does
+        // not stop the system back button, so block popping outright too.
+        return const PopScope(
+          canPop: false,
+          child: GameStartDialog(),
+        );
       },
-    ).then((value) {
-      gameObject = value as CurlingGame;
-      startTimer();
-    });
+    );
+
+    // The dialog blocks every dismissal route, so this should not happen.
+    // Bail out rather than crashing if it somehow does.
+    if (newGame == null) {
+      return;
+    }
+
+    gameObject = newGame;
+    startTimer();
   }
 
   void startTimer() {
@@ -188,7 +200,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
   Future<void> finishGame(BuildContext context) async {
     setState(() {
-      timer!.cancel();
+      timer?.cancel();
     });
 
     unawaited(_syncService.saveCompletedGame(gameObject));
@@ -222,7 +234,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showEnterScoreDialog(BuildContext context) async {
-    await showDialog(
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -231,22 +243,29 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: gameObject.currentPlayingEnd,
         );
       },
-    ).then((value) async {
-      // Need to add in the current timer value to the end so we get it at the
-      // point of entry on the dialog, not when the dialog came up
-      final curlingEnd = value as CurlingEnd
-        ..gameTimeInSeconds = totalTimerSeconds;
+    );
 
-      await enterScore(curlingEnd);
-    });
-  }
-
-  Future<void> showEditScoreDialog(int end) async {
-    if (end > gameObject.currentPlayingEnd) {
+    // Tapping outside the dialog dismisses it without entering a score.
+    if (curlingEnd == null) {
       return;
     }
 
-    await showDialog(
+    // Need to add in the current timer value to the end so we get it at the
+    // point of entry on the dialog, not when the dialog came up
+    curlingEnd.gameTimeInSeconds = totalTimerSeconds;
+
+    await enterScore(curlingEnd);
+  }
+
+  Future<void> showEditScoreDialog(int end) async {
+    // Only ends that have actually been played can be edited. `ends` holds the
+    // completed ends, so anything outside it has no score to edit yet. Empty
+    // scoreboard cells also report a sentinel end number of -1.
+    if (end < 1 || end > gameObject.ends.length) {
+      return;
+    }
+
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -255,14 +274,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: end,
         );
       },
-    ).then((value) {
-      final curlingEnd = value as CurlingEnd;
-      editScore(
-        curlingEnd.endNumber,
-        curlingEnd.score,
-        curlingEnd.scoringTeamName,
-      );
-    });
+    );
+
+    // Tapping outside the dialog dismisses it without changing the score.
+    if (curlingEnd == null) {
+      return;
+    }
+
+    editScore(
+      curlingEnd.endNumber,
+      curlingEnd.score,
+      curlingEnd.scoringTeamName,
+    );
   }
 
   @override
