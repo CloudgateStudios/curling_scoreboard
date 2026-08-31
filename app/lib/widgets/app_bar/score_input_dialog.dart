@@ -129,7 +129,13 @@ class ScoreInputDialog extends StatelessWidget {
                   : () {
                       final newEnd = CurlingEnd(
                         endNumber: end,
-                        scoringTeamName: selectedTeam,
+                        // A blank end has no scoring team. selectedTeam is
+                        // seeded with the team holding the hammer so the
+                        // control has something sensible selected, so it has
+                        // to be dropped when nothing was actually scored.
+                        scoringTeamName: selectedScore > 0
+                            ? selectedTeam
+                            : null,
                         score: selectedScore,
                       );
 
