@@ -124,5 +124,52 @@ void main() {
         expect(team2.hasHammer, isTrue);
       },
     );
+
+    test('evaluateHammer is idempotent for a blank end in a doubles game', () {
+      team1.hadLastStoneFirstEnd = true;
+      game
+        ..numberOfPlayersPerTeam = 2
+        ..ends = [CurlingEnd(endNumber: 1, score: 0)]
+        ..evaluateHammer();
+
+      final afterFirstCall = team1.hasHammer;
+
+      // editScore re-evaluates on every edit, so this must not drift.
+      game.evaluateHammer();
+
+      expect(team1.hasHammer, afterFirstCall);
+      expect(team2.hasHammer, isNot(afterFirstCall));
+    });
+
+    test('evaluateHammer recalculates when an earlier end is corrected', () {
+      team1.hadLastStoneFirstEnd = true;
+
+      // Yellow scored end 1 and gave up the hammer, and the blank end 2 of a
+      // four player game retains it, so Red holds the hammer.
+      game
+        ..ends = [
+          CurlingEnd(endNumber: 1, scoringTeamName: 'Yellow', score: 2),
+          CurlingEnd(endNumber: 2, score: 0),
+        ]
+        ..evaluateHammer();
+      expect(team1.hasHammer, isTrue);
+
+      // Correct end 1: it was actually Red who scored, so Red gives up the
+      // hammer and the blank end 2 leaves it with Yellow.
+      game.ends[0].scoringTeamName = 'Red';
+      game.evaluateHammer();
+
+      expect(team1.hasHammer, isFalse);
+      expect(team2.hasHammer, isTrue);
+    });
+
+    test('evaluateHammer on a game with no ends uses the first end hammer', () {
+      team1.hadLastStoneFirstEnd = true;
+      game.ends = [];
+
+      expect(game.evaluateHammer, returnsNormally);
+      expect(team1.hasHammer, isTrue);
+      expect(team2.hasHammer, isFalse);
+    });
   });
 }
