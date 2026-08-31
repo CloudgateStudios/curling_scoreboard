@@ -32,15 +32,22 @@ function groupByDay(games: RecentGame[]): { label: string; games: RecentGame[] }
   return Array.from(map.entries()).map(([label, games]) => ({ label, games }));
 }
 
+// Both of these are credentials, so they use the platform's cryptographic
+// random source rather than Math.random(), whose output is predictable from
+// previously observed values and is not safe for anything secret.
 function generatePairingCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // cspell:ignore ABCDEFGHJKLMNPQRSTUVWXYZ
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  // 256 is an exact multiple of the 32 character alphabet, so the modulo below
+  // stays uniform and needs no rejection sampling.
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, (byte) => chars[byte % chars.length]).join('');
 }
 
 function generateApiKey(): string {
-  return Array.from({ length: 32 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('');
+  // 16 bytes of entropy rendered as 32 hex characters, matching the format
+  // provisionClub already produces server side with crypto.randomBytes(16).
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 interface Props {
