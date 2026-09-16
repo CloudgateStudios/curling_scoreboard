@@ -97,9 +97,7 @@ void main() {
 
     testWidgets(
       'tapping outside the edit score dialog leaves the score alone',
-      (
-        tester,
-      ) async {
+      (tester) async {
         await pumpScoreboardAppAndStartGame(tester);
 
         // Record a score for end 1 so there is something to edit.
