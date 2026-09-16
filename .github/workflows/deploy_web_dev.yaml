@@ -18,7 +18,7 @@ jobs:
         with:
           flutter-version: "3.47.4"
           channel: "stable"
-      - run: flutter packages get
+      - run: flutter pub get
       - run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=dev
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
