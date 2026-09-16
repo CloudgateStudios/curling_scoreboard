@@ -43,9 +43,7 @@ void main() {
     expect(find.byIcon(Icons.hardware_sharp), findsOneWidget);
   });
 
-  testWidgets('TeamTotalScoreWidget shows hammer icon on left', (
-    tester,
-  ) async {
+  testWidgets('TeamTotalScoreWidget shows hammer icon on left', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
