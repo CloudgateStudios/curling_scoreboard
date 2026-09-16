@@ -17,11 +17,7 @@ void main() {
     });
 
     test('Default gameTimeInSeconds is -1', () {
-      final end = CurlingEnd(
-        endNumber: 1,
-        scoringTeamName: 'Yellow',
-        score: 2,
-      );
+      final end = CurlingEnd(endNumber: 1, scoringTeamName: 'Yellow', score: 2);
       expect(end.gameTimeInSeconds, -1);
     });
   });
