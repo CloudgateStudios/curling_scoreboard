@@ -82,7 +82,7 @@ jobs:
       - name: Analyze
         run: flutter analyze
       - name: Build
-        run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=dev
+        run: flutter build web --wasm -t lib/main.dart --dart-define=FIREBASE_ENV=dev
       - name: Test
         run: flutter test
 
