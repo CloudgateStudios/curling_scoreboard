@@ -155,7 +155,7 @@ jobs:
       - name: Setup Translations Cleaner
         run: flutter pub global activate translations_cleaner
       - name: Check For Unused Strings
-        run: flutter pub run translations_cleaner list-unused-terms --abort-on-unused
+        run: dart run translations_cleaner list-unused-terms --abort-on-unused
 
   validate_functions:
     name: Validate Functions

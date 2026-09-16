@@ -20,7 +20,7 @@ jobs:
 
       - name: Install yq
         run: |
-          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.9.8/yq_linux_amd64
+          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
       - name: Setup Flutter
@@ -29,17 +29,23 @@ jobs:
           flutter-version: "3.47.4"
           channel: "stable"
 
-      - name: Install standard-version
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+
+      # commit-and-tag-version is the maintained fork of the deprecated standard-version
+      - name: Install release tooling
         run: |
-          sudo npm i -g standard-version standard-changelog
+          npm i -g commit-and-tag-version@13 standard-changelog@8
 
       - name: Generate release notes only
         run: |
           rm docs/RELEASE_NOTES.md && touch docs/RELEASE_NOTES.md
-          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md -a false
+          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md
 
-      - name: Run standard-version
-        run: standard-version
+      - name: Run commit-and-tag-version
+        run: commit-and-tag-version
 
       - name: Get/Set Tag
         run: |
@@ -49,7 +55,7 @@ jobs:
       - name: Update version
         run: |
           yq eval '.version = "${{ env.tag }}"' -i app/pubspec.yaml
-          (cd app && flutter packages get && flutter pub run build_runner build)
+          (cd app && flutter pub get && dart run build_runner build)
           git add app/pubspec.yaml
           git add docs/RELEASE_NOTES.md
           git add app/lib/src/version.dart
