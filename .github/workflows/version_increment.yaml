@@ -70,7 +70,7 @@ jobs:
 
       - name: Make Web Build Asset
         run: |
-          (cd app && flutter build web -t lib/main.dart)
+          (cd app && flutter build web --wasm -t lib/main.dart)
           zip -r web_${{ env.tag }}.zip app/build/web
 
       - name: Set up Java
