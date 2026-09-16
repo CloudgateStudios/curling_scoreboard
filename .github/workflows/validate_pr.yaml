@@ -53,6 +53,7 @@ jobs:
           files_yaml: |
             scoreboard:
               - 'app/**'
+              - '.github/workflows/validate_pr.yaml'
             functions:
               - 'functions/**'
             admin:
@@ -84,6 +85,56 @@ jobs:
         run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=dev
       - name: Test
         run: flutter test
+
+  validate_scoreboard_android_build:
+    name: Validate Scoreboard Android Build
+    needs: changes
+    if: needs.changes.outputs.scoreboard == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.23.0
+        with:
+          flutter-version: "3.47.4"
+          channel: "stable"
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: 17
+          distribution: "temurin"
+      # Placeholder config so the build works without secrets (e.g. Dependabot PRs).
+      # Only the package name must match the app; the build is not published.
+      - name: Setup Placeholder Google Services for Android
+        run: |
+          cat > android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "placeholder"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.cloudgatestudios.curling_scoreboard"
+                  }
+                },
+                "api_key": [{ "current_key": "placeholder" }]
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+      - name: Get Flutter Packages
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --release
 
   validate_scoreboard_strings:
     name: Validate Scoreboard String Usage

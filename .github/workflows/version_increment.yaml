@@ -57,6 +57,35 @@ jobs:
           git tag -d "${{ env.tag }}"
           git tag "${{ env.tag }}"
 
+      # Build every release asset before pushing so a failed build does not
+      # leave a pushed version commit/tag without a GitHub release.
+      - name: Setup Flutter Dependencies
+        run: cd app && flutter pub get
+
+      - name: Make Web Build Asset
+        run: |
+          (cd app && flutter build web -t lib/main.dart)
+          zip -r web_${{ env.tag }}.zip app/build/web
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: 17
+          distribution: "temurin"
+
+      - name: Setup Google Services for Android
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/android/app/google-services.json
+
+      - name: Make Android APK Build Asset
+        run: |
+          (cd app && flutter build apk --release)
+          cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
+
+      - name: Make Android App Bundle Build Asset
+        run: |
+          (cd app && flutter build appbundle --release)
+          cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
+
       - name: Disable repository rulesets
         env:
           GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
@@ -95,33 +124,6 @@ jobs:
                 --method PUT --input - > /dev/null
             echo "Re-enabled ruleset $id"
           done
-
-      - name: Setup Flutter Dependencies
-        run: cd app && flutter pub get
-
-      - name: Make Web Build Asset
-        run: |
-          (cd app && flutter build web -t lib/main.dart)
-          zip -r web_${{ env.tag }}.zip app/build/web
-
-      - name: Set up Java
-        uses: actions/setup-java@v6
-        with:
-          java-version: 17
-          distribution: "temurin"
-
-      - name: Setup Google Services for Android
-        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/android/app/google-services.json
-
-      - name: Make Android APK Build Asset
-        run: |
-          (cd app && flutter build apk --release)
-          cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
-
-      - name: Make Android App Bundle Build Asset
-        run: |
-          (cd app && flutter build appbundle --release)
-          cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
       - name: Make GitHub release
         uses: ncipollo/release-action@v1
