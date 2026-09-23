@@ -32,13 +32,9 @@ class GameStartDialog extends StatelessWidget {
     final hammerChoices = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: GameStartSegmentControlText(
-          text: context.l10n.teamNameRed,
-        ),
+        child: GameStartSegmentControlText(text: context.l10n.teamNameRed),
       ),
-      1: GameStartSegmentControlText(
-        text: context.l10n.teamNameYellow,
-      ),
+      1: GameStartSegmentControlText(text: context.l10n.teamNameYellow),
     };
 
     var settingsHammerTeam = Constants.defaultHammerTeam;

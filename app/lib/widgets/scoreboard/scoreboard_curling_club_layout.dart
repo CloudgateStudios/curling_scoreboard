@@ -47,12 +47,8 @@ class ScoreboardCurlingClubLayout extends StatelessWidget {
               width: widthPerItem,
               decoration: const BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    width: 2,
-                  ),
-                  right: BorderSide(
-                    width: 2,
-                  ),
+                  top: BorderSide(width: 2),
+                  right: BorderSide(width: 2),
                 ),
               ),
               child: Column(
@@ -80,9 +76,7 @@ class ScoreboardCurlingClubLayout extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: scoreRowColor,
                       border: const Border.symmetric(
-                        horizontal: BorderSide(
-                          width: 2,
-                        ),
+                        horizontal: BorderSide(width: 2),
                       ),
                     ),
                     child: Text(

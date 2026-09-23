@@ -50,14 +50,8 @@ class RegistrationService {
     await Future.wait([
       _prefs.setString(_clubIdKey, clubRef.id),
       _prefs.setString(_sheetIdKey, sheetRef.id),
-      _prefs.setString(
-        _clubNameKey,
-        clubData['name'] as String? ?? '',
-      ),
-      _prefs.setString(
-        _sheetNameKey,
-        sheetData['name'] as String? ?? '',
-      ),
+      _prefs.setString(_clubNameKey, clubData['name'] as String? ?? ''),
+      _prefs.setString(_sheetNameKey, sheetData['name'] as String? ?? ''),
     ]);
 
     await sheetRef.update({
