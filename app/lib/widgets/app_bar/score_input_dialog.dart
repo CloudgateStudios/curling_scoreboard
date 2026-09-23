@@ -13,7 +13,7 @@ class ScoreInputDialog extends StatelessWidget {
   });
 
   final int end;
-  final String? defaultTeam;
+  final ScoringTeam? defaultTeam;
   final int defaultScore;
 
   @override
@@ -22,9 +22,7 @@ class ScoreInputDialog extends StatelessWidget {
     int? currentTeamSelectedIndex;
 
     if (defaultTeam != null) {
-      currentTeamSelectedIndex = defaultTeam == context.l10n.teamNameRed
-          ? 0
-          : 1;
+      currentTeamSelectedIndex = defaultTeam == ScoringTeam.team1 ? 0 : 1;
     }
 
     var selectedScore = defaultScore;
@@ -33,13 +31,9 @@ class ScoreInputDialog extends StatelessWidget {
     final teamNames = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: EnterEditScoreDialogTeamText(
-          team: context.l10n.teamNameRed,
-        ),
+        child: EnterEditScoreDialogTeamText(team: context.l10n.teamNameRed),
       ),
-      1: EnterEditScoreDialogTeamText(
-        team: context.l10n.teamNameYellow,
-      ),
+      1: EnterEditScoreDialogTeamText(team: context.l10n.teamNameYellow),
     };
 
     final scoreItems = {
@@ -60,9 +54,7 @@ class ScoreInputDialog extends StatelessWidget {
     return StatefulBuilder(
       builder: (context, setState) {
         return AlertDialog(
-          title: Text(
-            context.l10n.scoreInputDialogTitle(end.toString()),
-          ),
+          title: Text(context.l10n.scoreInputDialogTitle(end.toString())),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -111,10 +103,9 @@ class ScoreInputDialog extends StatelessWidget {
                     onSegmentTapped: (index) {
                       setState(() {
                         currentTeamSelectedIndex = index;
-
-                        index == 0
-                            ? selectedTeam = context.l10n.teamNameRed
-                            : selectedTeam = context.l10n.teamNameYellow;
+                        selectedTeam = index == 0
+                            ? ScoringTeam.team1
+                            : ScoringTeam.team2;
                       });
                     },
                   ),
@@ -129,7 +120,7 @@ class ScoreInputDialog extends StatelessWidget {
                   : () {
                       final newEnd = CurlingEnd(
                         endNumber: end,
-                        scoringTeamName: selectedTeam,
+                        scoringTeam: selectedTeam,
                         score: selectedScore,
                       );
 

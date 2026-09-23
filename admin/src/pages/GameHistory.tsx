@@ -3,9 +3,13 @@ import { collection, doc, onSnapshot, orderBy, query, limit, getDoc } from 'fire
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { Game } from '../types';
+import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
 import styles from './GameHistory.module.css';
 
 function formatDuration(seconds: number): string {
+  // Ends recorded before the game clock existed carry a -1 sentinel, which
+  // would otherwise render as "-1m".
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -93,13 +97,13 @@ export function GameHistory() {
               onClick={() => setExpandedId(expandedId === game.id ? null : game.id)}
             >
               <div className={styles.gameScore}>
-                <span className={game.team1.totalScore >= game.team2.totalScore ? styles.winnerName : styles.loserName}>
+                <span className={game.team1.totalScore > game.team2.totalScore ? styles.winnerName : styles.loserName}>
                   {game.team1.name}
                 </span>
                 <span className={styles.scoreDisplay}>
                   {game.team1.totalScore} – {game.team2.totalScore}
                 </span>
-                <span className={game.team2.totalScore >= game.team1.totalScore ? styles.winnerName : styles.loserName}>
+                <span className={game.team2.totalScore > game.team1.totalScore ? styles.winnerName : styles.loserName}>
                   {game.team2.name}
                 </span>
               </div>
@@ -127,8 +131,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team1.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === game.team1.name ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === game.team1.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={endScoredBy(e, 'team1', game) ? styles.scoringEnd : ''}>
+                          {endScoreLabel(e, 'team1', game)}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team1.totalScore}</td>
@@ -136,8 +140,8 @@ export function GameHistory() {
                     <tr>
                       <td className={styles.teamLabel}>{game.team2.name}</td>
                       {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={e.scoringTeam === game.team2.name ? styles.scoringEnd : ''}>
-                          {e.scoringTeam === game.team2.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                        <td key={e.endNumber} className={endScoredBy(e, 'team2', game) ? styles.scoringEnd : ''}>
+                          {endScoreLabel(e, 'team2', game)}
                         </td>
                       ))}
                       <td className={styles.totalCell}>{game.team2.totalScore}</td>
