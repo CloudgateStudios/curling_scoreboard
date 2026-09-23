@@ -6,6 +6,9 @@ import type { Game } from '../types';
 import styles from './GameHistory.module.css';
 
 function formatDuration(seconds: number): string {
+  // Ends recorded before the game clock existed carry a -1 sentinel, which
+  // would otherwise render as "-1m".
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -93,13 +96,13 @@ export function GameHistory() {
               onClick={() => setExpandedId(expandedId === game.id ? null : game.id)}
             >
               <div className={styles.gameScore}>
-                <span className={game.team1.totalScore >= game.team2.totalScore ? styles.winnerName : styles.loserName}>
+                <span className={game.team1.totalScore > game.team2.totalScore ? styles.winnerName : styles.loserName}>
                   {game.team1.name}
                 </span>
                 <span className={styles.scoreDisplay}>
                   {game.team1.totalScore} – {game.team2.totalScore}
                 </span>
-                <span className={game.team2.totalScore >= game.team1.totalScore ? styles.winnerName : styles.loserName}>
+                <span className={game.team2.totalScore > game.team1.totalScore ? styles.winnerName : styles.loserName}>
                   {game.team2.name}
                 </span>
               </div>
