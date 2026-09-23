@@ -33,19 +33,14 @@ void main() {
     }
     // Check for team options
     expect(find.text('Red'), findsOneWidget);
-    expect(find.text('Yellow '), findsOneWidget);
+    expect(find.text('Yellow'), findsOneWidget);
   });
 
   testWidgets('ScoreInputDialog defaults to 0 and no team selected', (
     tester,
   ) async {
     await tester.pumpWidget(
-      wrapWithMaterialApp(
-        const ScoreInputDialog(
-          defaultScore: 0,
-          end: 1,
-        ),
-      ),
+      wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
     );
 
     // Verify score 0 is selected
@@ -59,12 +54,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      wrapWithMaterialApp(
-        const ScoreInputDialog(
-          defaultScore: 0,
-          end: 1,
-        ),
-      ),
+      wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
     );
 
     // Find the team selection widget (AbsorbPointer)
@@ -88,12 +78,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      wrapWithMaterialApp(
-        const ScoreInputDialog(
-          defaultScore: 0,
-          end: 1,
-        ),
-      ),
+      wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
     );
 
     // Select score 1
@@ -115,16 +100,9 @@ void main() {
 
   testWidgets(
     'ScoreInputDialog disables Enter button if score > 0 and no team selected',
-    (
-      tester,
-    ) async {
+    (tester) async {
       await tester.pumpWidget(
-        wrapWithMaterialApp(
-          const ScoreInputDialog(
-            defaultScore: 0,
-            end: 1,
-          ),
-        ),
+        wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
       );
 
       // Select score 1
@@ -139,16 +117,9 @@ void main() {
 
   testWidgets(
     'ScoreInputDialog enables Enter button if score > 0 and team selected',
-    (
-      tester,
-    ) async {
+    (tester) async {
       await tester.pumpWidget(
-        wrapWithMaterialApp(
-          const ScoreInputDialog(
-            defaultScore: 0,
-            end: 1,
-          ),
-        ),
+        wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
       );
 
       // Select score 1

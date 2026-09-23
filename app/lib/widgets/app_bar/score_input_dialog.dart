@@ -31,13 +31,9 @@ class ScoreInputDialog extends StatelessWidget {
     final teamNames = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: EnterEditScoreDialogTeamText(
-          team: context.l10n.teamNameRed,
-        ),
+        child: EnterEditScoreDialogTeamText(team: context.l10n.teamNameRed),
       ),
-      1: EnterEditScoreDialogTeamText(
-        team: context.l10n.teamNameYellow,
-      ),
+      1: EnterEditScoreDialogTeamText(team: context.l10n.teamNameYellow),
     };
 
     final scoreItems = {
@@ -58,9 +54,7 @@ class ScoreInputDialog extends StatelessWidget {
     return StatefulBuilder(
       builder: (context, setState) {
         return AlertDialog(
-          title: Text(
-            context.l10n.scoreInputDialogTitle(end.toString()),
-          ),
+          title: Text(context.l10n.scoreInputDialogTitle(end.toString())),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

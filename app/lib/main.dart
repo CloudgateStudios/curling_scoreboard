@@ -25,11 +25,7 @@ Future<void> main() async {
         : dev.DefaultFirebaseOptions.currentPlatform,
   );
   final prefs = await SharedPreferences.getInstance();
-  runApp(
-    CurlingScoreboardApp(
-      registrationService: RegistrationService(prefs),
-    ),
-  );
+  runApp(CurlingScoreboardApp(registrationService: RegistrationService(prefs)));
 }
 
 class CurlingScoreboardApp extends StatelessWidget {
@@ -46,18 +42,13 @@ class CurlingScoreboardApp extends StatelessWidget {
         colorSchemeSeed: Constants.primaryThemeColor,
         useMaterial3: true,
       ),
-      home: CurlingScoreboardScreen(
-        registrationService: registrationService,
-      ),
+      home: CurlingScoreboardScreen(registrationService: registrationService),
     );
   }
 }
 
 class CurlingScoreboardScreen extends StatefulWidget {
-  const CurlingScoreboardScreen({
-    required this.registrationService,
-    super.key,
-  });
+  const CurlingScoreboardScreen({required this.registrationService, super.key});
 
   final RegistrationService registrationService;
 
@@ -107,16 +98,25 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showGameStartDialog() async {
-    await showDialog(
+    final newGame = await showDialog<CurlingGame>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return const GameStartDialog();
+        // There is no sensible way to cancel out of starting a game: the
+        // scoreboard has nothing to show without one. barrierDismissible does
+        // not stop the system back button, so block popping outright too.
+        return const PopScope(canPop: false, child: GameStartDialog());
       },
-    ).then((value) {
-      gameObject = value as CurlingGame;
-      startTimer();
-    });
+    );
+
+    // The dialog blocks every dismissal route, so this should not happen.
+    // Bail out rather than crashing if it somehow does.
+    if (newGame == null) {
+      return;
+    }
+
+    gameObject = newGame;
+    startTimer();
   }
 
   void startTimer() {
@@ -188,7 +188,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
   Future<void> finishGame(BuildContext context) async {
     setState(() {
-      timer!.cancel();
+      timer?.cancel();
     });
 
     unawaited(_syncService.saveCompletedGame(gameObject));
@@ -222,7 +222,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   Future<void> showEnterScoreDialog(BuildContext context) async {
-    await showDialog(
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -231,22 +231,29 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: gameObject.currentPlayingEnd,
         );
       },
-    ).then((value) async {
-      // Need to add in the current timer value to the end so we get it at the
-      // point of entry on the dialog, not when the dialog came up
-      final curlingEnd = value as CurlingEnd
-        ..gameTimeInSeconds = totalTimerSeconds;
+    );
 
-      await enterScore(curlingEnd);
-    });
-  }
-
-  Future<void> showEditScoreDialog(int end) async {
-    if (end > gameObject.currentPlayingEnd) {
+    // Tapping outside the dialog dismisses it without entering a score.
+    if (curlingEnd == null) {
       return;
     }
 
-    await showDialog(
+    // Need to add in the current timer value to the end so we get it at the
+    // point of entry on the dialog, not when the dialog came up
+    curlingEnd.gameTimeInSeconds = totalTimerSeconds;
+
+    await enterScore(curlingEnd);
+  }
+
+  Future<void> showEditScoreDialog(int end) async {
+    // Only ends that have actually been played can be edited. `ends` holds the
+    // completed ends, so anything outside it has no score to edit yet. Empty
+    // scoreboard cells also report a sentinel end number of -1.
+    if (end < 1 || end > gameObject.ends.length) {
+      return;
+    }
+
+    final curlingEnd = await showDialog<CurlingEnd>(
       context: context,
       builder: (context) {
         return ScoreInputDialog(
@@ -255,14 +262,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           end: end,
         );
       },
-    ).then((value) {
-      final curlingEnd = value as CurlingEnd;
-      editScore(
-        curlingEnd.endNumber,
-        curlingEnd.score,
-        curlingEnd.scoringTeam,
-      );
-    });
+    );
+
+    // Tapping outside the dialog dismisses it without changing the score.
+    if (curlingEnd == null) {
+      return;
+    }
+
+    editScore(
+      curlingEnd.endNumber,
+      curlingEnd.score,
+      curlingEnd.scoringTeam,
+    );
   }
 
   @override
@@ -297,9 +308,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      context.l10n.addScoreGameCompleteMessage,
-                    ),
+                    content: Text(context.l10n.addScoreGameCompleteMessage),
                   ),
                 );
               }
@@ -428,14 +437,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                     const SizedBox(height: 8),
                     if (reg.isRegistered) ...[
                       Text(
-                        l10n.settingsDialogConnectedClub(
-                          reg.clubName ?? '',
-                        ),
+                        l10n.settingsDialogConnectedClub(reg.clubName ?? ''),
                       ),
                       Text(
-                        l10n.settingsDialogConnectedSheet(
-                          reg.sheetName ?? '',
-                        ),
+                        l10n.settingsDialogConnectedSheet(reg.sheetName ?? ''),
                       ),
                       const SizedBox(height: 8),
                       TextButton(
@@ -443,9 +448,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: Text(
-                                l10n.disconnectConfirmationTitle,
-                              ),
+                              title: Text(l10n.disconnectConfirmationTitle),
                               content: Text(
                                 l10n.disconnectConfirmationContent(
                                   reg.clubName ?? '',
@@ -473,18 +476,15 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                             }
                           }
                         },
-                        child: Text(
-                          l10n.settingsDialogDisconnectButtonLabel,
-                        ),
+                        child: Text(l10n.settingsDialogDisconnectButtonLabel),
                       ),
                     ] else
                       TextButton(
                         onPressed: () async {
                           final connected = await showDialog<bool>(
                             context: context,
-                            builder: (_) => ConnectToClubDialog(
-                              registrationService: reg,
-                            ),
+                            builder: (_) =>
+                                ConnectToClubDialog(registrationService: reg),
                           );
                           if (connected ?? false) {
                             if (context.mounted) {
@@ -493,9 +493,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                             }
                           }
                         },
-                        child: Text(
-                          l10n.settingsDialogConnectButtonLabel,
-                        ),
+                        child: Text(l10n.settingsDialogConnectButtonLabel),
                       ),
                   ],
                 ),
@@ -505,9 +503,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: Text(
-                    l10n.settingsDialogButtonLabelClose,
-                  ),
+                  child: Text(l10n.settingsDialogButtonLabelClose),
                 ),
               ],
             );
