@@ -17,9 +17,12 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
-    // Required for collectionGroup('sheets') queries during pairing.
+    // Required for the collectionGroup('sheets') query during pairing.
+    // Restricted to sheets that currently carry a pairing code so that a
+    // signed in client cannot enumerate every sheet in every club.
     match /{path=**}/sheets/{sheetId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null
+          && resource.data.pairingCode != null;
     }
 
     match /clubs/{clubId} {
@@ -42,17 +45,22 @@ service cloud.firestore {
         allow read: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid;
 
-        // Any authenticated device can claim a sheet when a pairingCode is present.
+        // Any authenticated device can claim a sheet when a pairingCode is
+        // present, but only by assigning itself as the scoreboard.
         allow update: if request.auth != null
             && resource.data.pairingCode != null
             && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['pairingCode', 'scoreboardUid']);
+                .affectedKeys().hasOnly(['pairingCode', 'scoreboardUid'])
+            && request.resource.data.scoreboardUid == request.auth.uid;
 
-        // The registered scoreboard can update liveGame or clear its UID on disconnect.
+        // The registered scoreboard can update liveGame or clear its UID on
+        // disconnect. It cannot hand the sheet to a different device.
         allow update: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid
             && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid']);
+                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid'])
+            && (!('scoreboardUid' in request.resource.data)
+                || request.resource.data.scoreboardUid == request.auth.uid);
 
         match /games/{gameId} {
           // Club admins can read game history.
