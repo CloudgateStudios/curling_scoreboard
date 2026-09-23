@@ -88,96 +88,76 @@ class GameStartDialog extends StatelessWidget {
           content: FittedBox(
             fit: BoxFit.scaleDown,
             child: Form(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Table(
+                defaultColumnWidth: const IntrinsicColumnWidth(),
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        context.l10n.gameStartDialogFormLabelNumberOfEnds,
-                        style: const TextStyle(fontSize: 40),
-                      ),
-                      MaterialSegmentedControl(
-                        children: numberOfEnds,
-                        selectionIndex: currentNumberOfEndsSelectedIndex,
-                        borderColor: Colors.grey,
-                        selectedColor: Colors.blueAccent,
-                        unselectedColor: Colors.white,
-                        selectedTextStyle: const TextStyle(color: Colors.white),
-                        unselectedTextStyle: const TextStyle(
-                          color: Colors.black,
-                        ),
-                        borderWidth: 1,
-                        borderRadius: 20,
-                        horizontalPadding: const EdgeInsets.all(10),
-                        verticalOffset: 25,
-                        onSegmentTapped: (index) {
-                          setState(() {
-                            currentNumberOfEndsSelectedIndex = index;
-                            settingsTotalEnds = index;
-                          });
-                        },
-                      ),
-                    ],
+                  _settingRow(
+                    label: context.l10n.gameStartDialogFormLabelNumberOfEnds,
+                    control: MaterialSegmentedControl(
+                      children: numberOfEnds,
+                      selectionIndex: currentNumberOfEndsSelectedIndex,
+                      borderColor: Colors.grey,
+                      selectedColor: Colors.blueAccent,
+                      unselectedColor: Colors.white,
+                      selectedTextStyle: const TextStyle(color: Colors.white),
+                      unselectedTextStyle: const TextStyle(color: Colors.black),
+                      borderWidth: 1,
+                      borderRadius: 20,
+                      horizontalPadding: const EdgeInsets.all(10),
+                      verticalOffset: 25,
+                      onSegmentTapped: (index) {
+                        setState(() {
+                          currentNumberOfEndsSelectedIndex = index;
+                          settingsTotalEnds = index;
+                        });
+                      },
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Text(
-                        context.l10n.gameStartDialogFormLabelPlayersPerTeam,
-                        style: const TextStyle(fontSize: 40),
-                      ),
-                      MaterialSegmentedControl(
-                        children: numberOfPlayersPerTeam,
-                        selectionIndex:
-                            currentNumberOfPlayersPerTeamSelectedIndex,
-                        borderColor: Colors.grey,
-                        selectedColor: Colors.blueAccent,
-                        unselectedColor: Colors.white,
-                        selectedTextStyle: const TextStyle(color: Colors.white),
-                        unselectedTextStyle: const TextStyle(
-                          color: Colors.black,
-                        ),
-                        borderWidth: 1,
-                        borderRadius: 20,
-                        horizontalPadding: const EdgeInsets.all(10),
-                        verticalOffset: 25,
-                        onSegmentTapped: (index) {
-                          setState(() {
-                            currentNumberOfPlayersPerTeamSelectedIndex = index;
-                            settingsNumberOfPlayersPerTeam = index;
-                          });
-                        },
-                      ),
-                    ],
+                  _settingRow(
+                    label: context.l10n.gameStartDialogFormLabelPlayersPerTeam,
+                    control: MaterialSegmentedControl(
+                      children: numberOfPlayersPerTeam,
+                      selectionIndex:
+                          currentNumberOfPlayersPerTeamSelectedIndex,
+                      borderColor: Colors.grey,
+                      selectedColor: Colors.blueAccent,
+                      unselectedColor: Colors.white,
+                      selectedTextStyle: const TextStyle(color: Colors.white),
+                      unselectedTextStyle: const TextStyle(color: Colors.black),
+                      borderWidth: 1,
+                      borderRadius: 20,
+                      horizontalPadding: const EdgeInsets.all(10),
+                      verticalOffset: 25,
+                      onSegmentTapped: (index) {
+                        setState(() {
+                          currentNumberOfPlayersPerTeamSelectedIndex = index;
+                          settingsNumberOfPlayersPerTeam = index;
+                        });
+                      },
+                    ),
                   ),
-                  Row(
-                    children: [
-                      Text(
-                        context.l10n.gameStartDialogFormLabelFirstEndHammer,
-                        style: const TextStyle(fontSize: 40),
-                      ),
-                      MaterialSegmentedControl(
-                        children: hammerChoices,
-                        selectionIndex: currentHammerTeamSelectedIndex,
-                        borderColor: Colors.grey,
-                        selectedColor: Colors.blueAccent,
-                        unselectedColor: Colors.white,
-                        selectedTextStyle: const TextStyle(color: Colors.white),
-                        unselectedTextStyle: const TextStyle(
-                          color: Colors.black,
-                        ),
-                        borderWidth: 1,
-                        borderRadius: 20,
-                        horizontalPadding: const EdgeInsets.all(10),
-                        verticalOffset: 25,
-                        onSegmentTapped: (index) {
-                          setState(() {
-                            currentHammerTeamSelectedIndex = index;
-                            settingsHammerTeam = index;
-                          });
-                        },
-                      ),
-                    ],
+                  _settingRow(
+                    label: context.l10n.gameStartDialogFormLabelFirstEndHammer,
+                    control: MaterialSegmentedControl(
+                      children: hammerChoices,
+                      selectionIndex: currentHammerTeamSelectedIndex,
+                      borderColor: Colors.grey,
+                      selectedColor: Colors.blueAccent,
+                      unselectedColor: Colors.white,
+                      selectedTextStyle: const TextStyle(color: Colors.white),
+                      unselectedTextStyle: const TextStyle(color: Colors.black),
+                      borderWidth: 1,
+                      borderRadius: 20,
+                      horizontalPadding: const EdgeInsets.all(10),
+                      verticalOffset: 25,
+                      onSegmentTapped: (index) {
+                        setState(() {
+                          currentHammerTeamSelectedIndex = index;
+                          settingsHammerTeam = index;
+                        });
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -229,6 +209,21 @@ class GameStartDialog extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  TableRow _settingRow({required String label, required Widget control}) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 20),
+          child: Text(label, style: const TextStyle(fontSize: 40)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Align(alignment: Alignment.centerLeft, child: control),
+        ),
+      ],
     );
   }
 
