@@ -171,12 +171,12 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     }
   }
 
-  void editScore(int end, int score, String? team) {
+  void editScore(int end, int score, ScoringTeam? team) {
     final originalEndScore = gameObject.ends.elementAt(end - 1);
 
     setState(() {
       originalEndScore
-        ..scoringTeamName = team
+        ..scoringTeam = team
         ..score = score;
 
       gameObject.ends[end - 1] = originalEndScore;
@@ -226,7 +226,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       context: context,
       builder: (context) {
         return ScoreInputDialog(
-          defaultTeam: gameObject.whichTeamHasHammer().name,
+          defaultTeam: gameObject.whichTeamHasHammer(),
           defaultScore: 0,
           end: gameObject.currentPlayingEnd,
         );
@@ -257,7 +257,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       context: context,
       builder: (context) {
         return ScoreInputDialog(
-          defaultTeam: gameObject.ends[end - 1].scoringTeamName,
+          defaultTeam: gameObject.ends[end - 1].scoringTeam,
           defaultScore: gameObject.ends[end - 1].score,
           end: end,
         );
@@ -269,11 +269,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       return;
     }
 
-    editScore(
-      curlingEnd.endNumber,
-      curlingEnd.score,
-      curlingEnd.scoringTeamName,
-    );
+    editScore(curlingEnd.endNumber, curlingEnd.score, curlingEnd.scoringTeam);
   }
 
   @override
