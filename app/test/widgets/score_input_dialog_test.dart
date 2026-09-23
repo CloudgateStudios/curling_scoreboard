@@ -135,4 +135,46 @@ void main() {
       expect(tester.widget<ElevatedButton>(enterButton).enabled, isTrue);
     },
   );
+
+  testWidgets('ScoreInputDialog records no scoring team for a blank end', (
+    tester,
+  ) async {
+    CurlingEnd? returned;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                returned = await showDialog<CurlingEnd>(
+                  context: context,
+                  builder: (_) => const ScoreInputDialog(
+                    defaultScore: 0,
+                    end: 1,
+                    // Seeded with the hammer team, exactly as the app does.
+                    defaultTeam: ScoringTeam.team2,
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // Submit straight away without touching the score control.
+    await tester.tap(find.text('Enter'));
+    await tester.pumpAndSettle();
+
+    expect(returned, isNotNull);
+    expect(returned!.score, 0);
+    expect(returned!.scoringTeam, isNull);
+  });
 }
