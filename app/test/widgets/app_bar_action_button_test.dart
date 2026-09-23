@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('AppBarActionButton renders with label', (
-    tester,
-  ) async {
+  testWidgets('AppBarActionButton renders with label', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
@@ -24,9 +22,7 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('AppBarActionButton renders without label', (
-    tester,
-  ) async {
+  testWidgets('AppBarActionButton renders without label', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
       MaterialApp(

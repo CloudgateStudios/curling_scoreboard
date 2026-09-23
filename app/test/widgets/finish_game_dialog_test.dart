@@ -18,9 +18,7 @@ void main() {
     var finished = false;
     await tester.pumpWidget(
       wrapWithMaterialApp(
-        FinishGameDialog(
-          finishGameAction: (_) => finished = true,
-        ),
+        FinishGameDialog(finishGameAction: (_) => finished = true),
       ),
     );
     expect(find.textContaining('Are you sure'), findsOneWidget);

@@ -20,26 +20,32 @@ jobs:
 
       - name: Install yq
         run: |
-          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.9.8/yq_linux_amd64
+          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2.23.0
         with:
-          flutter-version: "3.47.0"
+          flutter-version: "3.47.4"
           channel: "stable"
 
-      - name: Install standard-version
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+
+      # commit-and-tag-version is the maintained fork of the deprecated standard-version
+      - name: Install release tooling
         run: |
-          sudo npm i -g standard-version standard-changelog
+          npm i -g commit-and-tag-version@13 standard-changelog@8
 
       - name: Generate release notes only
         run: |
           rm docs/RELEASE_NOTES.md && touch docs/RELEASE_NOTES.md
-          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md -a false
+          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md
 
-      - name: Run standard-version
-        run: standard-version
+      - name: Run commit-and-tag-version
+        run: commit-and-tag-version
 
       - name: Get/Set Tag
         run: |
@@ -49,13 +55,42 @@ jobs:
       - name: Update version
         run: |
           yq eval '.version = "${{ env.tag }}"' -i app/pubspec.yaml
-          (cd app && flutter packages get && flutter pub run build_runner build)
+          (cd app && flutter pub get && dart run build_runner build)
           git add app/pubspec.yaml
           git add docs/RELEASE_NOTES.md
           git add app/lib/src/version.dart
           git commit --amend --no-edit
           git tag -d "${{ env.tag }}"
           git tag "${{ env.tag }}"
+
+      # Build every release asset before pushing so a failed build does not
+      # leave a pushed version commit/tag without a GitHub release.
+      - name: Setup Flutter Dependencies
+        run: cd app && flutter pub get
+
+      - name: Make Web Build Asset
+        run: |
+          (cd app && flutter build web --wasm -t lib/main.dart)
+          zip -r web_${{ env.tag }}.zip app/build/web
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: 17
+          distribution: "temurin"
+
+      - name: Setup Google Services for Android
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/android/app/google-services.json
+
+      - name: Make Android APK Build Asset
+        run: |
+          (cd app && flutter build apk --release)
+          cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
+
+      - name: Make Android App Bundle Build Asset
+        run: |
+          (cd app && flutter build appbundle --release)
+          cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
       - name: Disable repository rulesets
         env:
@@ -95,33 +130,6 @@ jobs:
                 --method PUT --input - > /dev/null
             echo "Re-enabled ruleset $id"
           done
-
-      - name: Setup Flutter Dependencies
-        run: cd app && flutter pub get
-
-      - name: Make Web Build Asset
-        run: |
-          (cd app && flutter build web -t lib/main.dart)
-          zip -r web_${{ env.tag }}.zip app/build/web
-
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          java-version: 17
-          distribution: "temurin"
-
-      - name: Setup Google Services for Android
-        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/android/app/google-services.json
-
-      - name: Make Android APK Build Asset
-        run: |
-          (cd app && flutter build apk --release)
-          cp app/build/app/outputs/flutter-apk/app-release.apk app-release_${{ env.tag }}.apk
-
-      - name: Make Android App Bundle Build Asset
-        run: |
-          (cd app && flutter build appbundle --release)
-          cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
       - name: Make GitHub release
         uses: ncipollo/release-action@v1
