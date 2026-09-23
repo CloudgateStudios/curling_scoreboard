@@ -269,11 +269,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       return;
     }
 
-    editScore(
-      curlingEnd.endNumber,
-      curlingEnd.score,
-      curlingEnd.scoringTeam,
-    );
+    editScore(curlingEnd.endNumber, curlingEnd.score, curlingEnd.scoringTeam);
   }
 
   @override
