@@ -22,6 +22,10 @@ updates:
     directory: "/functions"
     schedule:
       interval: "weekly"
+    ignore:
+      # Keep Node types in line with the Cloud Functions runtime (engines.node)
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       functions:
         patterns:

@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('ScoreboardClubLayout displays numbers 1-12', (
-    tester,
-  ) async {
+  testWidgets('ScoreboardClubLayout displays numbers 1-12', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

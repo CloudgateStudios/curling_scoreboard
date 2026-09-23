@@ -94,23 +94,31 @@ class ScoreContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      child: Container(
-        alignment: Alignment.center,
-        width: width,
-        decoration: BoxDecoration(color: backgroundColor),
-        child: Text(
-          (score == -1) ? '' : score.toString(),
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.bold,
-            color: textColor,
-          ),
+    final cell = Container(
+      alignment: Alignment.center,
+      width: width,
+      decoration: BoxDecoration(color: backgroundColor),
+      child: Text(
+        (score == -1) ? '' : score.toString(),
+        style: TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: textColor,
         ),
       ),
+    );
+
+    // Ends that have not been played yet are rendered with a sentinel end
+    // number. There is no score behind them, so they are not tappable.
+    if (endNumber < 1) {
+      return cell;
+    }
+
+    return InkWell(
       onTap: () {
         onPressed(endNumber);
       },
+      child: cell,
     );
   }
 }
