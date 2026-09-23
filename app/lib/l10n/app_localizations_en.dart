@@ -12,7 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamNameRed => 'Red';
 
   @override
-  String get teamNameYellow => 'Yellow ';
+  String get teamNameYellow => 'Yellow';
 
   @override
   String get buttonLabelYes => 'Yes';

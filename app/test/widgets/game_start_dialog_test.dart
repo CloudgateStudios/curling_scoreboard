@@ -18,9 +18,7 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        supportedLocales: [
-          Locale('en', ''),
-        ],
+        supportedLocales: [Locale('en', '')],
         home: GameStartDialog(),
       ),
     );
