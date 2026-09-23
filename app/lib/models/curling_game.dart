@@ -74,86 +74,54 @@ class CurlingGame {
     }
   }
 
-  int get team1TotalScore {
-    return ends
-        .where((end) => end.scoringTeamName == team1.name)
-        .map((end) => end.score)
-        .fold(0, (a, b) => a + b);
-  }
+  int get team1TotalScore => _totalScoreFor(ScoringTeam.team1);
 
-  int get team2TotalScore {
-    return ends
-        .where((end) => end.scoringTeamName == team2.name)
-        .map((end) => end.score)
-        .fold(0, (a, b) => a + b);
-  }
+  int get team2TotalScore => _totalScoreFor(ScoringTeam.team2);
 
-  List<int> get team1ScoresByEnd {
-    final returnValue = <int>[];
+  List<int> get team1ScoresByEnd => _scoresByEndFor(ScoringTeam.team1);
 
-    for (final end in ends) {
-      if (end.scoringTeamName == team1.name) {
-        returnValue.add(end.score);
-      } else {
-        returnValue.add(0);
-      }
-    }
+  List<int> get team2ScoresByEnd => _scoresByEndFor(ScoringTeam.team2);
 
-    return returnValue;
-  }
+  int _totalScoreFor(ScoringTeam team) => ends
+      .where((end) => end.scoringTeam == team)
+      .map((end) => end.score)
+      .fold(0, (a, b) => a + b);
 
-  List<int> get team2ScoresByEnd {
-    final returnValue = <int>[];
+  List<int> _scoresByEndFor(ScoringTeam team) => [
+    for (final end in ends)
+      if (end.scoringTeam == team) end.score else 0,
+  ];
 
-    for (final end in ends) {
-      if (end.scoringTeamName == team2.name) {
-        returnValue.add(end.score);
-      } else {
-        returnValue.add(0);
-      }
-    }
-
-    return returnValue;
-  }
-
+  /// Recalculates which team holds the hammer.
+  ///
+  /// Every recorded end is replayed from the start of the game rather than
+  /// looking only at the most recent one. That keeps the result a pure
+  /// function of the ends, so correcting an earlier end produces the same
+  /// answer as if the ends had been entered that way to begin with, and
+  /// calling this repeatedly never drifts.
   void evaluateHammer() {
-    final lastEnd = ends.last;
+    // Last stone in the first end is the hammer for the first end.
+    var team1HasHammer = team1.hadLastStoneFirstEnd;
 
-    //Check for Doubles game first and make sure a blank end switches hammer
-    if (numberOfPlayersPerTeam == 2 && lastEnd.score == 0) {
-      if (team1.hasHammer) {
-        team1.hasHammer = false;
-        team2.hasHammer = true;
-      } else {
-        team1.hasHammer = true;
-        team2.hasHammer = false;
+    for (final end in ends) {
+      if (end.score == 0) {
+        // A blank end normally retains the hammer, but in doubles it switches.
+        if (numberOfPlayersPerTeam == 2) {
+          team1HasHammer = !team1HasHammer;
+        }
+        continue;
       }
 
-      return;
+      // Scoring gives up the hammer to the other team.
+      team1HasHammer = end.scoringTeam != ScoringTeam.team1;
     }
 
-    //Check for a blank end and do nothing to retain hammer on current team
-    if (lastEnd.score == 0) {
-      return;
-    }
-
-    //Normal end hammer detection
-    if (lastEnd.scoringTeamName == team1.name) {
-      team1.hasHammer = false;
-      team2.hasHammer = true;
-    } else {
-      team1.hasHammer = true;
-      team2.hasHammer = false;
-    }
+    team1.hasHammer = team1HasHammer;
+    team2.hasHammer = !team1HasHammer;
   }
 
-  CurlingTeam whichTeamHasHammer() {
-    if (team1.hasHammer) {
-      return team1;
-    } else {
-      return team2;
-    }
-  }
+  ScoringTeam whichTeamHasHammer() =>
+      team1.hasHammer ? ScoringTeam.team1 : ScoringTeam.team2;
 }
 
 enum ScoreboardStyle { baseball, club }

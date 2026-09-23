@@ -97,12 +97,12 @@ class GameSummaryWidget extends StatelessWidget {
             children: <Widget>[
               GameEndTableCellText(text: end.endNumber.toString()),
               GameEndTableCellText(
-                text: (end.scoringTeamName == team1Name)
+                text: (end.scoringTeam == ScoringTeam.team1)
                     ? end.score.toString()
                     : '0',
               ),
               GameEndTableCellText(
-                text: (end.scoringTeamName == team2Name)
+                text: (end.scoringTeam == ScoringTeam.team2)
                     ? end.score.toString()
                     : '0',
               ),

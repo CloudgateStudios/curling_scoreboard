@@ -7,6 +7,7 @@ import { httpsCallable } from 'firebase/functions';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db, functions } from '../lib/firebase';
 import type { Club, Sheet, Game } from '../types';
+import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
 import styles from './ClubDetail.module.css';
 
 interface RecentGame extends Game {
@@ -15,6 +16,9 @@ interface RecentGame extends Game {
 }
 
 function formatDuration(seconds: number): string {
+  // Ends recorded before the game clock existed carry a -1 sentinel, which
+  // would otherwise render as "-1m".
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -50,6 +54,10 @@ function generateApiKey(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? `${fallback} ${err.message}` : fallback;
+}
+
 interface Props {
   // Optional: club admin dashboard passes the club directly to avoid an extra fetch
   club?: Club;
@@ -65,6 +73,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const [newSheetName, setNewSheetName] = useState('');
   const [addingSheet, setAddingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
+  const [sheetError, setSheetError] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
 
   const [clubAdmins, setClubAdmins] = useState<{ uid: string; email: string; displayName: string | null }[]>([]);
 
@@ -159,32 +169,52 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
 
   async function handleGeneratePairingCode(sheetId: string) {
     const code = generatePairingCode();
-    await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
-      pairingCode: code,
-    });
+    try {
+      await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
+        pairingCode: code,
+      });
+    } catch (err) {
+      setSheetError(errorMessage(err, 'Could not generate a pairing code.'));
+    }
   }
 
   async function handleClearPairingCode(sheetId: string) {
-    await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
-      pairingCode: deleteField(),
-    });
+    try {
+      await updateDoc(doc(db, 'clubs', resolvedClubId, 'sheets', sheetId), {
+        pairingCode: deleteField(),
+      });
+    } catch (err) {
+      setSheetError(errorMessage(err, 'Could not clear the pairing code.'));
+    }
   }
 
   async function handleAddSheet(e: React.FormEvent) {
     e.preventDefault();
     setSavingSheet(true);
-    await addDoc(collection(db, 'clubs', resolvedClubId, 'sheets'), {
-      name: newSheetName,
-    });
-    setNewSheetName('');
-    setAddingSheet(false);
-    setSavingSheet(false);
+    setSheetError('');
+    try {
+      await addDoc(collection(db, 'clubs', resolvedClubId, 'sheets'), {
+        name: newSheetName,
+      });
+      setNewSheetName('');
+      setAddingSheet(false);
+    } catch (err) {
+      setSheetError(errorMessage(err, 'Could not add the sheet.'));
+    } finally {
+      // Always clear the saving flag, otherwise a failure leaves the Save
+      // button disabled for good.
+      setSavingSheet(false);
+    }
   }
 
   async function handleRegenerateApiKey() {
     if (!confirm('Regenerate API key? Existing integrations using the current key will break.')) return;
     const newKey = generateApiKey();
-    await updateDoc(doc(db, 'clubs', resolvedClubId), { apiKey: newKey });
+    try {
+      await updateDoc(doc(db, 'clubs', resolvedClubId), { apiKey: newKey });
+    } catch (err) {
+      setApiKeyError(errorMessage(err, 'Could not regenerate the API key.'));
+    }
   }
 
   function handleViewGames(sheetId: string) {
@@ -258,13 +288,13 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
                     onClick={() => setExpandedGameId(expandedGameId === game.id ? null : game.id)}
                   >
                     <div className={styles.gameScore}>
-                      <span className={game.team1.totalScore >= game.team2.totalScore ? styles.winnerName : styles.loserName}>
+                      <span className={game.team1.totalScore > game.team2.totalScore ? styles.winnerName : styles.loserName}>
                         {game.team1.name}
                       </span>
                       <span className={styles.scoreDisplay}>
                         {game.team1.totalScore} – {game.team2.totalScore}
                       </span>
-                      <span className={game.team2.totalScore >= game.team1.totalScore ? styles.winnerName : styles.loserName}>
+                      <span className={game.team2.totalScore > game.team1.totalScore ? styles.winnerName : styles.loserName}>
                         {game.team2.name}
                       </span>
                     </div>
@@ -293,8 +323,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
                           <tr>
                             <td className={styles.teamLabel}>{game.team1.name}</td>
                             {game.ends.map(e => (
-                              <td key={e.endNumber} className={e.scoringTeam === game.team1.name ? styles.scoringEnd : ''}>
-                                {e.scoringTeam === game.team1.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                              <td key={e.endNumber} className={endScoredBy(e, 'team1', game) ? styles.scoringEnd : ''}>
+                                {endScoreLabel(e, 'team1', game)}
                               </td>
                             ))}
                             <td className={styles.totalCell}>{game.team1.totalScore}</td>
@@ -302,8 +332,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
                           <tr>
                             <td className={styles.teamLabel}>{game.team2.name}</td>
                             {game.ends.map(e => (
-                              <td key={e.endNumber} className={e.scoringTeam === game.team2.name ? styles.scoringEnd : ''}>
-                                {e.scoringTeam === game.team2.name ? e.score : e.scoringTeam === null ? '—' : '0'}
+                              <td key={e.endNumber} className={endScoredBy(e, 'team2', game) ? styles.scoringEnd : ''}>
+                                {endScoreLabel(e, 'team2', game)}
                               </td>
                             ))}
                             <td className={styles.totalCell}>{game.team2.totalScore}</td>
@@ -329,10 +359,13 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         </p>
         <div className={styles.apiKeyRow}>
           <code className={styles.apiKey}>{club.apiKey || '—'}</code>
-          <button className={styles.ghostButton} onClick={handleRegenerateApiKey}>
-            Regenerate Key
-          </button>
+          {!isClubAdmin && (
+            <button className={styles.ghostButton} onClick={handleRegenerateApiKey}>
+              Regenerate Key
+            </button>
+          )}
         </div>
+        {apiKeyError && <p className={styles.error}>{apiKeyError}</p>}
       </div>
 
       {!isClubAdmin && (
@@ -425,6 +458,8 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
             </button>
           </form>
         )}
+
+        {sheetError && <p className={styles.error}>{sheetError}</p>}
 
         <div className={styles.sheetList}>
           {sheets.map((sheet) => (
