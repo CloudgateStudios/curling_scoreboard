@@ -1,0 +1,3 @@
+// Placeholder so the emulator can boot. The rules actually under test are
+// loaded per run by rules.test.mjs from ../firestore.rules.
+rules_version = '2';

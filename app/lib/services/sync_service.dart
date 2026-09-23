@@ -59,7 +59,11 @@ class SyncService {
           for (final e in game.ends)
             {
               'endNumber': e.endNumber,
-              'scoringTeam': e.scoringTeamName,
+              // The display name is kept as-is so existing readers,
+              // including the public games API, are unaffected.
+              // scoringTeamSlot is the unambiguous value to prefer.
+              'scoringTeam': _teamNameFor(game, e.scoringTeam),
+              'scoringTeamSlot': e.scoringTeam?.name,
               'score': e.score,
               'gameTimeInSeconds': e.gameTimeInSeconds,
             },
@@ -70,4 +74,10 @@ class SyncService {
       debugPrint('SyncService.saveCompletedGame error: $e');
     }
   }
+
+  String? _teamNameFor(CurlingGame game, ScoringTeam? team) => switch (team) {
+    ScoringTeam.team1 => game.team1.name,
+    ScoringTeam.team2 => game.team2.name,
+    null => null,
+  };
 }

@@ -20,10 +20,10 @@ jobs:
           ref: ${{ github.event.inputs.version }}
       - uses: subosito/flutter-action@v2.23.0
         with:
-          flutter-version: "3.47.0"
+          flutter-version: "3.47.4"
           channel: "stable"
-      - run: flutter packages get
-      - run: flutter build web -t lib/main.dart --dart-define=FIREBASE_ENV=prod
+      - run: flutter pub get
+      - run: flutter build web --wasm -t lib/main.dart --dart-define=FIREBASE_ENV=prod
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"

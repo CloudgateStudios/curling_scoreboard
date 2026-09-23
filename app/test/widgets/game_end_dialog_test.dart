@@ -16,9 +16,7 @@ Widget wrapWithMaterialApp(Widget child) {
 }
 
 void main() {
-  testWidgets('GameEndDialog renders with title and summary', (
-    tester,
-  ) async {
+  testWidgets('GameEndDialog renders with title and summary', (tester) async {
     final game = CurlingGame(
       team1: CurlingTeam(
         name: 'Red',
@@ -35,8 +33,8 @@ void main() {
       numberOfEnds: 2,
       numberOfPlayersPerTeam: 4,
       ends: [
-        CurlingEnd(endNumber: 1, scoringTeamName: 'Red', score: 2),
-        CurlingEnd(endNumber: 2, scoringTeamName: 'Yellow', score: 1),
+        CurlingEnd(endNumber: 1, scoringTeam: ScoringTeam.team1, score: 2),
+        CurlingEnd(endNumber: 2, scoringTeam: ScoringTeam.team2, score: 1),
       ],
     );
     await tester.pumpWidget(

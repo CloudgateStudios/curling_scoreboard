@@ -14,7 +14,13 @@ export function ClubAdminDashboard({ user }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user.clubId) return;
+    // Without a clubId there is nothing to subscribe to, but the loading flag
+    // still has to clear or the page spins forever instead of showing the
+    // "Club not found" message below.
+    if (!user.clubId) {
+      setLoading(false);
+      return;
+    }
     return onSnapshot(doc(db, 'clubs', user.clubId), (snap) => {
       if (snap.exists()) {
         setClub({ id: snap.id, ...(snap.data() as Omit<Club, 'id'>) });
