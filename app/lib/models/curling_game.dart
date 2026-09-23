@@ -74,47 +74,23 @@ class CurlingGame {
     }
   }
 
-  int get team1TotalScore {
-    return ends
-        .where((end) => end.scoringTeamName == team1.name)
-        .map((end) => end.score)
-        .fold(0, (a, b) => a + b);
-  }
+  int get team1TotalScore => _totalScoreFor(ScoringTeam.team1);
 
-  int get team2TotalScore {
-    return ends
-        .where((end) => end.scoringTeamName == team2.name)
-        .map((end) => end.score)
-        .fold(0, (a, b) => a + b);
-  }
+  int get team2TotalScore => _totalScoreFor(ScoringTeam.team2);
 
-  List<int> get team1ScoresByEnd {
-    final returnValue = <int>[];
+  List<int> get team1ScoresByEnd => _scoresByEndFor(ScoringTeam.team1);
 
-    for (final end in ends) {
-      if (end.scoringTeamName == team1.name) {
-        returnValue.add(end.score);
-      } else {
-        returnValue.add(0);
-      }
-    }
+  List<int> get team2ScoresByEnd => _scoresByEndFor(ScoringTeam.team2);
 
-    return returnValue;
-  }
+  int _totalScoreFor(ScoringTeam team) => ends
+      .where((end) => end.scoringTeam == team)
+      .map((end) => end.score)
+      .fold(0, (a, b) => a + b);
 
-  List<int> get team2ScoresByEnd {
-    final returnValue = <int>[];
-
-    for (final end in ends) {
-      if (end.scoringTeamName == team2.name) {
-        returnValue.add(end.score);
-      } else {
-        returnValue.add(0);
-      }
-    }
-
-    return returnValue;
-  }
+  List<int> _scoresByEndFor(ScoringTeam team) => [
+    for (final end in ends)
+      if (end.scoringTeam == team) end.score else 0,
+  ];
 
   /// Recalculates which team holds the hammer.
   ///
@@ -137,20 +113,15 @@ class CurlingGame {
       }
 
       // Scoring gives up the hammer to the other team.
-      team1HasHammer = end.scoringTeamName != team1.name;
+      team1HasHammer = end.scoringTeam != ScoringTeam.team1;
     }
 
     team1.hasHammer = team1HasHammer;
     team2.hasHammer = !team1HasHammer;
   }
 
-  CurlingTeam whichTeamHasHammer() {
-    if (team1.hasHammer) {
-      return team1;
-    } else {
-      return team2;
-    }
-  }
+  ScoringTeam whichTeamHasHammer() =>
+      team1.hasHammer ? ScoringTeam.team1 : ScoringTeam.team2;
 }
 
 enum ScoreboardStyle { baseball, club }
