@@ -5,3 +5,4 @@ export 'game_start/game_start.dart';
 export 'scoreboard/scoreboard.dart';
 export 'settings/settings.dart';
 export 'total_score/total_score.dart';
+export 'update/update.dart';

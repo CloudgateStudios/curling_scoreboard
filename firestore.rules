@@ -25,6 +25,13 @@ service cloud.firestore {
           && resource.data.pairingCode != null;
     }
 
+    // Deployment info the scoreboards watch so they can reload onto a new
+    // build. Scoreboards may not be signed in until paired, and nothing here
+    // is sensitive, so anyone can read it. Only deploys write it.
+    match /appConfig/{docId} {
+      allow read: if true;
+    }
+
     match /clubs/{clubId} {
       // Authenticated users can read club info to retrieve the club name during pairing.
       // Club admins can read their own club.

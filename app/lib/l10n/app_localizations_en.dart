@@ -162,4 +162,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get disconnectConfirmationButton => 'Disconnect';
+
+  @override
+  String updateCountdownMessage(int seconds) {
+    return 'Updating to the latest version in $seconds seconds. Tap anywhere to wait.';
+  }
 }

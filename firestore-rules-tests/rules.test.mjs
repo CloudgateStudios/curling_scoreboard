@@ -29,12 +29,14 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/sheets/sheet-paired'), {
     name: 'Sheet Paired', scoreboardUid: 'scoreboard-1',
   });
+  await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
   await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B', apiKey: 'secret-b' });
   await setDoc(doc(db, 'clubs/club-b/sheets/sheet-secret'), {
     name: 'Sheet Secret', scoreboardUid: 'other-device',
   });
 });
 
+const unauthed = env.unauthenticatedContext().firestore();
 const anon = env.authenticatedContext('attacker').firestore();
 const board = env.authenticatedContext('scoreboard-1').firestore();
 const pairing = env.authenticatedContext('new-device').firestore();
@@ -88,6 +90,16 @@ await check('scoreboard: save a completed game', 'allow', () =>
 await check('scoreboard: disconnect by clearing its uid', 'allow', () =>
   updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
     { scoreboardUid: deleteField() }));
+
+// --- deployment info for remote refresh ---
+await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>
+  getDoc(doc(unauthed, 'appConfig/scoreboard')));
+
+await check('attack: unauthenticated write to app config', 'deny', () =>
+  setDoc(doc(unauthed, 'appConfig/scoreboard'), { buildId: 'evil' }));
+
+await check('attack: signed in device writes app config', 'deny', () =>
+  setDoc(doc(anon, 'appConfig/scoreboard'), { buildId: 'evil' }));
 
 await env.cleanup();
 

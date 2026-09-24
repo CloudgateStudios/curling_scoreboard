@@ -194,7 +194,7 @@ packages:
     source: hosted
     version: "3.1.7"
   fake_async:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: fake_async
       sha256: "5368f224a74523e8d2e7399ea1638b37aecfca824a3cc4dfdf77bf1fa905ac44"
@@ -707,7 +707,7 @@ packages:
     source: hosted
     version: "1.2.1"
   web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: web
       sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"

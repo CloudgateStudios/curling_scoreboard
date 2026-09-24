@@ -366,6 +366,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Disconnect'**
   String get disconnectConfirmationButton;
+
+  /// Shown over game setup while the scoreboard counts down to reloading onto a newly deployed version.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating to the latest version in {seconds} seconds. Tap anywhere to wait.'**
+  String updateCountdownMessage(int seconds);
 }
 
 class _AppLocalizationsDelegate

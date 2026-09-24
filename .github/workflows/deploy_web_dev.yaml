@@ -19,7 +19,13 @@ jobs:
           flutter-version: "3.47.4"
           channel: "stable"
       - run: flutter pub get
-      - run: flutter build web --wasm -t lib/main.dart --dart-define=FIREBASE_ENV=dev
+      # The commit SHA identifies this build. Scoreboards compare it with the
+      # deployed one to know when to reload.
+      - name: Set build ID
+        run: echo "BUILD_ID=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - run: flutter build web --wasm -t lib/main.dart --dart-define=FIREBASE_ENV=dev --dart-define=BUILD_ID=$BUILD_ID
+      - name: Write build manifest
+        run: echo "{\"buildId\":\"$BUILD_ID\"}" > build/web/build.json
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
@@ -29,3 +35,15 @@ jobs:
           channelId: live
           entryPoint: .
           target: app
+      # Tell open scoreboards about the new build so they reload between games.
+      - uses: google-github-actions/auth@v3
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}"
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Notify scoreboards of new build
+        run: |
+          curl --fail-with-body -sS -X PATCH \
+            -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            -H "Content-Type: application/json" \
+            "https://firestore.googleapis.com/v1/projects/curling-scoreboard-dev/databases/(default)/documents/appConfig/scoreboard" \
+            -d "{\"fields\":{\"buildId\":{\"stringValue\":\"$BUILD_ID\"},\"deployedAt\":{\"timestampValue\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}}"
