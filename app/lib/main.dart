@@ -7,6 +7,7 @@ import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
+import 'package:curling_scoreboard/services/update_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -25,13 +26,23 @@ Future<void> main() async {
         : dev.DefaultFirebaseOptions.currentPlatform,
   );
   final prefs = await SharedPreferences.getInstance();
-  runApp(CurlingScoreboardApp(registrationService: RegistrationService(prefs)));
+  runApp(
+    CurlingScoreboardApp(
+      registrationService: RegistrationService(prefs),
+      updateService: UpdateService.forCurrentPlatform(prefs)?..start(),
+    ),
+  );
 }
 
 class CurlingScoreboardApp extends StatelessWidget {
-  const CurlingScoreboardApp({required this.registrationService, super.key});
+  const CurlingScoreboardApp({
+    required this.registrationService,
+    this.updateService,
+    super.key,
+  });
 
   final RegistrationService registrationService;
+  final UpdateService? updateService;
 
   @override
   Widget build(BuildContext context) {
@@ -42,15 +53,23 @@ class CurlingScoreboardApp extends StatelessWidget {
         colorSchemeSeed: Constants.primaryThemeColor,
         useMaterial3: true,
       ),
-      home: CurlingScoreboardScreen(registrationService: registrationService),
+      home: CurlingScoreboardScreen(
+        registrationService: registrationService,
+        updateService: updateService,
+      ),
     );
   }
 }
 
 class CurlingScoreboardScreen extends StatefulWidget {
-  const CurlingScoreboardScreen({required this.registrationService, super.key});
+  const CurlingScoreboardScreen({
+    required this.registrationService,
+    this.updateService,
+    super.key,
+  });
 
   final RegistrationService registrationService;
+  final UpdateService? updateService;
 
   @override
   State<CurlingScoreboardScreen> createState() =>
@@ -67,10 +86,15 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   Duration fullGameDuration = Duration.zero;
   List<int> secondsPerEnd = [];
 
+  /// True while the game start dialog is up, which is the only time a reload
+  /// cannot lose a game in progress.
+  bool _awaitingGameStart = false;
+
   @override
   void initState() {
     super.initState();
     _syncService = SyncService(widget.registrationService);
+    widget.updateService?.updateAvailable.addListener(_onUpdateAvailable);
 
     // Setup a dummy game object to start with, none of this is actually used
     // as we will be setting the game object in the game start dialog.
@@ -97,7 +121,19 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     Timer.run(showGameStartDialog);
   }
 
+  void _onUpdateAvailable() {
+    if (_awaitingGameStart) {
+      widget.updateService?.reloadIfUpdateAvailable();
+    }
+  }
+
   Future<void> showGameStartDialog() async {
+    // Between games is the natural point to pick up a new deployment.
+    if (widget.updateService?.reloadIfUpdateAvailable() ?? false) {
+      return;
+    }
+
+    _awaitingGameStart = true;
     final newGame = await showDialog<CurlingGame>(
       context: context,
       barrierDismissible: false,
@@ -108,6 +144,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         return const PopScope(canPop: false, child: GameStartDialog());
       },
     );
+    _awaitingGameStart = false;
 
     // The dialog blocks every dismissal route, so this should not happen.
     // Bail out rather than crashing if it somehow does.
@@ -274,6 +311,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
   @override
   void dispose() {
+    widget.updateService?.updateAvailable.removeListener(_onUpdateAvailable);
     timer?.cancel();
     super.dispose();
   }
