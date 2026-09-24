@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/main.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
+import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -210,14 +212,56 @@ void main() {
       h.service.dispose();
     }
 
-    testWidgets('reloads when an update arrives before a game starts', (
+    const quiet = Constants.updateQuietPeriod;
+    const countdown = Duration(seconds: Constants.updateCountdownSeconds);
+
+    testWidgets('counts down and reloads once game setup sits idle', (
       tester,
     ) async {
       final h = await pumpWithUpdates(tester);
 
       h.remote.add('build-2');
-      await tester.pumpAndSettle();
+      await tester.pump();
+      expect(find.byType(UpdateCountdownBanner), findsNothing);
 
+      await tester.pump(quiet);
+      expect(find.byType(UpdateCountdownBanner), findsOneWidget);
+      expect(
+        find.text(
+          'Updating to the latest version in 15 seconds. '
+          'Tap anywhere to wait.',
+        ),
+        findsOneWidget,
+      );
+      expect(h.reloads, 0);
+
+      await tester.pump(countdown);
+      expect(h.reloads, 1);
+      expect(find.byType(UpdateCountdownBanner), findsNothing);
+      await disposeApp(tester, h);
+    });
+
+    testWidgets('a tap during the countdown holds off the reload', (
+      tester,
+    ) async {
+      final h = await pumpWithUpdates(tester);
+      h.remote.add('build-2');
+      await tester.pump();
+      await tester.pump(quiet + const Duration(seconds: 10));
+      expect(find.byType(UpdateCountdownBanner), findsOneWidget);
+
+      await tester.tap(find.text('10'));
+      await tester.pump();
+      expect(find.byType(UpdateCountdownBanner), findsNothing);
+
+      // The earlier countdown would have finished by now.
+      await tester.pump(countdown);
+      expect(h.reloads, 0);
+
+      // Left alone again, it goes through the full quiet period first.
+      await tester.pump(quiet - countdown);
+      expect(find.byType(UpdateCountdownBanner), findsOneWidget);
+      await tester.pump(countdown);
       expect(h.reloads, 1);
       await disposeApp(tester, h);
     });
@@ -230,18 +274,20 @@ void main() {
       await tester.pumpAndSettle();
 
       h.remote.add('build-2');
-      await tester.pump();
+      await tester.pump(quiet + countdown);
       expect(h.reloads, 0);
 
       await tester.tap(find.byIcon(Icons.sports_score));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Yes'));
       await tester.pumpAndSettle();
+      await tester.pump(quiet + countdown);
       expect(h.reloads, 0);
 
       // Dismissing the game end dialog heads back to game start.
       await tester.tap(find.text('Dismiss'));
       await tester.pumpAndSettle();
+      await tester.pump(quiet + countdown);
       expect(h.reloads, 1);
       await disposeApp(tester, h);
     });

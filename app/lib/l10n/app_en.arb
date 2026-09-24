@@ -219,5 +219,15 @@
   "disconnectConfirmationButton": "Disconnect",
   "@disconnectConfirmationButton": {
     "description": "Button label to confirm disconnecting from the club."
+  },
+  "updateCountdownMessage": "Updating to the latest version in {seconds} seconds. Tap anywhere to wait.",
+  "@updateCountdownMessage": {
+    "description": "Shown over game setup while the scoreboard counts down to reloading onto a newly deployed version.",
+    "placeholders": {
+      "seconds": {
+        "type": "int",
+        "example": "15"
+      }
+    }
   }
 }

@@ -10,6 +10,7 @@ import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -90,11 +91,16 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   /// cannot lose a game in progress.
   bool _awaitingGameStart = false;
 
+  Timer? _updateTimer;
+  OverlayEntry? _updateBanner;
+  final _updateCountdown = ValueNotifier<int>(0);
+
   @override
   void initState() {
     super.initState();
     _syncService = SyncService(widget.registrationService);
-    widget.updateService?.updateAvailable.addListener(_onUpdateAvailable);
+    widget.updateService?.updateAvailable.addListener(_scheduleUpdateReload);
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
 
     // Setup a dummy game object to start with, none of this is actually used
     // as we will be setting the game object in the game start dialog.
@@ -121,19 +127,51 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     Timer.run(showGameStartDialog);
   }
 
-  void _onUpdateAvailable() {
-    if (_awaitingGameStart) {
-      widget.updateService?.reloadIfUpdateAvailable();
+  /// Any touch while a reload is pending starts the quiet period over.
+  void _onGlobalPointer(PointerEvent event) {
+    if (event is PointerDownEvent && _updateTimer != null) {
+      _scheduleUpdateReload();
     }
   }
 
-  Future<void> showGameStartDialog() async {
-    // Between games is the natural point to pick up a new deployment.
-    if (widget.updateService?.reloadIfUpdateAvailable() ?? false) {
-      return;
-    }
+  /// Arms the reload onto a new build, if one is available and no game is in
+  /// progress. Between games is the natural point to pick it up.
+  void _scheduleUpdateReload() {
+    _cancelUpdateReload();
+    final updates = widget.updateService;
+    if (!_awaitingGameStart || updates == null || !updates.canReload) return;
 
+    _updateTimer = Timer(Constants.updateQuietPeriod, _startUpdateCountdown);
+  }
+
+  void _startUpdateCountdown() {
+    _updateCountdown.value = Constants.updateCountdownSeconds;
+    _updateBanner = OverlayEntry(
+      builder: (context) =>
+          UpdateCountdownBanner(secondsLeft: _updateCountdown),
+    );
+    Overlay.of(context).insert(_updateBanner!);
+
+    _updateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateCountdown.value--;
+      if (_updateCountdown.value > 0) return;
+      _cancelUpdateReload();
+      widget.updateService?.reloadIfUpdateAvailable();
+    });
+  }
+
+  void _cancelUpdateReload() {
+    _updateTimer?.cancel();
+    _updateTimer = null;
+    _updateBanner
+      ?..remove()
+      ..dispose();
+    _updateBanner = null;
+  }
+
+  Future<void> showGameStartDialog() async {
     _awaitingGameStart = true;
+    _scheduleUpdateReload();
     final newGame = await showDialog<CurlingGame>(
       context: context,
       barrierDismissible: false,
@@ -145,6 +183,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       },
     );
     _awaitingGameStart = false;
+    _cancelUpdateReload();
 
     // The dialog blocks every dismissal route, so this should not happen.
     // Bail out rather than crashing if it somehow does.
@@ -311,7 +350,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
   @override
   void dispose() {
-    widget.updateService?.updateAvailable.removeListener(_onUpdateAvailable);
+    widget.updateService?.updateAvailable.removeListener(_scheduleUpdateReload);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
+    _cancelUpdateReload();
+    _updateCountdown.dispose();
     timer?.cancel();
     super.dispose();
   }

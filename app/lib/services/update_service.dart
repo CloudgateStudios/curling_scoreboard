@@ -122,21 +122,28 @@ class UpdateService {
     updateAvailable.value = _targetBuildId != null;
   }
 
-  /// Reloads the page if a newer build is available. Call this only when
-  /// nothing would be lost, such as when no game is in progress.
-  ///
-  /// Returns true if a reload was started.
-  bool reloadIfUpdateAvailable() {
+  /// True when a newer build is available and a reload for it has not just
+  /// been attempted.
+  bool get canReload {
     final target = _targetBuildId;
     if (target == null) return false;
 
     final lastTarget = _prefs.getString(_lastReloadTargetKey);
     final lastAtMillis = _prefs.getInt(_lastReloadAtKey);
+    if (lastTarget != target || lastAtMillis == null) return true;
+
+    final lastAt = DateTime.fromMillisecondsSinceEpoch(lastAtMillis);
+    return _clock().difference(lastAt) >= retryReloadAfter;
+  }
+
+  /// Reloads the page if a newer build is available. Call this only when
+  /// nothing would be lost, such as when no game is in progress.
+  ///
+  /// Returns true if a reload was started.
+  bool reloadIfUpdateAvailable() {
+    if (!canReload) return false;
+    final target = _targetBuildId!;
     final now = _clock();
-    if (lastTarget == target && lastAtMillis != null) {
-      final lastAt = DateTime.fromMillisecondsSinceEpoch(lastAtMillis);
-      if (now.difference(lastAt) < retryReloadAfter) return false;
-    }
 
     // Record the attempt before reloading. The writes land in local storage
     // synchronously on web, so they survive the reload.

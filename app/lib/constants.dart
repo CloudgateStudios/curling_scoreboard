@@ -19,4 +19,10 @@ class Constants {
   static const int minutesPerEndFourPlayers = 15;
   static const int minutesPerEndTwoPlayers = 12;
   static const int curlingClubLayoutMaxScore = 12;
+
+  // Remote Refresh
+  // How long the scoreboard must go untouched before counting down to a
+  // reload, so it does not reset game setup while someone is using it.
+  static const Duration updateQuietPeriod = Duration(minutes: 2);
+  static const int updateCountdownSeconds = 15;
 }
