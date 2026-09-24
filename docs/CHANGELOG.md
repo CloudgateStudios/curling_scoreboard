@@ -1,6 +1,12 @@
 Changelog
 
 
+## [0.0.45](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.44...0.0.45) (2026-09-24)
+
+### Features
+
+* reload scoreboards remotely after a web deploy ([#283](https://github.com/CloudgateStudios/curling_scoreboard/issues/283)) ([b8a2444](https://github.com/CloudgateStudios/curling_scoreboard/commit/b8a2444eda6137a931324d31a2dbf7c5641fcbb1))
+
 ## [0.0.44](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.43...0.0.44) (2026-09-23)
 
 ### Features
