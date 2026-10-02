@@ -8,7 +8,7 @@ environment:
 dependencies:
   cloud_firestore: ^6.10.0
   # Not actually used, but needed to suppress warnings. Gets tree shaken out at build time.
-  cupertino_icons: ^1.0.9
+  cupertino_icons: ^2.0.0
   firebase_auth: ^6.7.0
   firebase_core: ^4.15.0
   flutter:
