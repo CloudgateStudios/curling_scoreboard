@@ -33,6 +33,14 @@ components:
       name: X-API-Key
       description: Per-club API key. Include in every request as the `X-API-Key` header.
 
+  responses:
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   schemas:
     Error:
       type: object
@@ -129,18 +137,28 @@ components:
           minimum: 1
           example: 3
         scoringTeam:
-          type: string
-          nullable: true
-          description: Name of the team that scored, or null for a blank end.
+          type: [string, 'null']
+          description: |
+            Name of the team that scored, or null for a blank end. Ambiguous when
+            both teams share a name, so prefer `scoringTeamSlot` when it is present.
           example: Red
+        scoringTeamSlot:
+          type: [string, 'null']
+          enum: [team1, team2, null]
+          description: |
+            Which team scored, or null for a blank end. Absent on games recorded
+            before this field was added.
+          example: team1
         score:
           type: integer
           minimum: 0
           example: 2
         gameTimeInSeconds:
           type: integer
-          minimum: 0
-          description: Elapsed game time at the end of this end, in seconds.
+          minimum: -1
+          description: |
+            Elapsed game time at the end of this end, in seconds. -1 on ends recorded
+            before the game clock existed.
           example: 1620
 
     Game:
@@ -212,6 +230,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /clubs/{clubId}/sheets/{sheetId}:
     get:
@@ -261,6 +281,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   /clubs/{clubId}/sheets/{sheetId}/games:
     get:
@@ -330,3 +352,5 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'

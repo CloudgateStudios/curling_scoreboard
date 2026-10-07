@@ -36,15 +36,17 @@ jobs:
       # commit-and-tag-version is the maintained fork of the deprecated standard-version
       - name: Install release tooling
         run: |
-          npm i -g commit-and-tag-version@13 standard-changelog@8
-
-      - name: Generate release notes only
-        run: |
-          rm docs/RELEASE_NOTES.md && touch docs/RELEASE_NOTES.md
-          standard-changelog -i docs/RELEASE_NOTES.md -o docs/RELEASE_NOTES.md
+          npm i -g commit-and-tag-version@13
 
       - name: Run commit-and-tag-version
         run: commit-and-tag-version
+
+      # The release notes are the newest changelog section, which
+      # commit-and-tag-version has just written with the new version in its
+      # heading. Generating them separately left the version out, as there is
+      # no package.json to read it from.
+      - name: Write release notes
+        run: awk '/^##+ \[/ { if (found) exit; found = 1 } found' docs/CHANGELOG.md > docs/RELEASE_NOTES.md
 
       - name: Get/Set Tag
         run: |
