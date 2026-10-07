@@ -24,7 +24,7 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.23.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.47.4"
           channel: "stable"
@@ -132,7 +132,7 @@ jobs:
           done
 
       - name: Make GitHub release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
           bodyFile: docs/RELEASE_NOTES.md
           tag: ${{ env.tag }}

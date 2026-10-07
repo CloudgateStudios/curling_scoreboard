@@ -12,7 +12,7 @@ import fs from 'fs';
 const rules = fs.readFileSync(process.argv[2] ?? new URL('../firestore.rules', import.meta.url), 'utf8');
 
 const env = await initializeTestEnvironment({
-  projectId: 'rules-test',
+  projectId: 'demo-rules',
   firestore: { rules, host: '127.0.0.1', port: 8080 },
 });
 
