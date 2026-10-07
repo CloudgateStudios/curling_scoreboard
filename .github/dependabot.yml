@@ -41,6 +41,15 @@ updates:
           - "*"
 
   - package-ecosystem: "npm"
+    directory: "/emulator-tests"
+    schedule:
+      interval: "weekly"
+    groups:
+      emulator-tests:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
     directory: "/scripts"
     schedule:
       interval: "weekly"

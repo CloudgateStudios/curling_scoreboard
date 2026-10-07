@@ -9,11 +9,14 @@
     "test:functions": "npm run build --prefix ../functions && cd .. && firebase emulators:exec --only firestore,auth,functions --project demo-functions \"node --test emulator-tests/functions.test.mjs\""
   },
   "dependencies": {
-    "@firebase/rules-unit-testing": "^4.0.1",
-    "firebase": "^11.0.0"
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0"
   },
   "devDependencies": {
     "firebase-admin": "^14.5.0",
     "firebase-tools": "^15.32.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.5"
   }
 }
