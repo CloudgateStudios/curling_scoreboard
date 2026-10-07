@@ -47,9 +47,8 @@ app.*.map.json
 /android/app/release
 /.firebase
 
-# FVM
-.fvm/*
-!.fvm/fvm_config.json
+# FVM (the pinned version lives in app/.fvmrc)
+**/.fvm/
 
 # TypeScript incremental build info is a build artifact
 admin/tsconfig.tsbuildinfo

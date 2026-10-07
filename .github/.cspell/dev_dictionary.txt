@@ -3,9 +3,11 @@ clubadmin
 cupertino
 firebaseapp
 firestore
+fvmrc
 ltrb
 notmain
 prefs
+pubspec
 subcollection
 subshell
 superadmin

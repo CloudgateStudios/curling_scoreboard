@@ -14,10 +14,15 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 
 ## Prerequisites
 
-- [Flutter](https://docs.flutter.dev/get-started/install) 3.47.4 (stable)
+- [Flutter](https://docs.flutter.dev/get-started/install) 3.47.4. The version is set by `environment.flutter` in `app/pubspec.yaml`, which CI reads too. With [FVM](https://fvm.app), run `fvm install` in `app/` to get it (`app/.fvmrc`).
 - [Node.js](https://nodejs.org/) 22 (see `.nvmrc`)
+- [Java](https://adoptium.net/) 21 or later, only for running the emulator tests
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
+
+The dev container in `.devcontainer/` comes with Flutter, Node and Java installed.
+
+To move to a new Flutter version, update `app/pubspec.yaml`, `app/.fvmrc` and `FLUTTER_VERSION` in `.devcontainer/Dockerfile`.
 
 ---
 
