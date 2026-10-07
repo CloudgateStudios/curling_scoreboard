@@ -15,7 +15,7 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 ## Prerequisites
 
 - [Flutter](https://docs.flutter.dev/get-started/install) 3.47.4 (stable)
-- [Node.js](https://nodejs.org/) 20
+- [Node.js](https://nodejs.org/) 22 (see `.nvmrc`)
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
 
@@ -38,11 +38,13 @@ firebase use default   # targets curling-scoreboard-dev
 
 ### 3. Install dependencies
 
+From the repo root:
+
 ```bash
-cd app && flutter pub get
-cd admin && npm install
-cd functions && npm install
-cd scripts && npm install
+(cd app && flutter pub get)
+(cd admin && npm install)
+(cd functions && npm install)
+(cd scripts && npm install)
 ```
 
 ---
@@ -110,11 +112,35 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node migrate-api-keys.js  # prod
 
 ---
 
+## Admin accounts
+
+### Creating the first super admin
+
+Super admins manage every club in the admin portal. The `setSuperAdminClaim` function can only be called by an existing super admin, so the first one in a project is created with a script. Create the user first (Firebase console → Authentication → Add user), then:
+
+```bash
+cd scripts
+node set-super-admin.js someone@example.com                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node set-super-admin.js someone@example.com  # prod
+```
+
+The user has to sign out and back in to the admin portal before the new role takes effect. Club admins are created from the admin portal by a super admin.
+
+---
+
 ## Deployments
 
-### PR previews
+### PR checks
 
-Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow, which runs formatting, analysis, type checking, tests, and spell checking per product (only for products whose files changed). Once checks pass, a preview build is deployed to a temporary Firebase Hosting channel and linked on the PR.
+Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow. It always checks that the PR title follows the conventional commit format and spell checks the repo. The product checks only run when that product's files changed:
+
+| Product      | Checks                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------- |
+| `app/`       | Formatting, analysis, web build, tests, Android release build, unused localized strings |
+| `admin/`     | Type checking, lint, build                                                              |
+| `functions/` | Build                                                                                   |
+
+Nothing is deployed from a PR; deploys start once it merges to `main`.
 
 ### Dev
 
@@ -139,3 +165,26 @@ Then trigger each prod workflow manually, entering the version tag (e.g. `0.0.37
 | [deploy_functions_prod](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_prod.yaml) | Cloud Functions + Firestore rules |
 
 Each workflow checks out the exact tag and deploys it to the live prod environment (`curling-scoreboard-prod`).
+
+### Adding a new callable Cloud Function
+
+Callable functions (`onCall`) must be callable by anyone, because each one checks the caller itself. The Google Cloud organization that owns both projects blocks public access by default, through the "Domain restricted sharing" organization policy (`iam.allowedPolicyMemberDomains`). Both Firebase projects override it to allow public access. Without that override, deploying a new function fails with "Unable to set the invoker for the IAM policy", and later deploys skip the function as unchanged, leaving it unreachable.
+
+If a new project is ever added, override the policy there before deploying functions:
+
+```bash
+cat > /tmp/allow-public.yaml <<'EOF'
+name: projects/PROJECT_ID/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+  - allowAll: true
+EOF
+gcloud org-policies set-policy /tmp/allow-public.yaml
+```
+
+To fix a function that was already deployed without public access:
+
+```bash
+gcloud functions add-invoker-policy-binding FUNCTION_NAME \
+  --region=us-central1 --member=allUsers --project=PROJECT_ID
+```

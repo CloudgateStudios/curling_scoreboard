@@ -66,7 +66,7 @@
         }
       },
       "dart": {
-        "lib/firebase_options.dart": {
+        "lib/firebase_options_dev.dart": {
           "projectId": "curling-scoreboard-dev",
           "configurations": {
             "android": "1:233388384349:android:49cb58e9fc227bb4076db4",

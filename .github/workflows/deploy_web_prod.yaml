@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  deploy-dev:
+  deploy-prod:
     runs-on: ubuntu-latest
     name: Deploy App - Web - Prod
     defaults:
@@ -35,7 +35,6 @@ jobs:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}"
           projectId: curling-scoreboard-prod
-          expires: 30d
           channelId: live
           entryPoint: .
           target: app
