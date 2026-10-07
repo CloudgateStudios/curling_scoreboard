@@ -130,6 +130,51 @@ describe('REST API key check', () => {
   });
 });
 
+describe('REST API CORS', () => {
+  const origin = 'https://club.example';
+
+  test('answers a preflight for GET with the X-API-Key header', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: origin,
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'x-api-key',
+      },
+    });
+    assert.ok(res.status >= 200 && res.status < 300, `status ${res.status}`);
+    assert.equal(res.headers.get('access-control-allow-origin'), '*');
+
+    const methods = (res.headers.get('access-control-allow-methods') ?? '').toUpperCase().split(/\s*,\s*/);
+    assert.ok(methods.includes('GET'), `methods ${methods}`);
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      assert.ok(!methods.includes(method), `methods ${methods}`);
+    }
+
+    const headers = (res.headers.get('access-control-allow-headers') ?? '').toLowerCase().split(/\s*,\s*/);
+    assert.ok(headers.includes('x-api-key'), `headers ${headers}`);
+    assert.match(res.headers.get('access-control-max-age') ?? '', /^\d+$/);
+    assert.equal(res.headers.get('access-control-allow-credentials'), null);
+  });
+
+  test('allows any origin to read a successful response', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a`, {
+      headers: { Origin: origin, 'x-api-key': 'key-a' },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('access-control-allow-origin'), '*');
+    assert.equal(res.headers.get('access-control-allow-credentials'), null);
+  });
+
+  test('allows any origin to read an error response', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a`, {
+      headers: { Origin: origin, 'x-api-key': 'key-b' },
+    });
+    assert.equal(res.status, 403);
+    assert.equal(res.headers.get('access-control-allow-origin'), '*');
+  });
+});
+
 describe('provisionClub', () => {
   const request = {
     clubName: 'New Club',

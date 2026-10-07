@@ -8,6 +8,11 @@ info:
     All endpoints require a valid `X-API-Key` header. API keys are scoped per club —
     contact your club administrator to obtain one.
 
+    The API can be called from any origin (CORS), so a web page can fetch it
+    directly from the browser. A key used in browser code is visible to anyone who
+    views the page; integrations that need to keep their key private should call
+    the API from a server instead.
+
 servers:
   - url: https://curling-scoreboard-prod.web.app/api/v1
     description: Production

@@ -142,6 +142,13 @@ Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is
 `app/web/openapi.yaml`, rendered at `/api-docs/` on the same site.
 
+Club websites and display pages are expected to call the API from the
+browser, so it allows any origin (`Access-Control-Allow-Origin: *`) for `GET`
+with the `X-API-Key` header, never with credentials, and lets browsers cache
+the preflight for a day. A key used in browser code is visible to anyone who
+views the page; an integration that needs to keep its key private should call
+the API from a server.
+
 ## Reloading scoreboards after a web deploy
 
 Scoreboards are left open for weeks, so the web app reloads itself onto new
