@@ -1,7 +1,6 @@
 export interface Club {
   id: string;
   name: string;
-  apiKey: string;
 }
 
 export interface Sheet {

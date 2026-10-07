@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "seed-dev": "node seed-dev.js"
+    "seed-dev": "node seed-dev.js",
+    "migrate-api-keys": "node migrate-api-keys.js"
   },
   "dependencies": {
     "firebase-admin": "^14.0.0"

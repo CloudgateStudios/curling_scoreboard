@@ -97,6 +97,16 @@ To target a different project:
 FIREBASE_PROJECT_ID=my-other-project node seed-dev.js
 ```
 
+### Migrating API keys
+
+Club API keys live at `clubs/{clubId}/private/apiKey`, readable only by that club's admins. Older clubs kept the key on the club document itself, which any signed in client could read. After deploying the rules and functions that use the new location, run the one-off migration once per project. It gives every club a new key and deletes the old field:
+
+```bash
+cd scripts
+node migrate-api-keys.js                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node migrate-api-keys.js  # prod
+```
+
 ---
 
 ## Deployments

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
+import { apiKeyRef, apiKeysMatch } from '../apiKeys';
 
 export async function validateApiKey(
   req: Request,
@@ -14,10 +15,10 @@ export async function validateApiKey(
 
   try {
     const clubId = req.params['clubId'] as string;
-    const clubSnap = await getFirestore()
-      .collection('clubs')
-      .doc(clubId)
-      .get();
+    const [clubSnap, keySnap] = await Promise.all([
+      getFirestore().collection('clubs').doc(clubId).get(),
+      apiKeyRef(clubId).get(),
+    ]);
 
     if (!clubSnap.exists) {
       res.status(404).json({ error: 'Club not found' });
@@ -25,7 +26,8 @@ export async function validateApiKey(
     }
 
     const clubData = clubSnap.data()!;
-    if (clubData['apiKey'] !== apiKey) {
+    const expected = keySnap.get('key') as string | undefined;
+    if (!expected || !apiKeysMatch(expected, apiKey)) {
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }

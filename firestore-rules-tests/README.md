@@ -39,18 +39,22 @@ firebase emulators:exec --only firestore --project rules-test \
 
 Access the app depends on:
 
-- the pairing `collectionGroup` query filtered by pairing code
-- a device claiming a sheet for itself
-- reading the club document for its name during pairing
 - a paired scoreboard pushing `liveGame` and writing a completed game
 - a paired scoreboard clearing its own uid on disconnect
+- a club admin reading their own club and its API key
+- anyone reading `appConfig/scoreboard` to pick up new builds
 
 Access that must stay denied:
 
-- an unfiltered `collectionGroup` query over every sheet
+- any client `collectionGroup` query over sheets, filtered or not (pairing
+  runs in the `pairSheet` Cloud Function instead)
+- claiming a sheet directly, for yourself or another uid
 - reading another club's paired sheet directly
-- claiming an open sheet on behalf of a different uid
 - reassigning a paired sheet to another device
+- reading or listing club documents without being that club's admin
+- reading any club's API key without being its admin, or a club admin
+  changing their own key
+- writing `appConfig`
 
 The script exits non-zero if any expectation is not met, so it can be wired
 into CI later. That needs a Java runtime on the runner, which is why it is not

@@ -1,7 +1,7 @@
 import { getFirestore, DocumentReference } from 'firebase-admin/firestore';
 import { getAuth, DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import crypto from 'crypto';
+import { apiKeyRef, generateApiKey } from './apiKeys';
 
 function requireSuperAdmin(auth: { token: DecodedIdToken } | undefined) {
   if (!auth || auth.token['role'] !== 'superadmin') {
@@ -24,8 +24,6 @@ export const provisionClub = onCall(async (request) => {
     throw new HttpsError('invalid-argument', 'clubName, adminEmail and adminPassword are required.');
   }
 
-  const apiKey = crypto.randomBytes(16).toString('hex');
-
   let clubRef: DocumentReference;
   if (clubId) {
     clubRef = getFirestore().collection('clubs').doc(clubId);
@@ -33,10 +31,12 @@ export const provisionClub = onCall(async (request) => {
     if (existing.exists) {
       throw new HttpsError('already-exists', `A club with id "${clubId}" already exists.`);
     }
-    await clubRef.set({ name: clubName, apiKey });
+    await clubRef.set({ name: clubName });
   } else {
-    clubRef = await getFirestore().collection('clubs').add({ name: clubName, apiKey });
+    clubRef = await getFirestore().collection('clubs').add({ name: clubName });
   }
+
+  await apiKeyRef(clubRef.id).set({ key: generateApiKey() });
 
   // Create the Firebase Auth user
   let userRecord: UserRecord;
@@ -48,7 +48,7 @@ export const provisionClub = onCall(async (request) => {
     });
   } catch (err) {
     // Roll back the club doc if user creation fails
-    await clubRef.delete();
+    await Promise.all([clubRef.delete(), apiKeyRef(clubRef.id).delete()]);
     throw new HttpsError('already-exists', `Could not create user: ${(err as Error).message}`);
   }
 
