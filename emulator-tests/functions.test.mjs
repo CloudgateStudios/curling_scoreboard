@@ -43,6 +43,8 @@ async function userWithClaims(email, claims) {
   return clientFor((auth) => signInWithEmailAndPassword(auth, email, 'password123'));
 }
 
+const superAdmin = (email) => userWithClaims(email, { role: 'superadmin', clubId: null });
+
 async function rejectsWith(promise, code) {
   await assert.rejects(promise, (err) => {
     assert.equal(err.code, code);
@@ -155,5 +157,111 @@ describe('provisionClub', () => {
     const admin = await adminAuth.getUserByEmail(request.adminEmail);
     assert.deepEqual(admin.customClaims, { role: 'clubadmin', clubId: 'new-club' });
     assert.ok((await db.doc(`clubs/new-club/admins/${admin.uid}`).get()).exists);
+  });
+
+  test('reports a taken email as already-exists and rolls back the club', async () => {
+    await adminAuth.createUser({ email: 'taken@provision.example', password: 'password123' });
+    const caller = await superAdmin('super-taken@example.com');
+    await rejectsWith(caller.call('provisionClub', {
+      clubName: 'Taken Club',
+      clubId: 'taken-club',
+      adminEmail: 'taken@provision.example',
+      adminPassword: 'password123',
+    }), 'functions/already-exists');
+
+    assert.equal((await db.doc('clubs/taken-club').get()).exists, false);
+    assert.equal((await db.doc('clubs/taken-club/private/apiKey').get()).exists, false);
+  });
+
+  test('reports a malformed email as invalid-argument and rolls back the club', async () => {
+    const caller = await superAdmin('super-bad-email@example.com');
+    await rejectsWith(caller.call('provisionClub', {
+      clubName: 'Bad Email Club',
+      clubId: 'bad-email-club',
+      adminEmail: 'not-an-email',
+      adminPassword: 'password123',
+    }), 'functions/invalid-argument');
+
+    assert.equal((await db.doc('clubs/bad-email-club').get()).exists, false);
+    assert.equal((await db.doc('clubs/bad-email-club/private/apiKey').get()).exists, false);
+  });
+
+  test('rejects a short password before creating anything', async () => {
+    const caller = await superAdmin('super-short-pw@example.com');
+    await rejectsWith(caller.call('provisionClub', {
+      clubName: 'Short Password Club',
+      clubId: 'short-pw-club',
+      adminEmail: 'admin@short-pw.example',
+      adminPassword: 'short',
+    }), 'functions/invalid-argument');
+
+    assert.equal((await db.doc('clubs/short-pw-club').get()).exists, false);
+    await rejectsWith(adminAuth.getUserByEmail('admin@short-pw.example'), 'auth/user-not-found');
+  });
+
+  test('rejects a club ID outside the allowed pattern', async () => {
+    const caller = await superAdmin('super-bad-id@example.com');
+    await rejectsWith(caller.call('provisionClub', {
+      clubName: 'Bad Id Club',
+      clubId: 'Bad Id/Club',
+      adminEmail: 'admin@bad-id.example',
+      adminPassword: 'password123',
+    }), 'functions/invalid-argument');
+
+    await rejectsWith(adminAuth.getUserByEmail('admin@bad-id.example'), 'auth/user-not-found');
+  });
+});
+
+describe('addClubAdmin', () => {
+  test('is limited to super admins', async () => {
+    const clubAdmin = await userWithClaims('admin2@club-a.example', { role: 'clubadmin', clubId: 'club-a' });
+    await rejectsWith(clubAdmin.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminEmail: 'denied@club-a.example',
+      adminPassword: 'password123',
+    }), 'functions/permission-denied');
+  });
+
+  test('rejects an unknown club', async () => {
+    const caller = await superAdmin('super-add-missing@example.com');
+    await rejectsWith(caller.call('addClubAdmin', {
+      clubId: 'no-such-club',
+      adminEmail: 'admin@no-such-club.example',
+      adminPassword: 'password123',
+    }), 'functions/not-found');
+  });
+
+  test('creates the admin with club claims and an admins doc', async () => {
+    const caller = await superAdmin('super-add@example.com');
+    const result = await caller.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminEmail: 'second-admin@club-a.example',
+      adminPassword: 'password123',
+    });
+
+    const admin = await adminAuth.getUserByEmail('second-admin@club-a.example');
+    assert.equal(result.data.uid, admin.uid);
+    assert.deepEqual(admin.customClaims, { role: 'clubadmin', clubId: 'club-a' });
+    const doc = await db.doc(`clubs/club-a/admins/${admin.uid}`).get();
+    assert.equal(doc.get('email'), 'second-admin@club-a.example');
+  });
+
+  test('reports a taken email as already-exists', async () => {
+    await adminAuth.createUser({ email: 'taken@add-admin.example', password: 'password123' });
+    const caller = await superAdmin('super-add-taken@example.com');
+    await rejectsWith(caller.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminEmail: 'taken@add-admin.example',
+      adminPassword: 'password123',
+    }), 'functions/already-exists');
+  });
+
+  test('rejects a short password', async () => {
+    const caller = await superAdmin('super-add-short@example.com');
+    await rejectsWith(caller.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminEmail: 'short@add-admin.example',
+      adminPassword: 'short',
+    }), 'functions/invalid-argument');
   });
 });
