@@ -19,14 +19,14 @@
  */
 
 const crypto = require('crypto');
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'curling-scoreboard-dev';
 
-admin.initializeApp({ projectId: PROJECT_ID });
+initializeApp({ projectId: PROJECT_ID });
 
-const db = admin.firestore();
-const { FieldValue } = admin.firestore;
+const db = getFirestore();
 
 async function migrate() {
   console.log(`Migrating API keys in project: ${PROJECT_ID}\n`);

@@ -103,6 +103,7 @@ Club API keys live at `clubs/{clubId}/private/apiKey`, readable only by that clu
 
 ```bash
 cd scripts
+npm install
 node migrate-api-keys.js                                              # dev
 FIREBASE_PROJECT_ID=curling-scoreboard-prod node migrate-api-keys.js  # prod
 ```

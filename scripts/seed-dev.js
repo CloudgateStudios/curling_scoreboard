@@ -17,14 +17,14 @@
  * Running it again appends additional game documents to each sheet.
  */
 
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'curling-scoreboard-dev';
 
-admin.initializeApp({ projectId: PROJECT_ID });
+initializeApp({ projectId: PROJECT_ID });
 
-const db = admin.firestore();
-const { Timestamp } = admin.firestore;
+const db = getFirestore();
 
 // ---------------------------------------------------------------------------
 // Club + sheet definitions
