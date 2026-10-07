@@ -111,6 +111,9 @@ and clears the saved values. Scoring carries on locally either way.
 Writes are fire and forget, so a failed write never interrupts scoring, and
 Firestore's offline cache sends them once the connection is back.
 
+`GameController`, which holds the game on the scoreboard, makes the calls at
+these points:
+
 | Event in the app         | Firestore write                                           |
 | ------------------------ | --------------------------------------------------------- |
 | A score is entered or edited | Overwrite `liveGame` on the sheet                     |
