@@ -3,17 +3,8 @@ import { collection, doc, onSnapshot, orderBy, query, limit, getDoc } from 'fire
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { Game } from '../types';
-import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
+import { GameCard } from '../components/GameCard';
 import styles from './GameHistory.module.css';
-
-function formatDuration(seconds: number): string {
-  // Ends recorded before the game clock existed carry a -1 sentinel, which
-  // would otherwise render as "-1m".
-  if (!Number.isFinite(seconds) || seconds < 0) return '—';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
 
 export function GameHistory() {
   // Super admin route: /clubs/:clubId/sheets/:sheetId/games
@@ -91,66 +82,14 @@ export function GameHistory() {
 
       <div className={styles.gameList}>
         {games.map((game) => (
-          <div key={game.id} className={styles.gameCard}>
-            <button
-              className={styles.gameHeader}
-              onClick={() => setExpandedId(expandedId === game.id ? null : game.id)}
-            >
-              <div className={styles.gameScore}>
-                <span className={game.team1.totalScore > game.team2.totalScore ? styles.winnerName : styles.loserName}>
-                  {game.team1.name}
-                </span>
-                <span className={styles.scoreDisplay}>
-                  {game.team1.totalScore} – {game.team2.totalScore}
-                </span>
-                <span className={game.team2.totalScore > game.team1.totalScore ? styles.winnerName : styles.loserName}>
-                  {game.team2.name}
-                </span>
-              </div>
-              <div className={styles.gameMeta}>
-                <span>{game.finishedAt.toLocaleDateString()}</span>
-                {game.ends.length > 0 && (
-                  <span>{formatDuration(game.ends[game.ends.length - 1].gameTimeInSeconds)}</span>
-                )}
-                <span>{game.numberOfEnds} ends</span>
-                <span className={styles.expandIcon}>{expandedId === game.id ? '▲' : '▼'}</span>
-              </div>
-            </button>
-
-            {expandedId === game.id && (
-              <div className={styles.endsTable}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>End</th>
-                      {game.ends.map((e: Game['ends'][number]) => <th key={e.endNumber}>{e.endNumber}</th>)}
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className={styles.teamLabel}>{game.team1.name}</td>
-                      {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={endScoredBy(e, 'team1', game) ? styles.scoringEnd : ''}>
-                          {endScoreLabel(e, 'team1', game)}
-                        </td>
-                      ))}
-                      <td className={styles.totalCell}>{game.team1.totalScore}</td>
-                    </tr>
-                    <tr>
-                      <td className={styles.teamLabel}>{game.team2.name}</td>
-                      {game.ends.map((e: Game['ends'][number]) => (
-                        <td key={e.endNumber} className={endScoredBy(e, 'team2', game) ? styles.scoringEnd : ''}>
-                          {endScoreLabel(e, 'team2', game)}
-                        </td>
-                      ))}
-                      <td className={styles.totalCell}>{game.team2.totalScore}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <GameCard
+            key={game.id}
+            game={game}
+            styles={styles}
+            expanded={expandedId === game.id}
+            onToggle={() => setExpandedId(expandedId === game.id ? null : game.id)}
+            meta={<span>{game.finishedAt.toLocaleDateString()}</span>}
+          />
         ))}
         {games.length === 0 && <p className={styles.empty}>No completed games for this sheet yet.</p>}
       </div>
