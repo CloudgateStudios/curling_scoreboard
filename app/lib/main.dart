@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/controllers/controllers.dart';
 import 'package:curling_scoreboard/firebase_options_dev.dart' as dev;
 import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/l10n.dart';
@@ -78,14 +79,9 @@ class CurlingScoreboardScreen extends StatefulWidget {
 }
 
 class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
-  late CurlingGame gameObject;
-  late final SyncService _syncService;
+  late final GameController _gameController;
 
-  Timer? timer;
-  int totalTimerSeconds = 0;
-  int overUnderInSeconds = 0;
-  Duration fullGameDuration = Duration.zero;
-  List<int> secondsPerEnd = [];
+  CurlingGame get gameObject => _gameController.game;
 
   /// True while the game start dialog is up, which is the only time a reload
   /// cannot lose a game in progress.
@@ -98,34 +94,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   @override
   void initState() {
     super.initState();
-    _syncService = SyncService(widget.registrationService);
+    _gameController = GameController(
+      syncService: SyncService(widget.registrationService),
+    )..addListener(_onGameChanged);
     widget.updateService?.updateAvailable.addListener(_scheduleUpdateReload);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
-
-    // Setup a dummy game object to start with, none of this is actually used
-    // as we will be setting the game object in the game start dialog.
-    gameObject = CurlingGame(
-      team1: CurlingTeam(
-        name: 'Red',
-        color: Constants.redTeamColor,
-        textColor: Constants.textHighContrastColor,
-        hasHammer: false,
-      ),
-      team2: CurlingTeam(
-        name: 'Yellow',
-        color: Constants.yellowTeamColor,
-        textColor: Constants.textDefaultColor,
-        hasHammer: true,
-        hadLastStoneFirstEnd: true,
-      ),
-      numberOfEnds: Constants.defaultTotalEnds,
-      numberOfPlayersPerTeam: Constants.defaultNumberOfPlayersPerTeam,
-    );
 
     // Need a small delay to allow everything to be setup before showing
     // the start dialog.
     Timer.run(showGameStartDialog);
   }
+
+  void _onGameChanged() => setState(() {});
 
   /// Any touch while a reload is pending starts the quiet period over.
   void _onGlobalPointer(PointerEvent event) {
@@ -191,83 +171,21 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       return;
     }
 
-    gameObject = newGame;
-    startTimer();
-  }
-
-  void startTimer() {
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      totalTimerSeconds += 1;
-      overUnderInSeconds = Duration(
-        seconds:
-            totalTimerSeconds - secondsPerEnd[gameObject.currentPlayingEnd - 1],
-      ).inSeconds;
-      setState(() {});
-    });
-
-    calculateSecondsPerEnd();
-  }
-
-  void calculateSecondsPerEnd() {
-    fullGameDuration = Duration(
-      minutes: gameObject.numberOfEnds * gameObject.minutesPerEnd,
-    );
-
-    final secondsPerEnd = fullGameDuration.inSeconds ~/ gameObject.numberOfEnds;
-    this.secondsPerEnd = List.generate(gameObject.numberOfEnds, (index) {
-      return secondsPerEnd * (index + 1);
-    });
-
-    // Need to make sure we add in padding for the extra end
-    this.secondsPerEnd.add(secondsPerEnd * (gameObject.numberOfEnds + 1));
+    _gameController.startGame(newGame);
   }
 
   Future<void> enterScore(CurlingEnd curlingEnd) async {
-    // Don't allow for entering scores if we have filled all the ends
-    if (gameObject.currentPlayingEnd > gameObject.numberOfEnds + 1) {
+    if (!_gameController.enterScore(curlingEnd)) {
       return;
     }
-
-    setState(() {
-      if (gameObject.currentPlayingEnd + 1 <= gameObject.numberOfEnds + 1) {
-        gameObject.currentPlayingEnd++;
-      }
-
-      final currentEndList = gameObject.ends.toList()..add(curlingEnd);
-
-      gameObject
-        ..ends = currentEndList
-        ..evaluateHammer();
-    });
-
-    unawaited(_syncService.pushLiveGame(gameObject));
 
     if (gameObject.isGameComplete) {
       await finishGame(context);
     }
   }
 
-  void editScore(int end, int score, ScoringTeam? team) {
-    final originalEndScore = gameObject.ends.elementAt(end - 1);
-
-    setState(() {
-      originalEndScore
-        ..scoringTeam = team
-        ..score = score;
-
-      gameObject.ends[end - 1] = originalEndScore;
-      gameObject.evaluateHammer();
-    });
-
-    unawaited(_syncService.pushLiveGame(gameObject));
-  }
-
   Future<void> finishGame(BuildContext context) async {
-    setState(() {
-      timer?.cancel();
-    });
-
-    unawaited(_syncService.saveCompletedGame(gameObject));
+    _gameController.finishGame();
 
     await showDialog(
       context: context,
@@ -276,14 +194,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         return GameEndDialog(gameObject: gameObject);
       },
     ).then((value) async {
-      setState(() {
-        if (gameObject.ends.isNotEmpty) {
-          gameObject.ends.clear();
-        }
-
-        totalTimerSeconds = 0;
-        overUnderInSeconds = 0;
-      });
+      _gameController.resetForNextGame();
       await showGameStartDialog();
     });
   }
@@ -316,7 +227,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
     // Need to add in the current timer value to the end so we get it at the
     // point of entry on the dialog, not when the dialog came up
-    curlingEnd.gameTimeInSeconds = totalTimerSeconds;
+    curlingEnd.gameTimeInSeconds = _gameController.totalTimerSeconds;
 
     await enterScore(curlingEnd);
   }
@@ -345,7 +256,11 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       return;
     }
 
-    editScore(curlingEnd.endNumber, curlingEnd.score, curlingEnd.scoringTeam);
+    _gameController.editScore(
+      curlingEnd.endNumber,
+      curlingEnd.score,
+      curlingEnd.scoringTeam,
+    );
   }
 
   @override
@@ -354,7 +269,9 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
     _cancelUpdateReload();
     _updateCountdown.dispose();
-    timer?.cancel();
+    _gameController
+      ..removeListener(_onGameChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -425,8 +342,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         if (gameObject.numberOfPlayersPerTeam > 0)
           Flexible(
             child: GameInfoRowWidget(
-              gameTime: Duration(seconds: totalTimerSeconds),
-              gameTimeOverUnder: Duration(seconds: overUnderInSeconds),
+              gameTime: Duration(seconds: _gameController.totalTimerSeconds),
+              gameTimeOverUnder: Duration(
+                seconds: _gameController.overUnderInSeconds,
+              ),
             ),
           )
         else
@@ -484,9 +403,8 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                       groupValue: gameObject.scoreboardStyle,
                       onChanged: (value) {
                         setStateDialog(() {
-                          gameObject.scoreboardStyle = value!;
+                          _gameController.scoreboardStyle = value!;
                         });
-                        setState(() {});
                       },
                       child: Column(
                         children: [
