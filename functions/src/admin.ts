@@ -9,19 +9,69 @@ function requireSuperAdmin(auth: { token: DecodedIdToken } | undefined) {
   }
 }
 
+// Matches the minLength on the admin portal's password fields.
+const MIN_PASSWORD_LENGTH = 8;
+// Matches the club ID pattern the admin portal accepts.
+const CLUB_ID_PATTERN = /^[a-z0-9-]+$/;
+
+function requireNonEmptyStrings(fields: Record<string, unknown>) {
+  for (const [name, value] of Object.entries(fields)) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      throw new HttpsError('invalid-argument', `${name} is required.`);
+    }
+  }
+}
+
+function requireValidPassword(password: string) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new HttpsError(
+      'invalid-argument',
+      `The password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    );
+  }
+}
+
+// Turns a createUser failure into an error the admin portal can show as is.
+// Unknown failures get a generic message so internals don't reach the client.
+function createUserError(err: unknown): HttpsError {
+  const code = (err as { code?: unknown } | null)?.code;
+  switch (code) {
+    case 'auth/email-already-exists':
+      return new HttpsError('already-exists', 'An account with this email already exists.');
+    case 'auth/invalid-email':
+      return new HttpsError('invalid-argument', 'The email address is not valid.');
+    case 'auth/invalid-password':
+      return new HttpsError(
+        'invalid-argument',
+        `The password is not valid. It must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      );
+    default:
+      console.error('Could not create admin user', err);
+      return new HttpsError('internal', 'Could not create the admin account. Please try again.');
+  }
+}
+
 // Creates a club document and an initial admin user with a clubId claim.
 export const provisionClub = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubName, clubId, adminEmail, adminPassword } = request.data as {
+  const { clubName, clubId, adminEmail, adminPassword } = (request.data ?? {}) as {
     clubName: string;
     clubId?: string;
     adminEmail: string;
     adminPassword: string;
   };
 
-  if (!clubName || !adminEmail || !adminPassword) {
-    throw new HttpsError('invalid-argument', 'clubName, adminEmail and adminPassword are required.');
+  requireNonEmptyStrings({ clubName, adminEmail, adminPassword });
+  requireValidPassword(adminPassword);
+  // An empty clubId means "generate one", so only check it when given.
+  if (clubId !== undefined && clubId !== null && clubId !== '') {
+    if (typeof clubId !== 'string' || !CLUB_ID_PATTERN.test(clubId)) {
+      throw new HttpsError(
+        'invalid-argument',
+        'clubId may only contain lowercase letters, numbers and hyphens.',
+      );
+    }
   }
 
   let clubRef: DocumentReference;
@@ -47,9 +97,9 @@ export const provisionClub = onCall(async (request) => {
       displayName: `${clubName} Admin`,
     });
   } catch (err) {
-    // Roll back the club doc if user creation fails
+    // Roll back the club doc if user creation fails, whatever the reason
     await Promise.all([clubRef.delete(), apiKeyRef(clubRef.id).delete()]);
-    throw new HttpsError('already-exists', `Could not create user: ${(err as Error).message}`);
+    throw createUserError(err);
   }
 
   // Assign the clubId custom claim
@@ -70,15 +120,14 @@ export const provisionClub = onCall(async (request) => {
 export const addClubAdmin = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubId, adminEmail, adminPassword } = request.data as {
+  const { clubId, adminEmail, adminPassword } = (request.data ?? {}) as {
     clubId: string;
     adminEmail: string;
     adminPassword: string;
   };
 
-  if (!clubId || !adminEmail || !adminPassword) {
-    throw new HttpsError('invalid-argument', 'clubId, adminEmail and adminPassword are required.');
-  }
+  requireNonEmptyStrings({ clubId, adminEmail, adminPassword });
+  requireValidPassword(adminPassword);
 
   const clubSnap = await getFirestore().collection('clubs').doc(clubId).get();
   if (!clubSnap.exists) {
@@ -93,7 +142,7 @@ export const addClubAdmin = onCall(async (request) => {
       displayName: `${(clubSnap.data() as { name: string }).name} Admin`,
     });
   } catch (err) {
-    throw new HttpsError('already-exists', `Could not create user: ${(err as Error).message}`);
+    throw createUserError(err);
   }
 
   await getAuth().setCustomUserClaims(userRecord.uid, {
