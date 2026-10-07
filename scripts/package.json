@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "seed-dev": "node seed-dev.js",
-    "migrate-api-keys": "node migrate-api-keys.js"
+    "migrate-api-keys": "node migrate-api-keys.js",
+    "set-super-admin": "node set-super-admin.js"
   },
   "dependencies": {
     "firebase-admin": "^14.0.0"

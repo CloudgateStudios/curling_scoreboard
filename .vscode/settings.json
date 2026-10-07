@@ -1,5 +1,4 @@
 {
-  "dart.flutterSdkPath": "/Users/tomarra/fvm/default",
   // Remove .fvm files from search
   "search.exclude": {
     "**/.fvm": true

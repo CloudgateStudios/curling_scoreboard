@@ -109,8 +109,8 @@ export const addClubAdmin = onCall(async (request) => {
   return { uid: userRecord.uid };
 });
 
-// Sets a user as super admin. Call this once manually via Firebase SDK or Console
-// to bootstrap the first super admin account.
+// Promotes another user to super admin. Only an existing super admin can call
+// this, so the first one has to be created with scripts/set-super-admin.js.
 export const setSuperAdminClaim = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 

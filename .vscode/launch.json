@@ -8,14 +8,17 @@
       "name": "Launch Web",
       "request": "launch",
       "type": "dart",
+      "cwd": "app",
       "program": "lib/main.dart",
-      "args": ["-d", "chrome"]
+      "args": ["-d", "chrome", "--dart-define=FIREBASE_ENV=dev"]
     },
     {
       "name": "Launch App - Selected Device",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart"
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=FIREBASE_ENV=dev"]
     }
   ]
 }
