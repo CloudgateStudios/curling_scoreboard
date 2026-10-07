@@ -174,7 +174,8 @@ async function seed() {
 
   for (const club of CLUBS) {
     const clubRef = db.collection('clubs').doc(club.id);
-    await clubRef.set({ name: club.name, apiKey: club.apiKey }, { merge: true });
+    await clubRef.set({ name: club.name }, { merge: true });
+    await clubRef.collection('private').doc('apiKey').set({ key: club.apiKey });
     console.log(`Club: ${club.name} (API key: ${club.apiKey})`);
 
     for (let si = 0; si < club.sheets.length; si++) {

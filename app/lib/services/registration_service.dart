@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,41 +24,31 @@ class RegistrationService {
   String? get clubName => _prefs.getString(_clubNameKey);
   String? get sheetName => _prefs.getString(_sheetNameKey);
 
+  /// Pairs this scoreboard with the sheet holding [code].
+  ///
+  /// The lookup and claim run in the `pairSheet` Cloud Function, because the
+  /// security rules do not let clients read pairing codes or club documents.
   Future<void> connectWithPairingCode(String code) async {
     await FirebaseAuth.instance.signInAnonymously();
 
-    final query = await FirebaseFirestore.instance
-        .collectionGroup('sheets')
-        .where('pairingCode', isEqualTo: code)
-        .limit(1)
-        .get();
-
-    if (query.docs.isEmpty) {
+    final Map<String, dynamic> result;
+    try {
+      final response = await FirebaseFunctions.instance
+          .httpsCallable('pairSheet')
+          .call<Map<String, dynamic>>({'pairingCode': code});
+      result = response.data;
+    } on FirebaseFunctionsException catch (e) {
       await FirebaseAuth.instance.signOut();
-      throw const PairingCodeNotFoundException();
+      if (e.code == 'not-found') throw const PairingCodeNotFoundException();
+      rethrow;
     }
 
-    final sheetDoc = query.docs.first;
-    final sheetRef = sheetDoc.reference;
-    final clubRef = sheetRef.parent.parent!;
-
-    final clubDoc = await clubRef.get();
-    final clubData = clubDoc.data() ?? <String, dynamic>{};
-    final sheetData = sheetDoc.data();
-
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
     await Future.wait([
-      _prefs.setString(_clubIdKey, clubRef.id),
-      _prefs.setString(_sheetIdKey, sheetRef.id),
-      _prefs.setString(_clubNameKey, clubData['name'] as String? ?? ''),
-      _prefs.setString(_sheetNameKey, sheetData['name'] as String? ?? ''),
+      _prefs.setString(_clubIdKey, result['clubId'] as String),
+      _prefs.setString(_sheetIdKey, result['sheetId'] as String),
+      _prefs.setString(_clubNameKey, result['clubName'] as String? ?? ''),
+      _prefs.setString(_sheetNameKey, result['sheetName'] as String? ?? ''),
     ]);
-
-    await sheetRef.update({
-      'scoreboardUid': uid,
-      'pairingCode': FieldValue.delete(),
-    });
   }
 
   Future<void> disconnect() async {

@@ -6,6 +6,7 @@ firestore
 ltrb
 notmain
 prefs
+subcollection
 subshell
 superadmin
 xcassets

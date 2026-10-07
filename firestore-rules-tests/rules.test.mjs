@@ -19,7 +19,8 @@ const env = await initializeTestEnvironment({
 // Seed data with rules disabled.
 await env.withSecurityRulesDisabled(async (ctx) => {
   const db = ctx.firestore();
-  await setDoc(doc(db, 'clubs/club-a'), { name: 'Club A', apiKey: 'secret-a' });
+  await setDoc(doc(db, 'clubs/club-a'), { name: 'Club A' });
+  await setDoc(doc(db, 'clubs/club-a/private/apiKey'), { key: 'secret-a' });
   await setDoc(doc(db, 'clubs/club-a/sheets/sheet-open'), {
     name: 'Sheet Open', pairingCode: 'ABC123',
   });
@@ -30,7 +31,8 @@ await env.withSecurityRulesDisabled(async (ctx) => {
     name: 'Sheet Paired', scoreboardUid: 'scoreboard-1',
   });
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
-  await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B', apiKey: 'secret-b' });
+  await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B' });
+  await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
   await setDoc(doc(db, 'clubs/club-b/sheets/sheet-secret'), {
     name: 'Sheet Secret', scoreboardUid: 'other-device',
   });
@@ -39,7 +41,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 const unauthed = env.unauthenticatedContext().firestore();
 const anon = env.authenticatedContext('attacker').firestore();
 const board = env.authenticatedContext('scoreboard-1').firestore();
-const pairing = env.authenticatedContext('new-device').firestore();
+const adminA = env.authenticatedContext('admin-a', { role: 'clubadmin', clubId: 'club-a' }).firestore();
 
 const results = [];
 async function check(name, expect, fn) {
@@ -51,21 +53,45 @@ async function check(name, expect, fn) {
   }
 }
 
-// --- the pairing flow must keep working ---
-await check('pairing: filtered collectionGroup query by code', 'allow', () =>
-  getDocs(query(collectionGroup(pairing, 'sheets'), where('pairingCode', '==', 'ABC123'))));
-
-await check('pairing: claim the sheet as self', 'allow', () =>
-  updateDoc(doc(pairing, 'clubs/club-a/sheets/sheet-open'),
-    { scoreboardUid: 'new-device', pairingCode: deleteField() }));
-
-await check('pairing: read club doc for the name', 'allow', () =>
-  getDoc(doc(pairing, 'clubs/club-a')));
-
-// --- the holes this PR closes ---
+// --- pairing happens in the pairSheet function, so clients cannot see codes ---
 await check('attack: unfiltered collectionGroup over all sheets', 'deny', () =>
   getDocs(query(collectionGroup(anon, 'sheets'))));
 
+await check('attack: collectionGroup query for a known pairing code', 'deny', () =>
+  getDocs(query(collectionGroup(anon, 'sheets'), where('pairingCode', '==', 'ABC123'))));
+
+// Rules are not filters, but a query whose filter matches the old read rule
+// passed it and listed every unpaired sheet along with its code.
+await check('attack: list every sheet that has a pairing code', 'deny', () =>
+  getDocs(query(collectionGroup(anon, 'sheets'), where('pairingCode', '!=', null))));
+
+await check('attack: claim an open sheet directly as self', 'deny', () =>
+  updateDoc(doc(anon, 'clubs/club-a/sheets/sheet-open'),
+    { scoreboardUid: 'attacker', pairingCode: deleteField() }));
+
+// --- club documents and API keys ---
+await check('attack: read a club doc', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-b')));
+
+await check('attack: list every club', 'deny', () =>
+  getDocs(collection(anon, 'clubs')));
+
+await check('attack: read a club API key', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-b/private/apiKey')));
+
+await check('attack: club admin reads another club API key', 'deny', () =>
+  getDoc(doc(adminA, 'clubs/club-b/private/apiKey')));
+
+await check('attack: club admin replaces own API key', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { key: 'chosen' }));
+
+await check('club admin: read own club', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a')));
+
+await check('club admin: read own API key', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/apiKey')));
+
+// --- sheets ---
 await check('attack: read another club paired sheet directly', 'deny', () =>
   getDoc(doc(anon, 'clubs/club-b/sheets/sheet-secret')));
 

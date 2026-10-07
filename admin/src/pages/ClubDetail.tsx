@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  collection, doc, onSnapshot, updateDoc, deleteField, addDoc,
+  collection, doc, onSnapshot, setDoc, updateDoc, deleteField, addDoc,
   getDocs, query, where, orderBy, Timestamp,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -74,6 +74,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const [addingSheet, setAddingSheet] = useState(false);
   const [savingSheet, setSavingSheet] = useState(false);
   const [sheetError, setSheetError] = useState('');
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState('');
 
   const [clubAdmins, setClubAdmins] = useState<{ uid: string; email: string; displayName: string | null }[]>([]);
@@ -103,6 +104,14 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       }
     });
   }, [resolvedClubId, clubProp]);
+
+  // The API key is kept out of the club doc in a subcollection that only the
+  // club's admins can read.
+  useEffect(() => {
+    return onSnapshot(doc(db, 'clubs', resolvedClubId, 'private', 'apiKey'), (snap) => {
+      setApiKey((snap.get('key') as string | undefined) ?? null);
+    });
+  }, [resolvedClubId]);
 
   useEffect(() => {
     return onSnapshot(collection(db, 'clubs', resolvedClubId, 'sheets'), (snap) => {
@@ -211,7 +220,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
     if (!confirm('Regenerate API key? Existing integrations using the current key will break.')) return;
     const newKey = generateApiKey();
     try {
-      await updateDoc(doc(db, 'clubs', resolvedClubId), { apiKey: newKey });
+      await setDoc(doc(db, 'clubs', resolvedClubId, 'private', 'apiKey'), { key: newKey });
     } catch (err) {
       setApiKeyError(errorMessage(err, 'Could not regenerate the API key.'));
     }
@@ -358,7 +367,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
           </a>
         </p>
         <div className={styles.apiKeyRow}>
-          <code className={styles.apiKey}>{club.apiKey || '—'}</code>
+          <code className={styles.apiKey}>{apiKey || '—'}</code>
           {!isClubAdmin && (
             <button className={styles.ghostButton} onClick={handleRegenerateApiKey}>
               Regenerate Key

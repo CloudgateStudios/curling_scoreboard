@@ -17,14 +17,6 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
-    // Required for the collectionGroup('sheets') query during pairing.
-    // Restricted to sheets that currently carry a pairing code so that a
-    // signed in client cannot enumerate every sheet in every club.
-    match /{path=**}/sheets/{sheetId} {
-      allow read: if request.auth != null
-          && resource.data.pairingCode != null;
-    }
-
     // Deployment info the scoreboards watch so they can reload onto a new
     // build. Scoreboards may not be signed in until paired, and nothing here
     // is sensitive, so anyone can read it. Only deploys write it.
@@ -32,10 +24,17 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // Pairing goes through the pairSheet Cloud Function, which looks the code
+    // up with admin access. Clients get no access to pairing codes or to the
+    // clubs they do not administer.
     match /clubs/{clubId} {
-      // Authenticated users can read club info to retrieve the club name during pairing.
-      // Club admins can read their own club.
-      allow read: if request.auth != null;
+      allow read: if isClubAdmin(clubId);
+
+      // The club's API key. Club admins can see it; only super admins (via
+      // the rule at the top) can change it.
+      match /private/{docId} {
+        allow read: if isClubAdmin(clubId);
+      }
 
       match /admins/{uid} {
         allow read: if isClubAdmin(clubId);
@@ -51,14 +50,6 @@ service cloud.firestore {
         // Only the registered scoreboard (matched by UID) can read the sheet.
         allow read: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid;
-
-        // Any authenticated device can claim a sheet when a pairingCode is
-        // present, but only by assigning itself as the scoreboard.
-        allow update: if request.auth != null
-            && resource.data.pairingCode != null
-            && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['pairingCode', 'scoreboardUid'])
-            && request.resource.data.scoreboardUid == request.auth.uid;
 
         // The registered scoreboard can update liveGame or clear its UID on
         // disconnect. It cannot hand the sheet to a different device.
