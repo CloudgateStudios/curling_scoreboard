@@ -10,6 +10,10 @@ A platform for curling clubs to run and display live scoreboards, track game his
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the data model, roles, pairing, syncing, the REST API and how scoreboards reload after a deploy
+- [CONTRIBUTING.md](CONTRIBUTING.md): PR conventions, the checks to run, spelling, scoreboard text and release-managed files
+- [API documentation](https://curlingscoreboard.app/api-docs/) for club integrations
+
 ---
 
 ## Prerequisites
