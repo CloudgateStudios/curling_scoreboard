@@ -30,7 +30,7 @@ jobs:
           VITE_ENV: prod
         run: npm run build
 
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_PROD }}'
@@ -38,3 +38,4 @@ jobs:
           channelId: live
           target: admin
           entryPoint: .
+          firebaseToolsVersion: 15.32.0

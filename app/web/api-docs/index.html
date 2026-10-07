@@ -10,6 +10,12 @@
   </head>
   <body>
     <redoc spec-url="/openapi.yaml"></redoc>
-    <script src="https://cdn.jsdelivr.net/npm/redoc/bundles/redoc.standalone.js"></script>
+    <!-- Pinned with an integrity hash so a changed CDN file is refused.
+         To upgrade, change the version and recompute the hash from the npm package. -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js"
+      integrity="sha384-w447zOpYfw/1Tv/5AK9NfHTlQIqE3RVR6KY62jCyy9zNDgO64cMwGGP1Fj0zJVf5"
+      crossorigin="anonymous"
+    ></script>
   </body>
 </html>

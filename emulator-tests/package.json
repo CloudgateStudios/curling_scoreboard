@@ -1,0 +1,19 @@
+{
+  "name": "emulator-tests",
+  "private": true,
+  "type": "module",
+  "description": "Tests for firestore.rules and the Cloud Functions, run against the Firebase emulators.",
+  "scripts": {
+    "test": "npm run test:rules && npm run test:functions",
+    "test:rules": "cd .. && firebase emulators:exec --only firestore --project demo-rules \"node emulator-tests/rules.test.mjs\"",
+    "test:functions": "npm run build --prefix ../functions && cd .. && firebase emulators:exec --only firestore,auth,functions --project demo-functions \"node --test emulator-tests/functions.test.mjs\""
+  },
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0"
+  },
+  "devDependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-tools": "^15.32.0"
+  }
+}

@@ -14,7 +14,7 @@ jobs:
         working-directory: ./app
     steps:
       - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2.23.0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.47.4"
           channel: "stable"
@@ -26,19 +26,20 @@ jobs:
       - run: flutter build web --wasm -t lib/main.dart --dart-define=FIREBASE_ENV=dev --dart-define=BUILD_ID=$BUILD_ID
       - name: Write build manifest
         run: echo "{\"buildId\":\"$BUILD_ID\"}" > build/web/build.json
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}"
           projectId: curling-scoreboard-dev
           channelId: live
           entryPoint: .
+          firebaseToolsVersion: 15.32.0
           target: app
       # Tell open scoreboards about the new build so they reload between games.
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_CURLING_SCOREBOARD_DEV }}"
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Notify scoreboards of new build
         run: |
           curl --fail-with-body -sS -X PATCH \

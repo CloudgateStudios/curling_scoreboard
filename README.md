@@ -45,6 +45,7 @@ From the repo root:
 (cd admin && npm install)
 (cd functions && npm install)
 (cd scripts && npm install)
+(cd emulator-tests && npm install)
 ```
 
 ---
@@ -73,11 +74,20 @@ Starts the Vite dev server. The portal uses the dev Firebase project by default.
 
 ### Functions
 
-Functions run on Firebase Cloud Functions — there's no local emulator configured. During development, the app and admin portal connect directly to the live dev project's deployed functions. To deploy your changes to dev:
+The app and admin portal always talk to the live dev project's deployed functions. To deploy your changes to dev:
 
 ```bash
 firebase deploy --only functions --project curling-scoreboard-dev
 ```
+
+Before that, the functions and the Firestore rules can be tested locally against the Firebase emulators (needs Java 21 or later):
+
+```bash
+cd emulator-tests
+npm test
+```
+
+See [`emulator-tests/README.md`](emulator-tests/README.md) for what the tests cover.
 
 ---
 
@@ -134,11 +144,15 @@ The user has to sign out and back in to the admin portal before the new role tak
 
 Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/validate_pr.yaml) workflow. It always checks that the PR title follows the conventional commit format and spell checks the repo. The product checks only run when that product's files changed:
 
-| Product      | Checks                                                                                  |
-| ------------ | --------------------------------------------------------------------------------------- |
-| `app/`       | Formatting, analysis, web build, tests, Android release build, unused localized strings |
-| `admin/`     | Type checking, lint, build                                                              |
-| `functions/` | Build                                                                                   |
+| When these change                                                     | Checks                                                                                  |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `app/`                                                                | Formatting, analysis, web build, tests, Android release build, unused localized strings |
+| `admin/`                                                              | Type checking, lint, build                                                              |
+| `functions/`                                                          | Build, lint                                                                             |
+| `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests and Cloud Functions tests against the emulators                   |
+| `scripts/`                                                            | Syntax check                                                                            |
+
+Changing a workflow file runs the checks for the product it builds or deploys.
 
 Nothing is deployed from a PR; deploys start once it merges to `main`.
 

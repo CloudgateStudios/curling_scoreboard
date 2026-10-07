@@ -10,7 +10,7 @@ jobs:
     name: Validate PR Title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v6
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -32,7 +32,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v7
       - name: Check Spelling
-        uses: streetsidesoftware/cspell-action@v9
+        uses: streetsidesoftware/cspell-action@6f3c77c1406bc930f944ba97e9801a22e42caf58 # v9.1.0
         with:
           files: "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"
           config: .github/cspell.json
@@ -44,20 +44,41 @@ jobs:
       scoreboard: ${{ steps.filter.outputs.scoreboard_any_changed }}
       functions: ${{ steps.filter.outputs.functions_any_changed }}
       admin: ${{ steps.filter.outputs.admin_any_changed }}
+      emulator: ${{ steps.filter.outputs.emulator_any_changed }}
+      scripts: ${{ steps.filter.outputs.scripts_any_changed }}
     steps:
       - uses: actions/checkout@v7
       - name: Filter changed paths
         id: filter
-        uses: tj-actions/changed-files@v47
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47.0.0
         with:
+          # Each product also runs when this workflow or its own deploy
+          # workflows change, so a broken workflow edit shows up on the PR.
           files_yaml: |
             scoreboard:
               - 'app/**'
               - '.github/workflows/validate_pr.yaml'
+              - '.github/workflows/deploy_web_*.yaml'
+              - '.github/workflows/version_increment.yaml'
             functions:
               - 'functions/**'
+              - '.github/workflows/validate_pr.yaml'
+              - '.github/workflows/deploy_functions_*.yaml'
             admin:
               - 'admin/**'
+              - '.github/workflows/validate_pr.yaml'
+              - '.github/workflows/deploy_admin_*.yaml'
+            emulator:
+              - 'functions/**'
+              - 'emulator-tests/**'
+              - 'firestore.rules'
+              - 'firestore.indexes.json'
+              - 'firebase.json'
+              - '.github/workflows/validate_pr.yaml'
+              - '.github/workflows/deploy_functions_*.yaml'
+            scripts:
+              - 'scripts/**'
+              - '.github/workflows/validate_pr.yaml'
 
   validate_scoreboard_app_code:
     name: Validate Scoreboard App Code
@@ -71,7 +92,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v7
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.23.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.47.4"
           channel: "stable"
@@ -98,7 +119,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v7
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.23.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.47.4"
           channel: "stable"
@@ -148,7 +169,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v7
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.23.0
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: "3.47.4"
           channel: "stable"
@@ -178,6 +199,58 @@ jobs:
         run: npm ci
       - name: Build (TypeScript)
         run: npm run build
+      - name: Lint
+        run: npm run lint
+
+  validate_emulator_tests:
+    name: Validate Firestore Rules and Functions
+    needs: changes
+    if: needs.changes.outputs.emulator == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./emulator-tests
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: |
+            functions/package-lock.json
+            emulator-tests/package-lock.json
+      # The Firestore emulator runs on Java.
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          java-version: 21
+          distribution: "temurin"
+      - name: Install Functions Dependencies
+        working-directory: ./functions
+        run: npm ci
+      - name: Install Test Dependencies
+        run: npm ci
+      - name: Test Firestore Rules
+        run: npm run test:rules
+      - name: Test Functions
+        run: npm run test:functions
+
+  validate_scripts:
+    name: Validate Scripts
+    needs: changes
+    if: needs.changes.outputs.scripts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Check Syntax
+        run: for f in scripts/*.js; do node --check "$f"; done
 
   validate_admin_app:
     name: Validate Admin App
