@@ -45,6 +45,7 @@ clubs/{clubId}/sheets/{sheetId}
   scoreboardUid?: string     // the paired scoreboard's anonymous Auth uid
   pairedAt?: timestamp       // when that scoreboard paired
   liveGame?: {               // the game in progress, removed when it ends
+    updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
     team1: { name: string, score: int, hasHammer: bool }
     team2: { name: string, score: int, hasHammer: bool }
@@ -142,8 +143,19 @@ these points:
 
 | Event in the app         | Firestore write                                           |
 | ------------------------ | --------------------------------------------------------- |
+| The app starts           | Remove `liveGame`                                         |
+| A game is started        | Overwrite `liveGame` on the sheet                         |
 | A score is entered or edited | Overwrite `liveGame` on the sheet                     |
-| Finish Game              | Add a `games` document, then remove `liveGame`            |
+| Finish Game              | Add a `games` document and remove `liveGame`, in one batch |
+
+A game is live from the moment it starts, so the first end shows at 0-0.
+
+A game that is never finished would otherwise stay live forever. The app
+does not persist game state, so it removes `liveGame` on startup. For a
+scoreboard that is switched off or offline, readers ignore a `liveGame`
+whose `updatedAt` is more than 120 minutes old: the REST API reports it as
+null and the admin portal shows the sheet as idle. The stored field is left
+alone until that scoreboard next starts up or starts a game.
 
 ## Scoreboard status
 

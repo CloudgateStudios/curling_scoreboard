@@ -45,11 +45,27 @@ class SyncService {
       .collection('sheets')
       .doc(_registration.sheetId);
 
+  /// Clears any live game left on the sheet. Game state is not persisted, so
+  /// whenever the app starts there is no game in progress; anything still
+  /// marked live was abandoned by a reload or crash.
+  Future<void> clearLiveGame() async {
+    if (!_registration.isRegistered) return;
+    try {
+      await _sheetRef.update({'liveGame': FieldValue.delete()});
+      _recordSuccess();
+    } on Exception catch (e) {
+      _recordError('clearLiveGame', e);
+    }
+  }
+
   Future<void> pushLiveGame(CurlingGame game) async {
     if (!_registration.isRegistered) return;
     try {
       await _sheetRef.update({
         'liveGame': {
+          // Lets readers expire a live game whose scoreboard went away
+          // without finishing it.
+          'updatedAt': FieldValue.serverTimestamp(),
           'currentEnd': game.currentPlayingEnd,
           'team1': {
             'name': game.team1.name,
@@ -87,35 +103,39 @@ class SyncService {
   Future<void> saveCompletedGame(CurlingGame game) async {
     if (!_registration.isRegistered) return;
     try {
-      await _sheetRef.collection('games').add({
-        'startedAt': Timestamp.fromDate(game.startedAt),
-        'finishedAt': Timestamp.now(),
-        'numberOfEnds': game.numberOfEnds,
-        'team1': {
-          'name': game.team1.name,
-          'totalScore': game.team1TotalScore,
-          'hadLastStoneFirstEnd': game.team1.hadLastStoneFirstEnd,
-        },
-        'team2': {
-          'name': game.team2.name,
-          'totalScore': game.team2TotalScore,
-          'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
-        },
-        'ends': [
-          for (final e in game.ends)
-            {
-              'endNumber': e.endNumber,
-              // The display name is kept as-is so existing readers,
-              // including the public games API, are unaffected.
-              // scoringTeamSlot is the unambiguous value to prefer.
-              'scoringTeam': _teamNameFor(game, e.scoringTeam),
-              'scoringTeamSlot': e.scoringTeam?.name,
-              'score': e.score,
-              'gameTimeInSeconds': e.gameTimeInSeconds,
-            },
-        ],
-      });
-      await _sheetRef.update({'liveGame': FieldValue.delete()});
+      // One batch, so the completed game and the cleared live game land
+      // together and are queued ahead of the next game's first push.
+      final batch = FirebaseFirestore.instance.batch()
+        ..set(_sheetRef.collection('games').doc(), {
+          'startedAt': Timestamp.fromDate(game.startedAt),
+          'finishedAt': Timestamp.now(),
+          'numberOfEnds': game.numberOfEnds,
+          'team1': {
+            'name': game.team1.name,
+            'totalScore': game.team1TotalScore,
+            'hadLastStoneFirstEnd': game.team1.hadLastStoneFirstEnd,
+          },
+          'team2': {
+            'name': game.team2.name,
+            'totalScore': game.team2TotalScore,
+            'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
+          },
+          'ends': [
+            for (final e in game.ends)
+              {
+                'endNumber': e.endNumber,
+                // The display name is kept as-is so existing readers,
+                // including the public games API, are unaffected.
+                // scoringTeamSlot is the unambiguous value to prefer.
+                'scoringTeam': _teamNameFor(game, e.scoringTeam),
+                'scoringTeamSlot': e.scoringTeam?.name,
+                'score': e.score,
+                'gameTimeInSeconds': e.gameTimeInSeconds,
+              },
+          ],
+        })
+        ..update(_sheetRef, {'liveGame': FieldValue.delete()});
+      await batch.commit();
       _recordSuccess();
     } on Exception catch (e) {
       _recordError('saveCompletedGame', e);

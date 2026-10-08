@@ -3,6 +3,7 @@ import { addDoc, collection, deleteField, doc, onSnapshot, updateDoc } from 'fir
 import { db } from '../../lib/firebase';
 import { generatePairingCode } from '../../lib/credentials';
 import { errorMessage } from '../../lib/format';
+import { activeLiveGame } from '../../lib/liveGame';
 import type { Sheet } from '../../types';
 import { SheetDeviceStatus } from './SheetDeviceStatus';
 import styles from '../../pages/ClubDetail.module.css';
@@ -107,15 +108,18 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.sheetList}>
-        {sheets.map((sheet) => (
+        {sheets.map((sheet) => {
+          // An abandoned game stays on the sheet, so it is aged out here.
+          const liveGame = activeLiveGame(sheet.liveGame, now.getTime());
+          return (
           <div key={sheet.id} className={styles.sheetRow}>
             <div className={styles.sheetInfo}>
               <span className={styles.sheetName}>{sheet.name}</span>
               <div className={styles.sheetMeta}>
-                {sheet.liveGame ? (
+                {liveGame ? (
                   <span className={styles.liveChip}>
-                    LIVE — End {sheet.liveGame.currentEnd} &nbsp;
-                    {sheet.liveGame.team1.name} {sheet.liveGame.team1.score}–{sheet.liveGame.team2.score} {sheet.liveGame.team2.name}
+                    LIVE — End {liveGame.currentEnd} &nbsp;
+                    {liveGame.team1.name} {liveGame.team1.score}–{liveGame.team2.score} {liveGame.team2.name}
                   </span>
                 ) : (
                   <span className={styles.idleChip}>Idle</span>
@@ -148,7 +152,8 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {sheets.length === 0 && <p className={styles.empty}>No sheets yet.</p>}
       </div>
     </div>

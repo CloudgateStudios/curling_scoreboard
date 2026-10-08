@@ -72,8 +72,16 @@ components:
 
     LiveGame:
       type: object
-      required: [currentEnd, team1, team2]
+      required: [updatedAt, currentEnd, team1, team2]
       properties:
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+          example: '2026-10-08T19:42:11.000Z'
+          description: >-
+            When the scoreboard last wrote this game: at game start and on
+            every score entry or edit. Null for a game started on a scoreboard
+            build that predates this field.
         currentEnd:
           type: integer
           minimum: 1
@@ -100,7 +108,11 @@ components:
           oneOf:
             - $ref: '#/components/schemas/LiveGame'
             - type: 'null'
-          description: Current live game data, or null if no game is in progress.
+          description: >-
+            Current live game data, or null if no game is in progress. A game
+            is live from the moment it is started, so the first end reports a
+            0-0 score. A live game that has had no score change for 120
+            minutes is treated as abandoned and reported as null.
 
     Club:
       type: object

@@ -5,7 +5,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, collectionGroup, query, where, getDocs,
-  deleteField, collection, addDoc, serverTimestamp,
+  deleteField, collection, addDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import fs from 'fs';
 
@@ -131,6 +131,13 @@ await check('attack: another device reports status for a paired sheet', 'deny', 
 
 await check('scoreboard: save a completed game', 'allow', () =>
   addDoc(collection(board, 'clubs/club-a/sheets/sheet-paired/games'), { numberOfEnds: 8 }));
+
+// The app finishes a game with a single batch.
+await check('scoreboard: save a completed game and clear liveGame together', 'allow', () =>
+  writeBatch(board)
+    .set(doc(collection(board, 'clubs/club-a/sheets/sheet-paired/games')), { numberOfEnds: 8 })
+    .update(doc(board, 'clubs/club-a/sheets/sheet-paired'), { liveGame: deleteField() })
+    .commit());
 
 await check('scoreboard: disconnect by clearing its uid', 'allow', () =>
   updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
