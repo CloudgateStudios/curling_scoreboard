@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Curling Scoreboard API Tester</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f5f7;
+        --panel: #ffffff;
+        --border: #d9dce1;
+        --text: #1b1f24;
+        --muted: #667080;
+        --accent: #1a5fb4;
+        --ok: #1a7f37;
+        --err: #c62828;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14171b;
+          --panel: #1e2227;
+          --border: #343a42;
+          --text: #e6e9ed;
+          --muted: #98a2b0;
+          --accent: #78aeed;
+          --ok: #57c26f;
+          --err: #ff7b72;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px 16px 48px;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      main { max-width: 960px; margin: 0 auto; }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      h2 { font-size: 16px; margin: 0; }
+      .muted { color: var(--muted); }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 16px;
+      }
+      form { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+      label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+      input, select, button {
+        font: inherit;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px;
+        min-width: 0;
+      }
+      button { cursor: pointer; }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      @media (prefers-color-scheme: dark) { button.primary { color: #0b1420; } }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; grid-column: 1 / -1; }
+      .status-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+      .status { font-variant-numeric: tabular-nums; }
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--err); }
+      .sheets { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 16px; }
+      .sheet { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+      .sheet header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+      .sheet .id { font-size: 12px; overflow-wrap: anywhere; }
+      .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+      .badge.live { color: var(--ok); border-color: var(--ok); }
+      .team { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+      .team .name { flex: 1; overflow-wrap: anywhere; }
+      .team .hammer { font-size: 12px; color: var(--muted); }
+      .team .score { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      pre {
+        margin: 12px 0 0;
+        padding: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 12px;
+      }
+      details summary { cursor: pointer; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Curling Scoreboard API Tester</h1>
+      <div class="muted">
+        Polls <code>GET /clubs/{clubId}</code> and shows the live state of every sheet.
+        See the <a href="/api-docs/">API docs</a>.
+      </div>
+
+      <section class="panel">
+        <form id="settings" autocomplete="off">
+          <label>
+            Environment
+            <select id="baseUrl"></select>
+          </label>
+          <label>
+            Club ID
+            <input id="clubId" required spellcheck="false" />
+          </label>
+          <label>
+            API key
+            <input id="apiKey" type="password" required spellcheck="false" />
+          </label>
+          <div class="actions">
+            <button class="primary" type="submit">Save</button>
+            <button type="button" id="toggleKey">Show key</button>
+            <button type="button" id="clear">Clear</button>
+            <span class="muted" id="savedNote"></span>
+          </div>
+        </form>
+      </section>
+
+      <section id="live" hidden>
+        <div class="panel">
+          <div class="status-row">
+            <h2 id="clubName">&nbsp;</h2>
+            <div>
+              <span class="status" id="status"></span>
+              <button type="button" id="refresh">Refresh now</button>
+            </div>
+          </div>
+          <details>
+            <summary class="muted">Raw response</summary>
+            <pre id="raw"></pre>
+          </details>
+        </div>
+        <div class="sheets" id="sheets"></div>
+      </section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = 'curlingScoreboardApiTester';
+      const POLL_MS = 15000;
+      const ENVIRONMENTS = [
+        ['Production', 'https://curling-scoreboard-prod.web.app/api/v1'],
+        ['Development', 'https://curling-scoreboard-dev.web.app/api/v1'],
+      ];
+      // When served over http(s), also offer the API on the hosting origin
+      // (covers preview channels and the emulator).
+      if (location.protocol.startsWith('http')) {
+        ENVIRONMENTS.unshift([`This site (${location.host})`, `${location.origin}/api/v1`]);
+      }
+
+      const $ = (id) => document.getElementById(id);
+      const baseUrlEl = $('baseUrl');
+      for (const [label, url] of ENVIRONMENTS) baseUrlEl.add(new Option(label, url));
+
+      let settings = null;
+      let timer = null;
+      let generation = 0;
+
+      function loadSettings() {
+        try {
+          const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          return s && s.apiKey && s.clubId ? s : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+
+      function teamRow(team) {
+        const row = el('div', 'team');
+        row.append(el('span', 'name', team?.name ?? '—'));
+        if (team?.hasHammer) row.append(el('span', 'hammer', 'hammer'));
+        row.append(el('span', 'score', team?.score ?? '—'));
+        return row;
+      }
+
+      function renderSheets(sheets) {
+        const cards = sheets.map((sheet) => {
+          const card = el('article', 'sheet');
+          const header = el('header');
+          const title = el('div');
+          title.append(el('h2', '', sheet.name ?? sheet.id), el('div', 'id muted', sheet.id));
+          header.append(
+            title,
+            sheet.liveGame
+              ? el('span', 'badge live', `End ${sheet.liveGame.currentEnd}`)
+              : el('span', 'badge muted', 'No live game'),
+          );
+          card.append(header);
+          if (sheet.liveGame) card.append(teamRow(sheet.liveGame.team1), teamRow(sheet.liveGame.team2));
+          return card;
+        });
+        if (!cards.length) cards.push(el('div', 'muted', 'This club has no sheets.'));
+        $('sheets').replaceChildren(...cards);
+      }
+
+      function setStatus(text, kind) {
+        $('status').textContent = text;
+        $('status').className = `status ${kind}`;
+      }
+
+      async function poll() {
+        clearTimeout(timer);
+        if (!settings) return;
+        const gen = ++generation;
+        const started = performance.now();
+        let stop = false;
+        try {
+          const res = await fetch(`${settings.baseUrl}/clubs/${encodeURIComponent(settings.clubId)}`, {
+            headers: { 'X-API-Key': settings.apiKey },
+            cache: 'no-store',
+          });
+          const ms = Math.round(performance.now() - started);
+          const text = await res.text();
+          if (gen !== generation) return;
+          let body = null;
+          try {
+            body = JSON.parse(text);
+          } catch {}
+          $('raw').textContent = body ? JSON.stringify(body, null, 2) : text;
+          const time = new Date().toLocaleTimeString();
+          if (res.ok && body) {
+            $('clubName').textContent = body.name ?? body.id;
+            renderSheets(body.sheets ?? []);
+            setStatus(`${res.status} OK · ${ms} ms · ${time}`, 'ok');
+          } else {
+            // Bad key or club won't fix itself; stop polling until settings change.
+            stop = res.status >= 400 && res.status < 500;
+            setStatus(`${res.status} ${body?.error ?? res.statusText} · ${time}${stop ? ' · polling stopped' : ''}`, 'err');
+          }
+        } catch (err) {
+          if (gen !== generation) return;
+          setStatus(`Request failed: ${err.message}`, 'err');
+        }
+        if (!stop && !document.hidden) timer = setTimeout(poll, POLL_MS);
+      }
+
+      function apply() {
+        clearTimeout(timer);
+        generation++;
+        settings = loadSettings();
+        $('live').hidden = !settings;
+        $('clubName').textContent = ' ';
+        $('sheets').replaceChildren();
+        $('raw').textContent = '';
+        setStatus('', '');
+        if (settings) {
+          if (![...baseUrlEl.options].some((o) => o.value === settings.baseUrl)) {
+            settings.baseUrl = baseUrlEl.options[0].value;
+          }
+          baseUrlEl.value = settings.baseUrl;
+          $('clubId').value = settings.clubId;
+          $('apiKey').value = settings.apiKey;
+          $('savedNote').textContent = 'Saved in this browser.';
+          setStatus('Loading…', '');
+          poll();
+        } else {
+          $('savedNote').textContent = '';
+        }
+      }
+
+      $('settings').addEventListener('submit', (e) => {
+        e.preventDefault();
+        try {
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              baseUrl: baseUrlEl.value,
+              clubId: $('clubId').value.trim(),
+              apiKey: $('apiKey').value.trim(),
+            }),
+          );
+        } catch (err) {
+          $('savedNote').textContent = `Could not save: ${err.message}`;
+          return;
+        }
+        apply();
+      });
+
+      $('clear').addEventListener('click', () => {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {}
+        $('settings').reset();
+        apply();
+      });
+
+      $('toggleKey').addEventListener('click', () => {
+        const show = $('apiKey').type === 'password';
+        $('apiKey').type = show ? 'text' : 'password';
+        $('toggleKey').textContent = show ? 'Hide key' : 'Show key';
+      });
+
+      $('refresh').addEventListener('click', poll);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && settings) poll();
+      });
+
+      apply();
+    </script>
+  </body>
+</html>
