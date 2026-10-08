@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { addDoc, collection, deleteField, doc, updateDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { addDoc, collection, deleteField, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { generatePairingCode } from '../../lib/credentials';
 import { errorMessage } from '../../lib/format';
 import type { Sheet } from '../../types';
+import { SheetDeviceStatus } from './SheetDeviceStatus';
 import styles from '../../pages/ClubDetail.module.css';
 
 interface Props {
@@ -13,12 +14,28 @@ interface Props {
   onViewGames: (sheetId: string) => void;
 }
 
-/** Each sheet's live game, pairing state and pairing code. */
+/** Each sheet's live game, pairing state, scoreboard status and pairing code. */
 export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Props) {
   const [adding, setAdding] = useState(false);
   const [newSheetName, setNewSheetName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [deployedBuildId, setDeployedBuildId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  // The build the deploy workflow last published, which is what every
+  // scoreboard should end up running.
+  useEffect(() => {
+    return onSnapshot(doc(db, 'appConfig', 'scoreboard'), (snap) => {
+      setDeployedBuildId((snap.get('buildId') as string | undefined) ?? null);
+    });
+  }, []);
+
+  // Keeps "seen 5m ago" and the online chips moving while the page is open.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function handleGeneratePairingCode(sheetId: string) {
     try {
@@ -109,6 +126,9 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
                   <span className={styles.unpairedChip}>Unpaired</span>
                 )}
               </div>
+              {sheet.scoreboardUid && (
+                <SheetDeviceStatus sheet={sheet} deployedBuildId={deployedBuildId} now={now} />
+              )}
             </div>
             <div className={styles.sheetActions}>
               {sheet.pairingCode ? (

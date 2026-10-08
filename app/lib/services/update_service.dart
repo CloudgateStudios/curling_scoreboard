@@ -1,15 +1,11 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/services/web_platform.dart' as platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-/// The build identifier baked in at compile time. The deploy workflows pass
-/// the commit SHA; local and test builds leave it empty, which turns update
-/// checks off entirely.
-const _buildId = String.fromEnvironment('BUILD_ID');
 
 /// Watches for a newer deployment of the web app and reloads the page to pick
 /// it up, but only when the caller says it is safe to do so.
@@ -34,11 +30,12 @@ class UpdateService {
        _clock = clock;
 
   /// Creates the service for the running app. Returns null when update checks
-  /// do not apply: native builds, or builds without a build ID.
+  /// do not apply: native builds, or builds without a build ID (local and
+  /// test builds).
   static UpdateService? forCurrentPlatform(SharedPreferences prefs) {
-    if (!kIsWeb || _buildId.isEmpty) return null;
+    if (!kIsWeb || Constants.buildId.isEmpty) return null;
     return UpdateService(
-      currentBuildId: _buildId,
+      currentBuildId: Constants.buildId,
       prefs: prefs,
       remoteBuildIds: () => FirebaseFirestore.instance
           .doc('appConfig/scoreboard')
@@ -120,6 +117,15 @@ class UpdateService {
     if (buildId == null || buildId.isEmpty) return;
     _targetBuildId = buildId == currentBuildId ? null : buildId;
     updateAvailable.value = _targetBuildId != null;
+  }
+
+  /// The deployed build this scoreboard has yet to reload onto, if any.
+  String? get targetBuildId => _targetBuildId;
+
+  /// When this scoreboard last reloaded itself to pick up a new build.
+  DateTime? get lastReloadAttemptAt {
+    final millis = _prefs.getInt(_lastReloadAtKey);
+    return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
   }
 
   /// True when a newer build is available and a reload for it has not just

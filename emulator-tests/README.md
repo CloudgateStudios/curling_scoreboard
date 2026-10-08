@@ -53,6 +53,7 @@ emulator-tests/node_modules/.bin/firebase emulators:exec --only firestore \
 Access the app depends on:
 
 - a paired scoreboard pushing `liveGame` and writing a completed game
+- a paired scoreboard reporting its device status
 - a paired scoreboard clearing its own uid on disconnect
 - a club admin reading their own club and its API key
 - anyone reading `appConfig/scoreboard` to pick up new builds
@@ -64,6 +65,9 @@ Access that must stay denied:
 - claiming a sheet directly, for yourself or another uid
 - reading another club's paired sheet directly
 - reassigning a paired sheet to another device
+- a scoreboard changing anything else on its sheet, writing a device status
+  that is not a map or is oversized, or reporting for a sheet it is not
+  paired with
 - reading or listing club documents without being that club's admin
 - reading any club's API key without being its admin, or a club admin
   changing their own key
@@ -73,10 +77,12 @@ Access that must stay denied:
 
 - `pairSheet` turns away callers who are not signed in, missing and unknown
   codes; pairs the caller with the sheet (matching codes after trimming and
-  upper-casing); and does not accept a code twice.
+  upper-casing), recording when and dropping the previous scoreboard's device
+  status; and does not accept a code twice.
 - The REST API requires a key, rejects a wrong one, accepts the club's key,
-  returns 404 for an unknown club, and ignores a key left on the club
-  document from before the API key migration.
+  returns 404 for an unknown club, ignores a key left on the club
+  document from before the API key migration, and leaves the scoreboard's
+  device status out of sheet responses.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, and a club
   admin with the right claims.

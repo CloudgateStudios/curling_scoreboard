@@ -19,3 +19,6 @@ Future<String?> fetchDeployedBuildId() async {
 }
 
 void reloadPage() => web.window.location.reload();
+
+/// The browser's user agent string, which names the browser and the OS.
+String? userAgent() => web.window.navigator.userAgent;
