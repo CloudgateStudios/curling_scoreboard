@@ -20,6 +20,12 @@ class _FakeSyncService implements SyncService {
   Future<void> saveCompletedGame(CurlingGame game) async {
     completedGames.add(game.toJson());
   }
+
+  @override
+  SyncError? get lastError => null;
+
+  @override
+  Future<void> pushDeviceStatus(Map<String, dynamic> status) async {}
 }
 
 CurlingGame _game({

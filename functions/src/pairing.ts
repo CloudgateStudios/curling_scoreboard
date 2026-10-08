@@ -37,9 +37,13 @@ export const pairSheet = onCall(async (request) => {
       throw new HttpsError('not-found', 'Pairing code not found.');
     }
 
+    // The device status belongs to whichever scoreboard was paired before,
+    // so it is dropped; the new one reports its own once it has paired.
     tx.update(sheetRef, {
       scoreboardUid: uid,
+      pairedAt: FieldValue.serverTimestamp(),
       pairingCode: FieldValue.delete(),
+      device: FieldValue.delete(),
     });
 
     return {

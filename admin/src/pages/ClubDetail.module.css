@@ -159,6 +159,65 @@
   font-size: 0.78rem;
 }
 
+.onlineChip {
+  background: #e6f4ea;
+  color: #137333;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.warningChip {
+  background: #fef7e0;
+  color: #b06000;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.errorChip {
+  background: #fce8e6;
+  color: #c5221f;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.versionChip {
+  background: #f4f6f9;
+  color: #444;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-family: monospace;
+}
+
+.deviceDetails {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.deviceDetails summary {
+  cursor: pointer;
+  color: #1967d2;
+}
+
+.deviceDetailList {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.deviceDetailList dt {
+  color: #888;
+}
+
+.deviceDetailList dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .sheetActions {
   display: flex;
   align-items: center;

@@ -51,14 +51,20 @@ service cloud.firestore {
         allow read: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid;
 
-        // The registered scoreboard can update liveGame or clear its UID on
-        // disconnect. It cannot hand the sheet to a different device.
+        // The registered scoreboard can update liveGame, report its own
+        // device status, or clear its UID on disconnect. It cannot hand the
+        // sheet to a different device. The device status is whatever the
+        // scoreboard says about itself, so it is only held to being a map of
+        // a sensible size.
         allow update: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid
             && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid'])
+                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid', 'device'])
             && (!('scoreboardUid' in request.resource.data)
-                || request.resource.data.scoreboardUid == request.auth.uid);
+                || request.resource.data.scoreboardUid == request.auth.uid)
+            && (!('device' in request.resource.data)
+                || (request.resource.data.device is map
+                    && request.resource.data.device.size() <= 20));
 
         match /games/{gameId} {
           // Club admins can read game history.

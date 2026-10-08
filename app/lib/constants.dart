@@ -25,4 +25,11 @@ class Constants {
   // reload, so it does not reset game setup while someone is using it.
   static const Duration updateQuietPeriod = Duration(minutes: 2);
   static const int updateCountdownSeconds = 15;
+
+  // Device Status
+  // The build identifier baked in at compile time. The deploy workflows pass
+  // the commit SHA; local and test builds leave it empty.
+  static const String buildId = String.fromEnvironment('BUILD_ID');
+  // How often a paired scoreboard reports that it is still running.
+  static const Duration deviceStatusHeartbeat = Duration(minutes: 30);
 }

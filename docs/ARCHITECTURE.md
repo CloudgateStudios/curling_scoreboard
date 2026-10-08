@@ -43,10 +43,27 @@ clubs/{clubId}/sheets/{sheetId}
   name: string
   pairingCode?: string       // set by an admin, removed once used
   scoreboardUid?: string     // the paired scoreboard's anonymous Auth uid
+  pairedAt?: timestamp       // when that scoreboard paired
   liveGame?: {               // the game in progress, removed when it ends
     currentEnd: int
     team1: { name: string, score: int, hasHammer: bool }
     team2: { name: string, score: int, hasHammer: bool }
+  }
+  device?: {                 // what the scoreboard last said about itself
+    appVersion: string
+    buildId?: string         // commit SHA; absent on local builds
+    lastSeenAt: timestamp    // server time of the report
+    sessionStartedAt: timestamp
+    clientTime: timestamp    // the device's own clock
+    platform: string         // 'web', 'android', ...
+    renderer?: string        // web only: 'wasm' or 'js'
+    userAgent?: string
+    screen?: { width: int, height: int, pixelRatio: number }
+    timezone: string
+    utcOffsetMinutes: int
+    updateTargetBuildId?: string
+    lastReloadAttemptAt?: timestamp
+    lastSyncError?: { operation: string, message: string, at: timestamp }
   }
 
 clubs/{clubId}/sheets/{sheetId}/games/{gameId}
@@ -77,7 +94,7 @@ admin scripts.
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, read game history |
-| Paired scoreboard    | none (matched by `scoreboardUid`)       | Anonymous               | Its own sheet: read it, write `liveGame`, add completed games, disconnect itself       |
+| Paired scoreboard    | none (matched by `scoreboardUid`)       | Anonymous               | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 The first super admin of a project is created with
@@ -92,8 +109,9 @@ others. Club admins are created from the admin portal through
 2. On the scoreboard, Settings → Connect to Club, the code is entered.
 3. The app signs in anonymously and calls the `pairSheet` callable function.
 4. `pairSheet` finds the sheet holding the code with a collection group query,
-   then in a transaction sets `scoreboardUid` to the caller's uid and removes
-   the code. It returns the club and sheet IDs and names.
+   then in a transaction sets `scoreboardUid` to the caller's uid, records
+   `pairedAt`, and removes the code along with any `device` status left by the
+   previous scoreboard. It returns the club and sheet IDs and names.
 5. The app saves those four values in shared preferences. From then on it is
    paired.
 
@@ -119,6 +137,28 @@ these points:
 | A score is entered or edited | Overwrite `liveGame` on the sheet                     |
 | Finish Game              | Add a `games` document, then remove `liveGame`            |
 
+## Scoreboard status
+
+So the admin portal can show what each sheet is running, a paired scoreboard
+reports on itself. `DeviceStatusService` builds the report and `SyncService`
+overwrites the sheet's `device` field with it:
+
+- when the app starts
+- right after pairing
+- when the app returns to the foreground
+- when it learns a new build has been deployed
+- every 30 minutes in between (`Constants.deviceStatusHeartbeat`)
+
+`lastSeenAt` is the server's time, so the portal can trust it; everything else
+is whatever the app says, and is only ever displayed. The portal calls a
+scoreboard offline once it has missed two heartbeats (65 minutes), and shows
+"Update pending" while its `buildId` differs from `appConfig/scoreboard`.
+`lastSyncError` is the most recent failed write since the app started, which
+is otherwise invisible because writes are fire and forget.
+
+The public REST API builds its sheet responses field by field, so none of
+this is exposed there.
+
 ## Admin portal
 
 Routes depend on the signed in role:
@@ -127,7 +167,7 @@ Routes depend on the signed in role:
   shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history.
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history.
 
-The club page shows sheets with their live games, pairing codes, games from the
+The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
 last seven days and the API key. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)

@@ -3,10 +3,27 @@ import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:flutter/foundation.dart';
 
+/// A sync write that failed, kept so it can be reported with the device
+/// status. Nothing else surfaces these: writes are fire and forget.
+typedef SyncError = ({String operation, String message, DateTime at});
+
 class SyncService {
   SyncService(this._registration);
 
   final RegistrationService _registration;
+
+  /// The most recent failed write since the app started, if any.
+  SyncError? get lastError => _lastError;
+  SyncError? _lastError;
+
+  void _recordError(String operation, Exception e) {
+    debugPrint('SyncService.$operation error: $e');
+    _lastError = (
+      operation: operation,
+      message: e is FirebaseException ? e.code : e.runtimeType.toString(),
+      at: DateTime.now(),
+    );
+  }
 
   DocumentReference<Map<String, dynamic>> get _sheetRef => FirebaseFirestore
       .instance
@@ -34,7 +51,21 @@ class SyncService {
         },
       });
     } on Exception catch (e) {
-      debugPrint('SyncService.pushLiveGame error: $e');
+      _recordError('pushLiveGame', e);
+    }
+  }
+
+  /// Overwrites the sheet's `device` field with [status], stamped with the
+  /// server's time so the admin portal can tell when it last heard from this
+  /// scoreboard.
+  Future<void> pushDeviceStatus(Map<String, dynamic> status) async {
+    if (!_registration.isRegistered) return;
+    try {
+      await _sheetRef.update({
+        'device': {...status, 'lastSeenAt': FieldValue.serverTimestamp()},
+      });
+    } on Exception catch (e) {
+      _recordError('pushDeviceStatus', e);
     }
   }
 
@@ -71,7 +102,7 @@ class SyncService {
       });
       await _sheetRef.update({'liveGame': FieldValue.delete()});
     } on Exception catch (e) {
-      debugPrint('SyncService.saveCompletedGame error: $e');
+      _recordError('saveCompletedGame', e);
     }
   }
 

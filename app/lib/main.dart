@@ -6,6 +6,7 @@ import 'package:curling_scoreboard/firebase_options_dev.dart' as dev;
 import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
+import 'package:curling_scoreboard/services/device_status_service.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
@@ -80,6 +81,7 @@ class CurlingScoreboardScreen extends StatefulWidget {
 
 class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   late final GameController _gameController;
+  late final DeviceStatusService _deviceStatus;
 
   CurlingGame get gameObject => _gameController.game;
 
@@ -94,9 +96,14 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   @override
   void initState() {
     super.initState();
-    _gameController = GameController(
-      syncService: SyncService(widget.registrationService),
-    )..addListener(_onGameChanged);
+    final syncService = SyncService(widget.registrationService);
+    _gameController = GameController(syncService: syncService)
+      ..addListener(_onGameChanged);
+    _deviceStatus = DeviceStatusService(
+      write: syncService.pushDeviceStatus,
+      updateService: widget.updateService,
+      lastSyncError: () => syncService.lastError,
+    )..start();
     widget.updateService?.updateAvailable.addListener(_scheduleUpdateReload);
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
 
@@ -269,6 +276,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
     _cancelUpdateReload();
     _updateCountdown.dispose();
+    _deviceStatus.dispose();
     _gameController
       ..removeListener(_onGameChanged)
       ..dispose();
@@ -481,6 +489,9 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                                 ConnectToClubDialog(registrationService: reg),
                           );
                           if (connected ?? false) {
+                            // Let the admin portal see the newly paired
+                            // scoreboard without waiting for a heartbeat.
+                            _deviceStatus.reportNow();
                             if (context.mounted) {
                               setStateDialog(() {});
                               setState(() {});
