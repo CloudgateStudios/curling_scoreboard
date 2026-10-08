@@ -126,6 +126,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsDialogPairingLost =>
+      'Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.';
+
+  @override
   String get settingsDialogDisconnectButtonLabel => 'Disconnect';
 
   @override

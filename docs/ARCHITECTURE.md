@@ -123,6 +123,14 @@ sheet's code and read every club's API key; moving the lookup into
 Disconnecting removes `scoreboardUid` from the sheet (best effort), signs out
 and clears the saved values. Scoring carries on locally either way.
 
+A sheet can be taken away from a scoreboard without it being told: pairing
+another device replaces `scoreboardUid`, and the first one still has its saved
+values. It finds out when the rules refuse one of its writes, usually the
+status report it sends on startup. `SyncService` then sets
+`RegistrationService.pairingLost`, and Settings shows the scoreboard as
+disconnected with a prompt to pair again. A later write that succeeds clears
+it.
+
 ## Syncing scores
 
 `SyncService` in the app does nothing unless the scoreboard is paired.

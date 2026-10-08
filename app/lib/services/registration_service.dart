@@ -24,6 +24,12 @@ class RegistrationService {
   String? get clubName => _prefs.getString(_clubNameKey);
   String? get sheetName => _prefs.getString(_sheetNameKey);
 
+  /// True when the backend has turned this scoreboard's writes away, which
+  /// means the sheet is no longer paired with it: it was paired with another
+  /// device, or removed. The saved registration is left alone, so this is the
+  /// only sign that scores have stopped syncing.
+  final ValueNotifier<bool> pairingLost = ValueNotifier(false);
+
   /// Pairs this scoreboard with the sheet holding [code].
   ///
   /// The lookup and claim run in the `pairSheet` Cloud Function, because the
@@ -49,6 +55,7 @@ class RegistrationService {
       _prefs.setString(_clubNameKey, result['clubName'] as String? ?? ''),
       _prefs.setString(_sheetNameKey, result['sheetName'] as String? ?? ''),
     ]);
+    pairingLost.value = false;
   }
 
   Future<void> disconnect() async {
@@ -78,5 +85,6 @@ class RegistrationService {
       _prefs.remove(_clubNameKey),
       _prefs.remove(_sheetNameKey),
     ]);
+    pairingLost.value = false;
   }
 }

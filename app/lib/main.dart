@@ -444,6 +444,21 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                       Text(
                         l10n.settingsDialogConnectedSheet(reg.sheetName ?? ''),
                       ),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: reg.pairingLost,
+                        builder: (context, pairingLost, _) {
+                          if (!pairingLost) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              l10n.settingsDialogPairingLost,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () async {
