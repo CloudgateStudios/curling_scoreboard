@@ -55,8 +55,13 @@ async function rejectsWith(promise, code) {
 before(async () => {
   await db.doc('clubs/club-a').set({ name: 'Club A' });
   await db.doc('clubs/club-a/private/apiKey').set({ key: 'key-a' });
-  await db.doc('clubs/club-a/sheets/sheet-open').set({ name: 'Sheet Open', pairingCode: 'ABC234' });
-  await db.doc('clubs/club-a/sheets/sheet-other').set({ name: 'Sheet Other' });
+  // Carries the status of a scoreboard that was paired here before.
+  await db.doc('clubs/club-a/sheets/sheet-open').set({
+    name: 'Sheet Open', pairingCode: 'ABC234', device: { appVersion: '0.0.1' },
+  });
+  await db.doc('clubs/club-a/sheets/sheet-other').set({
+    name: 'Sheet Other', scoreboardUid: 'some-device', device: { appVersion: '0.0.46' },
+  });
   // A club still in the pre-migration shape, with the key on the club doc.
   await db.doc('clubs/legacy').set({ name: 'Legacy Club', apiKey: 'legacy-key' });
 });
@@ -96,6 +101,8 @@ describe('pairSheet', () => {
     const sheet = (await db.doc('clubs/club-a/sheets/sheet-open').get()).data();
     assert.equal(sheet.scoreboardUid, client.auth.currentUser.uid);
     assert.equal(sheet.pairingCode, undefined);
+    assert.ok(sheet.pairedAt, 'records when the sheet was paired');
+    assert.equal(sheet.device, undefined, 'drops the previous scoreboard status');
 
     const second = await anonymous();
     await rejectsWith(second.call('pairSheet', { pairingCode: 'ABC234' }), 'functions/not-found');
@@ -119,6 +126,13 @@ describe('REST API key check', () => {
     const body = await res.json();
     assert.equal(body.name, 'Club A');
     assert.deepEqual(body.sheets.map((s) => s.id).sort(), ['sheet-open', 'sheet-other']);
+  });
+
+  test('keeps scoreboard device status out of the API', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a/sheets/sheet-other`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(Object.keys(body).sort(), ['hasLiveGame', 'id', 'liveGame', 'name']);
   });
 
   test('returns 404 for an unknown club', async () => {

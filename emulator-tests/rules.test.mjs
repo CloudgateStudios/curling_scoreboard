@@ -5,7 +5,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, collectionGroup, query, where, getDocs,
-  deleteField, collection, addDoc,
+  deleteField, collection, addDoc, serverTimestamp,
 } from 'firebase/firestore';
 import fs from 'fs';
 
@@ -109,6 +109,25 @@ await check('attack: hijack a paired sheet to another device', 'deny', () =>
 await check('scoreboard: push liveGame', 'allow', () =>
   updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
     { liveGame: { currentEnd: 3 } }));
+
+await check('scoreboard: report its device status', 'allow', () =>
+  updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
+    { device: { appVersion: '0.0.46', lastSeenAt: serverTimestamp() } }));
+
+await check('attack: device status that is not a map', 'deny', () =>
+  updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
+    { device: 'x'.repeat(1000) }));
+
+await check('attack: oversized device status', 'deny', () =>
+  updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
+    { device: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`k${i}`, i])) }));
+
+await check('attack: scoreboard renames its sheet', 'deny', () =>
+  updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'), { name: 'Renamed' }));
+
+await check('attack: another device reports status for a paired sheet', 'deny', () =>
+  updateDoc(doc(anon, 'clubs/club-a/sheets/sheet-paired'),
+    { device: { appVersion: 'evil' } }));
 
 await check('scoreboard: save a completed game', 'allow', () =>
   addDoc(collection(board, 'clubs/club-a/sheets/sheet-paired/games'), { numberOfEnds: 8 }));
