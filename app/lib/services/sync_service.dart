@@ -16,8 +16,21 @@ class SyncService {
   SyncError? get lastError => _lastError;
   SyncError? _lastError;
 
+  /// Whether [error] means the sheet no longer accepts this scoreboard. The
+  /// rules only let the paired scoreboard write to a sheet, so a refused
+  /// write means another device has been paired with it or it has gone.
+  @visibleForTesting
+  static bool isPairingLostError(Object error) =>
+      error is FirebaseException &&
+      (error.code == 'permission-denied' || error.code == 'not-found');
+
+  // A write that goes through proves the pairing is intact, which also
+  // recovers from a refusal that turned out to be temporary.
+  void _recordSuccess() => _registration.pairingLost.value = false;
+
   void _recordError(String operation, Exception e) {
     debugPrint('SyncService.$operation error: $e');
+    if (isPairingLostError(e)) _registration.pairingLost.value = true;
     _lastError = (
       operation: operation,
       message: e is FirebaseException ? e.code : e.runtimeType.toString(),
@@ -50,6 +63,7 @@ class SyncService {
           },
         },
       });
+      _recordSuccess();
     } on Exception catch (e) {
       _recordError('pushLiveGame', e);
     }
@@ -64,6 +78,7 @@ class SyncService {
       await _sheetRef.update({
         'device': {...status, 'lastSeenAt': FieldValue.serverTimestamp()},
       });
+      _recordSuccess();
     } on Exception catch (e) {
       _recordError('pushDeviceStatus', e);
     }
@@ -101,6 +116,7 @@ class SyncService {
         ],
       });
       await _sheetRef.update({'liveGame': FieldValue.delete()});
+      _recordSuccess();
     } on Exception catch (e) {
       _recordError('saveCompletedGame', e);
     }

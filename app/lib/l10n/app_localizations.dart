@@ -301,6 +301,12 @@ abstract class AppLocalizations {
   /// **'Sheet: {sheetName}'**
   String settingsDialogConnectedSheet(String sheetName);
 
+  /// Warning shown in settings when the club's sheet has stopped accepting this scoreboard, for example because another device was paired with it.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.'**
+  String get settingsDialogPairingLost;
+
   /// Button label to disconnect the scoreboard from its club.
   ///
   /// In en, this message translates to:
