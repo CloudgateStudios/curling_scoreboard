@@ -11,6 +11,13 @@ class _FakeSyncService implements SyncService {
   final liveGamePushes = <Map<String, dynamic>>[];
   final completedGames = <Map<String, dynamic>>[];
 
+  int liveGameClears = 0;
+
+  @override
+  Future<void> clearLiveGame() async {
+    liveGameClears++;
+  }
+
   @override
   Future<void> pushLiveGame(CurlingGame game) async {
     liveGamePushes.add(game.toJson());
@@ -89,8 +96,18 @@ void main() {
         expect(controller.game, same(game));
         expect(controller.isClockRunning, isTrue);
         expect(notifications, 1);
-        expect(sync.liveGamePushes, isEmpty);
         expect(sync.completedGames, isEmpty);
+      });
+    });
+
+    test('publishes the game as live in the first end before any score', () {
+      fakeAsync((async) {
+        controller.startGame(_game());
+
+        expect(sync.liveGamePushes, hasLength(1));
+        expect(sync.liveGamePushes.single['currentPlayingEnd'], 1);
+        expect(controller.game.team1TotalScore, 0);
+        expect(controller.game.team2TotalScore, 0);
       });
     });
 
@@ -178,6 +195,7 @@ void main() {
       fakeAsync((async) {
         controller.startGame(_game());
         notifications = 0;
+        sync.liveGamePushes.clear();
 
         final accepted = controller.enterScore(_end(1, 2, ScoringTeam.team2));
 
@@ -196,6 +214,7 @@ void main() {
       fakeAsync((async) {
         controller.startGame(_game());
         expect(controller.game.whichTeamHasHammer(), ScoringTeam.team2);
+        sync.liveGamePushes.clear();
 
         controller.enterScore(_end(1, 0));
 
@@ -249,6 +268,7 @@ void main() {
       fakeAsync((async) {
         controller.startGame(_game(numberOfEnds: 2)..currentPlayingEnd = 4);
         notifications = 0;
+        sync.liveGamePushes.clear();
 
         final accepted = controller.enterScore(_end(4, 1, ScoringTeam.team1));
 
@@ -347,7 +367,9 @@ void main() {
         expect(controller.totalTimerSeconds, 0);
         expect(controller.overUnderInSeconds, 0);
         expect(notifications, 1);
-        expect(sync.liveGamePushes, hasLength(1));
+        // One from starting the game and one from the score; none from the
+        // reset.
+        expect(sync.liveGamePushes, hasLength(2));
         expect(sync.completedGames, hasLength(1));
       });
     });

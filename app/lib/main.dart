@@ -97,6 +97,9 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   void initState() {
     super.initState();
     final syncService = SyncService(widget.registrationService);
+    // Nothing is in progress when the app starts, so a game still marked
+    // live on the sheet was abandoned by a reload or crash.
+    unawaited(syncService.clearLiveGame());
     _gameController = GameController(syncService: syncService)
       ..addListener(_onGameChanged);
     _deviceStatus = DeviceStatusService(

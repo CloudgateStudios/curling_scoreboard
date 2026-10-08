@@ -43,6 +43,9 @@ export interface DeviceStatus {
 }
 
 export interface LiveGame {
+  /** Server time of the scoreboard's last write. Absent on live games written
+   *  before it was recorded. */
+  updatedAt?: Timestamp | null;
   currentEnd: number;
   team1: { name: string; score: number; hasHammer: boolean };
   team2: { name: string; score: number; hasHammer: boolean };

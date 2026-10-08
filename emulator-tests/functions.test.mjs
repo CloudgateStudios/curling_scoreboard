@@ -5,7 +5,7 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator, getAuth, signInAnonymously, signInWithEmailAndPassword,
@@ -143,6 +143,48 @@ describe('REST API key check', () => {
   test('ignores a key left on the club document', async () => {
     const res = await fetch(`${API_URL}/clubs/legacy`, { headers: { 'x-api-key': 'legacy-key' } });
     assert.equal(res.status, 403);
+  });
+});
+
+describe('REST API live games', () => {
+  const teams = {
+    team1: { name: 'Red', score: 0, hasHammer: false },
+    team2: { name: 'Yellow', score: 0, hasHammer: true },
+  };
+  const minutesAgo = (minutes) => Timestamp.fromMillis(Date.now() - minutes * 60 * 1000);
+
+  async function sheetWithLiveGame(sheetId, liveGame) {
+    await db.doc(`clubs/club-a/sheets/${sheetId}`).set({ name: sheetId, liveGame });
+    const res = await fetch(`${API_URL}/clubs/club-a/sheets/${sheetId}`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 200);
+    await db.doc(`clubs/club-a/sheets/${sheetId}`).delete();
+    return res.json();
+  }
+
+  test('reports a game that has just started, with when it was last written', async () => {
+    const updatedAt = minutesAgo(1);
+    const body = await sheetWithLiveGame('sheet-started', { updatedAt, currentEnd: 1, ...teams });
+    assert.equal(body.hasLiveGame, true);
+    assert.deepEqual(body.liveGame, {
+      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, ...teams,
+    });
+  });
+
+  test('still reports a game with no score change for just under two hours', async () => {
+    const body = await sheetWithLiveGame('sheet-slow', { updatedAt: minutesAgo(119), currentEnd: 3, ...teams });
+    assert.equal(body.hasLiveGame, true);
+  });
+
+  test('drops a game with no score change for over two hours', async () => {
+    const body = await sheetWithLiveGame('sheet-abandoned', { updatedAt: minutesAgo(121), currentEnd: 3, ...teams });
+    assert.equal(body.hasLiveGame, false);
+    assert.equal(body.liveGame, null);
+  });
+
+  test('keeps a game written before updatedAt was recorded', async () => {
+    const body = await sheetWithLiveGame('sheet-legacy', { currentEnd: 2, ...teams });
+    assert.equal(body.hasLiveGame, true);
+    assert.equal(body.liveGame.updatedAt, null);
   });
 });
 

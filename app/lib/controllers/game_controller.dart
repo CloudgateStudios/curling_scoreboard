@@ -76,6 +76,10 @@ class GameController extends ChangeNotifier {
     _game = game;
     _startTimer();
     notifyListeners();
+
+    // Publish the game straight away so it shows as live during the first
+    // end, rather than only once the first score has been entered.
+    unawaited(_syncService.pushLiveGame(_game));
   }
 
   void _startTimer() {
