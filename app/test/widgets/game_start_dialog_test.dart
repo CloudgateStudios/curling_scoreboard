@@ -127,7 +127,7 @@ void main() {
       'leagues', (tester) async {
     await openDialog(tester);
     expect(find.text('Pick teams'), findsNothing);
-    expect(find.text('League game'), findsNothing);
+    expect(find.text('League'), findsNothing);
   });
 
   testWidgets('GameStartDialog still starts an open game in one tap at a '
@@ -137,7 +137,9 @@ void main() {
       leagues: [mondayNight, thursdayDoubles],
       now: mondayEvening,
     );
-    expect(find.text('Monday Night is playing'), findsOneWidget);
+    // The bar names the league the clock points at.
+    expect(find.text('Playing now'), findsOneWidget);
+    expect(find.text('Monday Night'), findsOneWidget);
 
     await tapAndSettle(tester, 'Start Game');
 
@@ -156,9 +158,8 @@ void main() {
     );
 
     await tapAndSettle(tester, 'Pick teams');
-    // The picker opens on the league playing now, with every team shown.
+    // Straight to the teams of the league playing now.
     expect(find.byType(LeagueMatchupPicker), findsOneWidget);
-    expect(find.text('Monday Night'), findsOneWidget);
     expect(find.text('Tap a team'), findsNWidgets(2));
     expect(doneEnabled(tester), isFalse);
 
@@ -196,6 +197,35 @@ void main() {
     expect(game.team2.externalId, isNull);
   });
 
+  testWidgets('LeagueMatchupPicker is only teams, with its actions bottom '
+      'right', (tester) async {
+    await openDialog(
+      tester,
+      leagues: [mondayNight, thursdayDoubles],
+      now: mondayEvening,
+    );
+    await tapAndSettle(tester, 'Pick teams');
+
+    final picker = find.byType(LeagueMatchupPicker);
+    Finder inPicker(String text) =>
+        find.descendant(of: picker, matching: find.text(text));
+
+    // No title and no league control: those are on the setup screen.
+    expect(inPicker('Monday Night'), findsNothing);
+    expect(inPicker('Change league'), findsNothing);
+
+    final screen = tester.getRect(picker);
+    final done = tester.getRect(find.widgetWithText(ElevatedButton, 'Done'));
+    final cancel = tester.getRect(inPicker('Cancel'));
+    final lastTeam = tester.getRect(
+      find.widgetWithText(ElevatedButton, 'Team Smith'),
+    );
+    expect(done.top, greaterThan(lastTeam.bottom));
+    expect(done.center.dx, greaterThan(screen.center.dx));
+    expect(cancel.right, lessThan(done.left));
+    expect(screen.bottom - done.bottom, lessThan(40));
+  });
+
   testWidgets('GameStartDialog does not start the game on a double tap of '
       'Done', (tester) async {
     final started = await openDialog(
@@ -208,8 +238,8 @@ void main() {
     await tapTeam(tester, 'Team Smith');
     await tapTeam(tester, 'Team Jones');
 
-    // The second tap of a double tap on Done lands on the setup screen
-    // as the picker closes, and must not start the game.
+    // Done and Start Game share a corner. The second tap of a double tap
+    // lands on the setup screen as the picker closes.
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start Game'), warnIfMissed: false);
@@ -280,42 +310,73 @@ void main() {
     expect(started()!.team2.name, 'Team Jones');
   });
 
-  testWidgets('LeagueMatchupPicker asks for the league when none is '
-      'playing', (tester) async {
+  testWidgets('GameStartDialog asks for the league before the teams when '
+      'none is playing', (tester) async {
     final started = await openDialog(
       tester,
       leagues: [mondayNight, thursdayDoubles],
       // A Wednesday, when neither league plays.
       now: () => DateTime(2026, 10, 7, 19),
     );
-    expect(find.text('League game'), findsOneWidget);
+    expect(find.text('Choose league'), findsOneWidget);
+    expect(find.text('Playing now'), findsNothing);
 
     await tapAndSettle(tester, 'Pick teams');
     expect(find.text('Which league?'), findsOneWidget);
+    expect(find.byType(LeagueMatchupPicker), findsNothing);
 
-    await tapTeam(tester, 'Thursday Doubles');
+    // Choosing the league carries straight on to its teams.
+    await tapAndSettle(tester, 'Thursday Doubles');
+    expect(find.byType(LeagueMatchupPicker), findsOneWidget);
     await tapTeam(tester, 'Stone Cold');
     await tapTeam(tester, 'Double Trouble');
     await tapAndSettle(tester, 'Done');
+    expect(find.text('Thursday Doubles'), findsOneWidget);
     await tapAndSettle(tester, 'Start Game');
 
     expect(started()!.league?.id, 'thursday');
     expect(started()!.team2.name, 'Double Trouble');
   });
 
-  testWidgets("LeagueMatchupPicker opens on a club's only league, whatever "
-      'the time', (tester) async {
-    await openDialog(tester, leagues: [thursdayDoubles], now: mondayEvening);
+  testWidgets('GameStartDialog changes league from the setup screen, '
+      'listing the one playing now first', (tester) async {
+    final started = await openDialog(
+      tester,
+      leagues: [thursdayDoubles, mondayNight],
+      now: mondayEvening,
+    );
+
+    await tapAndSettle(tester, 'Monday Night');
+    expect(find.text('Which league?'), findsOneWidget);
+    final options = find.byType(SimpleDialogOption);
+    expect(
+      find.descendant(of: options.first, matching: find.text('Monday Night')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: options.first, matching: find.text('Playing now')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(of: options, matching: find.text('Thursday Doubles')),
+    );
+    await tester.pumpAndSettle();
+    // Only the league changed: no team picker until it is asked for.
+    expect(find.byType(LeagueMatchupPicker), findsNothing);
+    expect(find.text('Thursday Doubles'), findsOneWidget);
 
     await tapAndSettle(tester, 'Pick teams');
-    expect(find.text('Thursday Doubles'), findsOneWidget);
-    expect(find.text('Stone Cold'), findsOneWidget);
-    // With one league there is nothing to change to.
-    expect(find.text('Change league'), findsNothing);
+    await tapTeam(tester, 'Stone Cold');
+    await tapTeam(tester, 'Double Trouble');
+    await tapAndSettle(tester, 'Done');
+    await tapAndSettle(tester, 'Start Game');
+    expect(started()!.league?.id, 'thursday');
   });
 
-  testWidgets('LeagueMatchupPicker clears the teams when the league '
-      'changes', (tester) async {
+  testWidgets('GameStartDialog clears the teams when the league changes', (
+    tester,
+  ) async {
     await openDialog(
       tester,
       leagues: [mondayNight, thursdayDoubles],
@@ -324,11 +385,72 @@ void main() {
 
     await tapAndSettle(tester, 'Pick teams');
     await tapTeam(tester, 'Team Smith');
-    await tapAndSettle(tester, 'Change league');
-    await tapTeam(tester, 'Thursday Doubles');
+    await tapTeam(tester, 'Team Jones');
+    await tapAndSettle(tester, 'Done');
+
+    await tapAndSettle(tester, 'Monday Night');
+    await tapAndSettle(tester, 'Thursday Doubles');
 
     expect(find.text('Team Smith'), findsNothing);
-    expect(find.text('Tap a team'), findsNWidgets(2));
+    expect(find.text('Pick teams'), findsOneWidget);
+    expect(find.text('Red'), findsOneWidget);
+  });
+
+  testWidgets('GameStartDialog keeps the teams when the same league is '
+      'chosen again', (tester) async {
+    await openDialog(
+      tester,
+      leagues: [mondayNight, thursdayDoubles],
+      now: mondayEvening,
+    );
+
+    await tapAndSettle(tester, 'Pick teams');
+    await tapTeam(tester, 'Team Smith');
+    await tapTeam(tester, 'Team Jones');
+    await tapAndSettle(tester, 'Done');
+
+    await tapAndSettle(tester, 'Monday Night');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SimpleDialogOption),
+        matching: find.text('Monday Night'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Team Smith'), findsNWidgets(2));
+  });
+
+  testWidgets("GameStartDialog shows a club's only league with nothing to "
+      'change', (tester) async {
+    await openDialog(tester, leagues: [thursdayDoubles], now: mondayEvening);
+
+    expect(find.text('Thursday Doubles'), findsOneWidget);
+    expect(find.byIcon(Icons.unfold_more), findsNothing);
+    await tapAndSettle(tester, 'Thursday Doubles');
+    expect(find.text('Which league?'), findsNothing);
+
+    await tapAndSettle(tester, 'Pick teams');
+    expect(find.text('Stone Cold'), findsOneWidget);
+  });
+
+  testWidgets('GameStartDialog follows the clock while it sits open', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 10, 7, 19);
+    await openDialog(
+      tester,
+      leagues: [mondayNight, thursdayDoubles],
+      now: () => now,
+    );
+    expect(find.text('Choose league'), findsOneWidget);
+
+    // Left open until Thursday's draw.
+    now = DateTime(2026, 10, 8, 19, 30);
+    await tester.pump(const Duration(minutes: 1));
+
+    expect(find.text('Thursday Doubles'), findsOneWidget);
+    expect(find.text('Playing now'), findsOneWidget);
   });
 
   testWidgets('GameStartDialog keeps the teams when the picker is '
@@ -345,7 +467,8 @@ void main() {
     await tapAndSettle(tester, 'Done');
 
     // Reopening starts from the teams already picked.
-    await tapAndSettle(tester, 'Monday Night');
+    await tester.tap(find.text('vs'));
+    await tester.pumpAndSettle();
     expect(find.text('Tap a team'), findsNothing);
     await tapTeam(tester, 'Team Jones');
     await tapAndSettle(tester, 'Cancel');

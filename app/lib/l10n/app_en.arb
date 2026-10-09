@@ -28,19 +28,21 @@
   "@gameStartDialogTitle": {
     "description": "Title of the dialog shown to setup the game."
   },
-  "gameStartDialogLeagueBarTitle": "League game",
-  "@gameStartDialogLeagueBarTitle": {
-    "description": "Title of the bar on the game start dialog that opens the league team picker, when no league is playing right now."
+  "gameStartDialogLeagueBarLeagueLabel": "League",
+  "@gameStartDialogLeagueBarLeagueLabel": {
+    "description": "Small label above the league name on the league bar of the game start dialog."
   },
-  "gameStartDialogLeagueBarTitlePlaying": "{league} is playing",
-  "@gameStartDialogLeagueBarTitlePlaying": {
-    "description": "Title of the bar on the game start dialog that opens the league team picker, naming the league scheduled to play now.",
-    "placeholders": {
-      "league": {
-        "type": "String",
-        "example": "Monday Night"
-      }
-    }
+  "gameStartDialogLeagueBarChooseLeague": "Choose league",
+  "@gameStartDialogLeagueBarChooseLeague": {
+    "description": "Shown in place of a league name on the league bar of the game start dialog when no league is selected yet."
+  },
+  "leaguePlayingNowLabel": "Playing now",
+  "@leaguePlayingNowLabel": {
+    "description": "Marks a league that is scheduled to be playing at the current time."
+  },
+  "leagueChooserTitle": "Which league?",
+  "@leagueChooserTitle": {
+    "description": "Title of the dialog listing the club's leagues to choose from."
   },
   "gameStartDialogLeagueBarPickTeams": "Pick teams",
   "@gameStartDialogLeagueBarPickTeams": {
@@ -53,14 +55,6 @@
   "matchupVersus": "vs",
   "@matchupVersus": {
     "description": "Separator shown between the names of the two teams in a game."
-  },
-  "matchupPickerChooseLeagueTitle": "Which league?",
-  "@matchupPickerChooseLeagueTitle": {
-    "description": "Title of the league team picker while the league has not been chosen yet."
-  },
-  "matchupPickerChangeLeagueButtonLabel": "Change league",
-  "@matchupPickerChangeLeagueButtonLabel": {
-    "description": "Button text in the league team picker to go back and choose a different league."
   },
   "matchupPickerEmptySlotLabel": "Tap a team",
   "@matchupPickerEmptySlotLabel": {

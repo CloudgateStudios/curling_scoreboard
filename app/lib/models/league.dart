@@ -126,6 +126,14 @@ class League {
     );
   }
 
+  /// The league to offer for a game started at [now]: the only one in a
+  /// draw, or the club's only league. Null when there is no clear answer.
+  static League? suggested(List<League> leagues, DateTime now) {
+    final playing = leagues.where((l) => l.isPlayingAt(now)).toList();
+    if (playing.length == 1) return playing.single;
+    return leagues.length == 1 ? leagues.single : null;
+  }
+
   /// Orders names the way a person would list them: ignoring case, and with
   /// numbers by value, so "Team 2" comes before "Team 10".
   static int compareNames(String a, String b) {

@@ -136,17 +136,29 @@ abstract class AppLocalizations {
   /// **'Game Setup'**
   String get gameStartDialogTitle;
 
-  /// Title of the bar on the game start dialog that opens the league team picker, when no league is playing right now.
+  /// Small label above the league name on the league bar of the game start dialog.
   ///
   /// In en, this message translates to:
-  /// **'League game'**
-  String get gameStartDialogLeagueBarTitle;
+  /// **'League'**
+  String get gameStartDialogLeagueBarLeagueLabel;
 
-  /// Title of the bar on the game start dialog that opens the league team picker, naming the league scheduled to play now.
+  /// Shown in place of a league name on the league bar of the game start dialog when no league is selected yet.
   ///
   /// In en, this message translates to:
-  /// **'{league} is playing'**
-  String gameStartDialogLeagueBarTitlePlaying(String league);
+  /// **'Choose league'**
+  String get gameStartDialogLeagueBarChooseLeague;
+
+  /// Marks a league that is scheduled to be playing at the current time.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing now'**
+  String get leaguePlayingNowLabel;
+
+  /// Title of the dialog listing the club's leagues to choose from.
+  ///
+  /// In en, this message translates to:
+  /// **'Which league?'**
+  String get leagueChooserTitle;
 
   /// Second line of the league bar on the game start dialog, inviting the user to choose the two teams.
   ///
@@ -165,18 +177,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'vs'**
   String get matchupVersus;
-
-  /// Title of the league team picker while the league has not been chosen yet.
-  ///
-  /// In en, this message translates to:
-  /// **'Which league?'**
-  String get matchupPickerChooseLeagueTitle;
-
-  /// Button text in the league team picker to go back and choose a different league.
-  ///
-  /// In en, this message translates to:
-  /// **'Change league'**
-  String get matchupPickerChangeLeagueButtonLabel;
 
   /// Text shown on a rock color in the league team picker until a team has been picked for it.
   ///

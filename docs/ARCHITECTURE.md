@@ -248,24 +248,30 @@ and, like the rock colors, keeps the last ones it saw for an offline start.
 While there are any, the game start dialog gains one bar above its settings.
 Leaving the bar alone starts an open game exactly as before.
 
-The bar looks at the scoreboard's local clock. If exactly one league is in a
-draw (from half an hour before it starts until it ends, within the league's
-season) the bar names it. Tapping the bar opens a full screen team picker on
-that league, or on a club's only league; any other time the picker first
-asks which league, with the ones playing now listed first.
+The left of the bar is the league. It follows the scoreboard's local clock:
+if exactly one league is in a draw (from half an hour before it starts until
+it ends, within the league's season) the bar names it and marks it as playing
+now, and a club's only league is always named. Tapping it lists the club's
+leagues, the ones playing now first, to choose another; that clears any teams
+already picked. The bar re-reads the clock every minute, because the setup
+screen is left open between games, sometimes overnight.
 
-The picker shows every team in the league as one large button, sized to fill
-the screen without scrolling. The first team tapped throws the first rock
-color and the second the other. Two slots at the top show who is picked;
-tapping a slot or a picked team clears it, a third tap replaces the second
-team, and a swap button exchanges the colors. Back on the setup screen the
-bar shows the matchup and the hammer choice names the two teams.
+The right of the bar opens a full screen team picker for that league. With no
+league to go on, it asks for the league first and carries straight on.
 
-Cancel and Done share the picker's title row, so everything below goes to
-the team buttons, and every button uses one text size: the largest at which
-the longest team name fits. The setup screen ignores taps for a moment after
-the picker closes, so a double tap on Done cannot land on whatever is under
-it.
+The picker is only teams: no title and no league control, so the buttons get
+the room. Every team in the league is one large button, sized to fill the
+screen without scrolling, and all in one text size, the largest at which the
+longest name fits. The first team tapped throws the first rock color and the
+second the other. Two slots at the top show who is picked; tapping a slot or
+a picked team clears it, a third tap replaces the second team, and a swap
+button exchanges the colors. Cancel and Done are bottom right. Back on the
+setup screen the bar shows the matchup and the hammer choice names the two
+teams.
+
+Done sits in the same corner as Start Game, so the setup screen ignores taps
+for a moment after the picker closes. Otherwise a double tap on Done would
+start the game.
 
 The game carries the league and each team's `teamId` and `externalId`, which
 are written with `liveGame` and the completed game. The name and IDs are

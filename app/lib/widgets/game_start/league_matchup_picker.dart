@@ -17,65 +17,89 @@ class LeagueMatchup {
   final LeagueTeam team2;
 }
 
+/// Asks which of the club's [leagues] a game is in, listing the ones in a
+/// draw at [now] first. Completes with null if dismissed.
+Future<League?> showLeagueChooser(
+  BuildContext context, {
+  required List<League> leagues,
+  required DateTime now,
+}) {
+  return showDialog<League>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: Text(
+        context.l10n.leagueChooserTitle,
+        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+      ),
+      children: [
+        for (final playing in [true, false])
+          for (final league in leagues)
+            if (league.isPlayingAt(now) == playing)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(context, league),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 20,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      league.name,
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (playing)
+                      Text(
+                        context.l10n.leaguePlayingNowLabel,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                  ],
+                ),
+              ),
+      ],
+    ),
+  );
+}
+
 /// A full screen for choosing the two teams of a league game.
 ///
 /// Every team in the league is one large button. The first team tapped
 /// throws the first rock color and the second the other, and the two slots
 /// at the top show who has been picked. Pops with a [LeagueMatchup], or with
 /// null if cancelled.
+///
+/// The screen has no title and no way to change league: both live on the
+/// game setup screen, which leaves this one to the teams.
 class LeagueMatchupPicker extends StatefulWidget {
   const LeagueMatchupPicker({
-    required this.leagues,
+    required this.league,
     required this.rockColors,
-    required this.now,
     this.initial,
     super.key,
   });
 
-  /// The club's active leagues. Must not be empty.
-  final List<League> leagues;
+  final League league;
   final RockColors rockColors;
 
-  /// The scoreboard's local time, which decides the league to start on.
-  final DateTime Function() now;
-
-  /// The matchup to start from, when changing one already picked.
+  /// The teams to start from, when changing a matchup already picked.
   final LeagueMatchup? initial;
-
-  /// The league to offer first: the only one in a draw at [now], or the
-  /// club's only league. Null when there is no clear answer.
-  static League? suggestedLeague(List<League> leagues, DateTime now) {
-    final playing = leagues.where((l) => l.isPlayingAt(now)).toList();
-    if (playing.length == 1) return playing.single;
-    return leagues.length == 1 ? leagues.single : null;
-  }
 
   @override
   State<LeagueMatchupPicker> createState() => _LeagueMatchupPickerState();
 }
 
 class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
-  League? _league;
   LeagueTeam? _team1;
   LeagueTeam? _team2;
 
   @override
   void initState() {
     super.initState();
-    final initial = widget.initial;
-    _league =
-        initial?.league ??
-        LeagueMatchupPicker.suggestedLeague(widget.leagues, widget.now());
-    _team1 = initial?.team1;
-    _team2 = initial?.team2;
-  }
-
-  void _chooseLeague(League? league) {
-    setState(() {
-      _league = league;
-      _team1 = null;
-      _team2 = null;
-    });
+    _team1 = widget.initial?.team1;
+    _team2 = widget.initial?.team2;
   }
 
   /// The first tap fills the first color, the second tap the other. Tapping
@@ -107,7 +131,6 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final league = _league;
     final team1 = _team1;
     final team2 = _team2;
 
@@ -117,57 +140,83 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            SizedBox(
+              height: 84,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _Slot(
+                      color: widget.rockColors.team1,
+                      team: team1,
+                      onClear: () => setState(() => _team1 = null),
+                    ),
+                  ),
+                  IconButton(
+                    iconSize: 48,
+                    tooltip: l10n.matchupPickerSwapTooltip,
+                    onPressed: team1 == null && team2 == null ? null : _swap,
+                    icon: const Icon(Icons.swap_horiz),
+                  ),
+                  Expanded(
+                    child: _Slot(
+                      color: widget.rockColors.team2,
+                      team: team2,
+                      onClear: () => setState(() => _team2 = null),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _TileGrid(
+                children: [
+                  for (final team in widget.league.teams)
+                    _Tile(
+                      label: team.name,
+                      color: team.id == team1?.id
+                          ? widget.rockColors.team1
+                          : team.id == team2?.id
+                          ? widget.rockColors.team2
+                          : null,
+                      onTap: () => _tapTeam(team),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Bottom right, where the setup screen's Start Game is too.
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: Text(
-                    league?.name ?? l10n.matchupPickerChooseLeagueTitle,
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (league != null && widget.leagues.length > 1)
-                  TextButton(
-                    onPressed: () => _chooseLeague(null),
-                    child: Text(
-                      l10n.matchupPickerChangeLeagueButtonLabel,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
-                const SizedBox(width: 24),
-                // Cancel and Done share the title's row, so everything
-                // below it can go to the team buttons.
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
                     l10n.matchupPickerCancelButtonLabel,
-                    style: const TextStyle(fontSize: 28),
+                    style: const TextStyle(fontSize: 32),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 24),
                 ElevatedButton(
-                  onPressed: league == null || team1 == null || team2 == null
+                  onPressed: team1 == null || team2 == null
                       ? null
                       : () => Navigator.pop(
                           context,
                           LeagueMatchup(
-                            league: league,
+                            league: widget.league,
                             team1: team1,
                             team2: team2,
                           ),
                         ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 6,
+                      horizontal: 24,
+                      vertical: 8,
                     ),
                     child: Text(
                       l10n.matchupPickerDoneButtonLabel,
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 40,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -175,65 +224,6 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            if (league == null)
-              Expanded(
-                child: _TileGrid(
-                  children: [
-                    // Whatever is on the ice now comes first.
-                    for (final playing in [true, false])
-                      for (final l in widget.leagues)
-                        if (l.isPlayingAt(widget.now()) == playing)
-                          _Tile(label: l.name, onTap: () => _chooseLeague(l)),
-                  ],
-                ),
-              )
-            else ...[
-              SizedBox(
-                height: 84,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _Slot(
-                        color: widget.rockColors.team1,
-                        team: team1,
-                        onClear: () => setState(() => _team1 = null),
-                      ),
-                    ),
-                    IconButton(
-                      iconSize: 48,
-                      tooltip: l10n.matchupPickerSwapTooltip,
-                      onPressed: team1 == null && team2 == null ? null : _swap,
-                      icon: const Icon(Icons.swap_horiz),
-                    ),
-                    Expanded(
-                      child: _Slot(
-                        color: widget.rockColors.team2,
-                        team: team2,
-                        onClear: () => setState(() => _team2 = null),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: _TileGrid(
-                  children: [
-                    for (final team in league.teams)
-                      _Tile(
-                        label: team.name,
-                        color: team.id == team1?.id
-                            ? widget.rockColors.team1
-                            : team.id == team2?.id
-                            ? widget.rockColors.team2
-                            : null,
-                        onTap: () => _tapTeam(team),
-                      ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),

@@ -30,12 +30,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameStartDialogTitle => 'Game Setup';
 
   @override
-  String get gameStartDialogLeagueBarTitle => 'League game';
+  String get gameStartDialogLeagueBarLeagueLabel => 'League';
 
   @override
-  String gameStartDialogLeagueBarTitlePlaying(String league) {
-    return '$league is playing';
-  }
+  String get gameStartDialogLeagueBarChooseLeague => 'Choose league';
+
+  @override
+  String get leaguePlayingNowLabel => 'Playing now';
+
+  @override
+  String get leagueChooserTitle => 'Which league?';
 
   @override
   String get gameStartDialogLeagueBarPickTeams => 'Pick teams';
@@ -45,12 +49,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get matchupVersus => 'vs';
-
-  @override
-  String get matchupPickerChooseLeagueTitle => 'Which league?';
-
-  @override
-  String get matchupPickerChangeLeagueButtonLabel => 'Change league';
 
   @override
   String get matchupPickerEmptySlotLabel => 'Tap a team';

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
@@ -55,6 +57,13 @@ class GameStartDialog extends StatelessWidget {
     // The teams of a league game, picked on their own screen. Null for an
     // open game.
     LeagueMatchup? matchup;
+
+    // A league the user chose by hand. Until they do, the league is whatever
+    // the clock suggests, worked out afresh each time it is needed because
+    // this screen can sit open from one day to the next.
+    League? chosenLeague;
+    League? currentLeague() =>
+        matchup?.league ?? chosenLeague ?? League.suggested(leagues, now());
 
     // A double tap on the picker's Done would otherwise land on whatever
     // is under it here as the picker closes. The setup screen sits out the
@@ -143,17 +152,41 @@ class GameStartDialog extends StatelessWidget {
                           child: _LeagueBar(
                             colors: colors,
                             matchup: matchup,
-                            suggested: LeagueMatchupPicker.suggestedLeague(
-                              leagues,
-                              now(),
-                            ),
-                            onPick: () async {
+                            league: currentLeague,
+                            now: now,
+                            canChangeLeague: leagues.length > 1,
+                            onChooseLeague: () async {
+                              final league = await showLeagueChooser(
+                                context,
+                                leagues: leagues,
+                                now: now(),
+                              );
+                              if (league == null || !context.mounted) return;
+                              setState(() {
+                                // Teams belong to their league.
+                                if (league.id != matchup?.league.id) {
+                                  matchup = null;
+                                }
+                                chosenLeague = league;
+                              });
+                            },
+                            onPickTeams: () async {
+                              // With no league to go on, ask for it first.
+                              final league =
+                                  currentLeague() ??
+                                  await showLeagueChooser(
+                                    context,
+                                    leagues: leagues,
+                                    now: now(),
+                                  );
+                              if (league == null || !context.mounted) return;
+                              setState(() => chosenLeague = league);
+
                               final picked = await showDialog<LeagueMatchup>(
                                 context: context,
                                 builder: (_) => LeagueMatchupPicker(
-                                  leagues: leagues,
+                                  league: league,
                                   rockColors: colors,
-                                  now: now,
                                   initial: matchup,
                                 ),
                               );
@@ -386,106 +419,163 @@ class GameStartSegmentControlText extends StatelessWidget {
   }
 }
 
-/// The one thing league games add to the setup screen: a bar that opens the
-/// team picker, and afterwards shows the teams that were picked. Leaving it
-/// alone starts an open game.
-class _LeagueBar extends StatelessWidget {
+/// The one thing league games add to the setup screen: a bar holding the
+/// league and the teams. Its left side names the league and changes it; its
+/// right side opens the team picker, and afterwards shows the teams that
+/// were picked. Leaving the bar alone starts an open game.
+class _LeagueBar extends StatefulWidget {
   const _LeagueBar({
     required this.colors,
     required this.matchup,
-    required this.suggested,
-    required this.onPick,
+    required this.league,
+    required this.now,
+    required this.canChangeLeague,
+    required this.onChooseLeague,
+    required this.onPickTeams,
     required this.onClear,
   });
 
   final RockColors colors;
   final LeagueMatchup? matchup;
 
-  /// The league playing now, named on the bar before teams are picked.
-  final League? suggested;
-  final VoidCallback onPick;
+  /// The league a game started now would be in, if that is known.
+  final League? Function() league;
+  final DateTime Function() now;
+
+  /// False at a club with a single league, where there is nothing to change.
+  final bool canChangeLeague;
+  final VoidCallback onChooseLeague;
+  final VoidCallback onPickTeams;
   final VoidCallback onClear;
+
+  @override
+  State<_LeagueBar> createState() => _LeagueBarState();
+}
+
+class _LeagueBarState extends State<_LeagueBar> {
+  // The setup screen is left open between games, sometimes overnight, and
+  // the league on show follows the clock.
+  late final Timer _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => setState(() {}),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refresh.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final matchup = this.matchup;
+    final matchup = widget.matchup;
+    final league = widget.league();
+    final radius = BorderRadius.circular(20);
 
     return Material(
       color: Colors.blueAccent.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onPick,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-          child: Row(
-            children: [
-              Expanded(
-                child: matchup == null
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            suggested == null
-                                ? l10n.gameStartDialogLeagueBarTitle
-                                : l10n.gameStartDialogLeagueBarTitlePlaying(
-                                    suggested!.name,
-                                  ),
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            l10n.gameStartDialogLeagueBarPickTeams,
-                            style: const TextStyle(fontSize: 30),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            matchup.league.name,
-                            style: const TextStyle(fontSize: 30),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _TeamChip(
-                                color: colors.team1,
-                                name: matchup.team1.name,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(
-                                  l10n.matchupVersus,
-                                  style: const TextStyle(fontSize: 30),
-                                ),
-                              ),
-                              _TeamChip(
-                                color: colors.team2,
-                                name: matchup.team2.name,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-              ),
-              if (matchup == null)
-                const Icon(Icons.chevron_right, size: 60)
-              else
-                IconButton(
-                  iconSize: 50,
-                  tooltip: l10n.gameStartDialogLeagueBarClearTooltip,
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close),
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: widget.canChangeLeague ? widget.onChooseLeague : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 20,
                 ),
-            ],
-          ),
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          league != null && league.isPlayingAt(widget.now())
+                              ? l10n.leaguePlayingNowLabel
+                              : l10n.gameStartDialogLeagueBarLeagueLabel,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        Text(
+                          league?.name ??
+                              l10n.gameStartDialogLeagueBarChooseLeague,
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (widget.canChangeLeague)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 16),
+                        child: Icon(Icons.unfold_more, size: 44),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: InkWell(
+                onTap: widget.onPickTeams,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 20,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (matchup == null) ...[
+                        Text(
+                          l10n.gameStartDialogLeagueBarPickTeams,
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, size: 60),
+                      ] else ...[
+                        _TeamChip(
+                          color: widget.colors.team1,
+                          name: matchup.team1.name,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            l10n.matchupVersus,
+                            style: const TextStyle(fontSize: 30),
+                          ),
+                        ),
+                        _TeamChip(
+                          color: widget.colors.team2,
+                          name: matchup.team2.name,
+                        ),
+                        const SizedBox(width: 16),
+                        IconButton(
+                          iconSize: 50,
+                          tooltip: l10n.gameStartDialogLeagueBarClearTooltip,
+                          onPressed: widget.onClear,
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
