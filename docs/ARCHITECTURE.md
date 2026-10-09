@@ -71,6 +71,7 @@ clubs/{clubId}/sheets/{sheetId}
     currentEnd: int
     league?: { id: string, name: string }   // league games only
     team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
+             hadLastStoneFirstEnd: bool,
              teamId?: string, externalId?: string }   // the last two in league games
     team2: { ...the same }
   }
