@@ -9,11 +9,18 @@ class ScoreInputDialog extends StatelessWidget {
     required this.end,
     this.defaultTeam,
     this.rockColors,
+    this.team1Name,
+    this.team2Name,
     super.key,
   });
 
   /// The rock colors of the game being scored. Red and yellow when null.
   final RockColors? rockColors;
+
+  /// The names of the teams playing, shown under their rock colors. Left out
+  /// when null or just the color again, as in a game outside a league.
+  final String? team1Name;
+  final String? team2Name;
 
   final int end;
   final ScoringTeam? defaultTeam;
@@ -36,9 +43,15 @@ class ScoreInputDialog extends StatelessWidget {
     final teamNames = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: EnterEditScoreDialogTeamText(team: colors.team1.name),
+        child: EnterEditScoreDialogTeamText(
+          team: colors.team1.name,
+          teamName: team1Name,
+        ),
       ),
-      1: EnterEditScoreDialogTeamText(team: colors.team2.name),
+      1: EnterEditScoreDialogTeamText(
+        team: colors.team2.name,
+        teamName: team2Name,
+      ),
     };
 
     final scoreItems = {
@@ -169,15 +182,44 @@ class EnterEditScoreDialogScoreText extends StatelessWidget {
 }
 
 class EnterEditScoreDialogTeamText extends StatelessWidget {
-  const EnterEditScoreDialogTeamText({required this.team, super.key});
+  const EnterEditScoreDialogTeamText({
+    required this.team,
+    this.teamName,
+    super.key,
+  });
 
+  /// The team's rock color.
   final String team;
+
+  /// The team's own name, shown smaller under the color when it has one.
+  final String? teamName;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
+    final color = Text(
       team,
       style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+    );
+
+    final name = teamName;
+    if (name == null || name.isEmpty || name == team) {
+      return color;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        color,
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 260),
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18),
+          ),
+        ),
+      ],
     );
   }
 }

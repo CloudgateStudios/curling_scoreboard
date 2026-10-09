@@ -200,4 +200,81 @@ void main() {
     expect(find.text('Red'), findsNothing);
     expect(find.text('Yellow'), findsNothing);
   });
+
+  testWidgets('ScoreInputDialog shows team names under their colors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithMaterialApp(
+        const ScoreInputDialog(
+          defaultScore: 0,
+          end: 1,
+          team1Name: 'Team Smith',
+          team2Name: 'Team Jones',
+        ),
+      ),
+    );
+
+    for (final (color, name) in [
+      ('Red', 'Team Smith'),
+      ('Yellow', 'Team Jones'),
+    ]) {
+      expect(
+        tester.getTopLeft(find.text(name)).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(find.text(color)).dy),
+      );
+      expect(
+        tester.widget<Text>(find.text(name)).style!.fontSize,
+        lessThan(tester.widget<Text>(find.text(color)).style!.fontSize!),
+      );
+    }
+
+    // The team name is part of the segment, so tapping it picks the team.
+    await tester.tap(find.text('1'));
+    await tester.pump();
+    await tester.tap(find.text('Team Jones'));
+    await tester.pump();
+
+    final enterButton = find.widgetWithText(ElevatedButton, 'Enter');
+    expect(tester.widget<ElevatedButton>(enterButton).enabled, isTrue);
+  });
+
+  testWidgets('ScoreInputDialog shows only the color for an unnamed team', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithMaterialApp(
+        const ScoreInputDialog(
+          defaultScore: 0,
+          end: 1,
+          team1Name: 'Red',
+          team2Name: 'Yellow',
+        ),
+      ),
+    );
+
+    expect(find.text('Red'), findsOneWidget);
+    expect(find.text('Yellow'), findsOneWidget);
+  });
+
+  testWidgets('ScoreInputDialog fits long team names on a tablet', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 728);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      wrapWithMaterialApp(
+        const ScoreInputDialog(
+          defaultScore: 0,
+          end: 1,
+          team1Name: 'The Extremely Long Winded Sweepers of Northern Ontario',
+          team2Name: 'Another Team With A Remarkably Lengthy Name Indeed',
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
 }
