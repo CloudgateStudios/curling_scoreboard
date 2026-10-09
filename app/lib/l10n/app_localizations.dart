@@ -136,6 +136,60 @@ abstract class AppLocalizations {
   /// **'Game Setup'**
   String get gameStartDialogTitle;
 
+  /// Description text for choosing between an open game and a league game in the game start dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Type:'**
+  String get gameStartDialogFormLabelGameType;
+
+  /// Game type for a game that is not part of a league, with teams named by rock color.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get gameStartDialogGameTypeOpen;
+
+  /// Game type for a game between two teams of one of the club's leagues.
+  ///
+  /// In en, this message translates to:
+  /// **'League'**
+  String get gameStartDialogGameTypeLeague;
+
+  /// Description text for the league setting in the game start dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'League:'**
+  String get gameStartDialogFormLabelLeague;
+
+  /// Button text shown in place of a league name until a league has been chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a League'**
+  String get gameStartDialogPickLeagueButtonLabel;
+
+  /// Description text for choosing the two teams of a league game in the game start dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams:'**
+  String get gameStartDialogFormLabelTeams;
+
+  /// Button text on a rock color until the team throwing that color has been chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick {color} Team'**
+  String gameStartDialogPickTeamButtonLabel(String color);
+
+  /// Title of the dialog listing the club's leagues to choose from.
+  ///
+  /// In en, this message translates to:
+  /// **'League'**
+  String get leaguePickerDialogTitle;
+
+  /// Title of the dialog listing a league's teams, to choose the one throwing a rock color.
+  ///
+  /// In en, this message translates to:
+  /// **'{color} Team'**
+  String teamPickerDialogTitle(String color);
+
   /// Description text for the number of ends setting in the game start dialog.
   ///
   /// In en, this message translates to:

@@ -69,8 +69,10 @@ clubs/{clubId}/sheets/{sheetId}
   liveGame?: {               // the game in progress, removed when it ends
     updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
-    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool }
-    team2: { name: string, color: { name, hex }, score: int, hasHammer: bool }
+    league?: { id: string, name: string }   // league games only
+    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
+             teamId?: string, externalId?: string }   // the last two in league games
+    team2: { ...the same }
   }
   device?: {                 // what the scoreboard last said about itself
     appVersion: string
@@ -93,8 +95,10 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
   startedAt: timestamp
   finishedAt: timestamp
   numberOfEnds: int
-  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
-  team2: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
+  league?: { id: string, name: string }     // league games only
+  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool,
+           teamId?: string, externalId?: string }     // the last two in league games
+  team2: { ...the same }
   ends: [{
     endNumber: int
     scoringTeam: string | null       // team name; null for a blank end
@@ -107,8 +111,8 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
 Club IDs are readable slugs (`windy-city-curling`) when the super admin picks
 one, otherwise Firestore auto IDs. `scoringTeamSlot` was added because two
 teams can share a name; older games only have `scoringTeam`. A team's `name`
-is the name of its rock color, and `color` is absent on games from before it
-was recorded.
+is the name of its rock color in an open game and the league team's name in a
+league game; `color` is absent on games from before it was recorded.
 
 ## Roles
 
@@ -236,6 +240,26 @@ zone: scoreboards compare them with their own clock.
 
 Dates and times are stored as strings for the same reason. A Firestore
 timestamp is an instant, and "Mondays at 18:30" is not one.
+
+### League games on the scoreboard
+
+`LeagueService` on a paired scoreboard listens to its club's active leagues
+and, like the rock colors, keeps the last ones it saw for an offline start.
+While there are any, the game start dialog offers a game type: Open, which is
+the default and works as it always has, or League.
+
+Choosing League looks at the scoreboard's local clock. If exactly one league
+is in a draw (from half an hour before it starts until it ends, within the
+league's season) that league is selected; so is a club's only league. Any
+other time the user picks from the list, with the leagues playing now first.
+The dialog then shows a button in each rock color to pick the team throwing
+it, and the game cannot start until both are picked.
+
+The game carries the league and each team's `teamId` and `externalId`, which
+are written with `liveGame` and the completed game. The name and IDs are
+copied at the start of the game, so the record stands by itself whatever
+happens to the league afterwards, and it is what a later score reporter needs
+to match a result to a team.
 
 ## Scoreboard status
 

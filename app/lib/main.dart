@@ -7,6 +7,7 @@ import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/device_status_service.dart';
+import 'package:curling_scoreboard/services/league_service.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/rock_colors_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
@@ -35,6 +36,7 @@ Future<void> main() async {
     CurlingScoreboardApp(
       registrationService: registrationService,
       rockColorsService: RockColorsService(prefs, registrationService)..start(),
+      leagueService: LeagueService(prefs, registrationService)..start(),
       updateService: UpdateService.forCurrentPlatform(prefs)?..start(),
     ),
   );
@@ -44,12 +46,14 @@ class CurlingScoreboardApp extends StatelessWidget {
   const CurlingScoreboardApp({
     required this.registrationService,
     this.rockColorsService,
+    this.leagueService,
     this.updateService,
     super.key,
   });
 
   final RegistrationService registrationService;
   final RockColorsService? rockColorsService;
+  final LeagueService? leagueService;
   final UpdateService? updateService;
 
   @override
@@ -64,6 +68,7 @@ class CurlingScoreboardApp extends StatelessWidget {
       home: CurlingScoreboardScreen(
         registrationService: registrationService,
         rockColorsService: rockColorsService,
+        leagueService: leagueService,
         updateService: updateService,
       ),
     );
@@ -74,6 +79,7 @@ class CurlingScoreboardScreen extends StatefulWidget {
   const CurlingScoreboardScreen({
     required this.registrationService,
     this.rockColorsService,
+    this.leagueService,
     this.updateService,
     super.key,
   });
@@ -83,6 +89,9 @@ class CurlingScoreboardScreen extends StatefulWidget {
   /// The paired club's rock colors. Without it the scoreboard is red and
   /// yellow.
   final RockColorsService? rockColorsService;
+
+  /// The paired club's leagues. Without it only open games can be started.
+  final LeagueService? leagueService;
   final UpdateService? updateService;
 
   @override
@@ -184,17 +193,20 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         // scoreboard has nothing to show without one. barrierDismissible does
         // not stop the system back button, so block popping outright too.
         final rockColors = widget.rockColorsService;
-        if (rockColors == null) {
-          return const PopScope(canPop: false, child: GameStartDialog());
-        }
+        final leagues = widget.leagueService;
         // The dialog can sit open for days between games, so it follows the
-        // club's colors. Once a game starts its colors are fixed.
+        // club's colors and leagues. Once a game starts they are fixed.
         return PopScope(
           canPop: false,
-          child: ValueListenableBuilder<RockColors?>(
-            valueListenable: rockColors.clubColors,
-            builder: (context, colors, _) =>
-                GameStartDialog(rockColors: colors),
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              rockColors?.clubColors,
+              leagues?.leagues,
+            ]),
+            builder: (context, _) => GameStartDialog(
+              rockColors: rockColors?.clubColors.value,
+              leagues: leagues?.leagues.value ?? const [],
+            ),
           ),
         );
       },
@@ -520,6 +532,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                           if (confirmed ?? false) {
                             await reg.disconnect();
                             widget.rockColorsService?.start();
+                            widget.leagueService?.start();
                             if (context.mounted) {
                               setStateDialog(() {});
                               setState(() {});
@@ -541,6 +554,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                             // scoreboard without waiting for a heartbeat.
                             _deviceStatus.reportNow();
                             widget.rockColorsService?.start();
+                            widget.leagueService?.start();
                             if (context.mounted) {
                               setStateDialog(() {});
                               setState(() {});

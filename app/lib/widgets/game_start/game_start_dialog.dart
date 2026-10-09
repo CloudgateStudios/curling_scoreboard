@@ -6,10 +6,23 @@ import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
 
 class GameStartDialog extends StatelessWidget {
-  const GameStartDialog({this.rockColors, super.key});
+  const GameStartDialog({
+    this.rockColors,
+    this.leagues = const [],
+    this.now = DateTime.now,
+    super.key,
+  });
 
   /// The paired club's rock colors. Red and yellow when null.
   final RockColors? rockColors;
+
+  /// The paired club's active leagues. League games are only offered when
+  /// there are some.
+  final List<League> leagues;
+
+  /// The scoreboard's local time, which decides the league suggested for a
+  /// league game.
+  final DateTime Function() now;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +54,11 @@ class GameStartDialog extends StatelessWidget {
       ),
       1: GameStartSegmentControlText(text: colors.team2.name),
     };
+
+    var leagueGame = false;
+    League? selectedLeague;
+    LeagueTeam? team1Pick;
+    LeagueTeam? team2Pick;
 
     var settingsHammerTeam = Constants.defaultHammerTeam;
     var currentHammerTeamSelectedIndex = Constants.defaultHammerTeam;
@@ -97,6 +115,103 @@ class GameStartDialog extends StatelessWidget {
                 defaultColumnWidth: const IntrinsicColumnWidth(),
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
+                  if (leagues.isNotEmpty)
+                    _settingRow(
+                      label: context.l10n.gameStartDialogFormLabelGameType,
+                      control: MaterialSegmentedControl(
+                        children: {
+                          0: Padding(
+                            padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
+                            child: GameStartSegmentControlText(
+                              text: context.l10n.gameStartDialogGameTypeOpen,
+                            ),
+                          ),
+                          1: GameStartSegmentControlText(
+                            text: context.l10n.gameStartDialogGameTypeLeague,
+                          ),
+                        },
+                        selectionIndex: leagueGame ? 1 : 0,
+                        borderColor: Colors.grey,
+                        selectedColor: Colors.blueAccent,
+                        unselectedColor: Colors.white,
+                        selectedTextStyle: const TextStyle(color: Colors.white),
+                        unselectedTextStyle: const TextStyle(
+                          color: Colors.black,
+                        ),
+                        borderWidth: 1,
+                        borderRadius: 20,
+                        horizontalPadding: const EdgeInsets.all(10),
+                        verticalOffset: 25,
+                        onSegmentTapped: (index) {
+                          setState(() {
+                            leagueGame = index == 1;
+                            if (leagueGame) {
+                              selectedLeague ??= _suggestedLeague();
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  if (leagueGame)
+                    _settingRow(
+                      label: context.l10n.gameStartDialogFormLabelLeague,
+                      control: OutlinedButton(
+                        style: _pickerButtonStyle,
+                        onPressed: () async {
+                          final league = await _pick<League>(
+                            context,
+                            title: context.l10n.leaguePickerDialogTitle,
+                            // Whatever is on the ice now comes first.
+                            items: [
+                              ...leagues.where((l) => l.isPlayingAt(now())),
+                              ...leagues.where((l) => !l.isPlayingAt(now())),
+                            ],
+                            label: (league) => league.name,
+                          );
+                          if (league == null ||
+                              league.id == selectedLeague?.id) {
+                            return;
+                          }
+                          setState(() {
+                            selectedLeague = league;
+                            team1Pick = null;
+                            team2Pick = null;
+                          });
+                        },
+                        child: Text(
+                          selectedLeague?.name ??
+                              context.l10n.gameStartDialogPickLeagueButtonLabel,
+                        ),
+                      ),
+                    ),
+                  if (leagueGame)
+                    _settingRow(
+                      label: context.l10n.gameStartDialogFormLabelTeams,
+                      control: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _teamButton(
+                            context,
+                            color: colors.team1,
+                            league: selectedLeague,
+                            picked: team1Pick,
+                            other: team2Pick,
+                            onPicked: (team) =>
+                                setState(() => team1Pick = team),
+                          ),
+                          const SizedBox(width: 20),
+                          _teamButton(
+                            context,
+                            color: colors.team2,
+                            league: selectedLeague,
+                            picked: team2Pick,
+                            other: team1Pick,
+                            onPicked: (team) =>
+                                setState(() => team2Pick = team),
+                          ),
+                        ],
+                      ),
+                    ),
                   _settingRow(
                     label: context.l10n.gameStartDialogFormLabelNumberOfEnds,
                     control: MaterialSegmentedControl(
@@ -178,31 +293,56 @@ class GameStartDialog extends StatelessWidget {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                final team1 = CurlingTeam(
-                  name: colors.team1.name,
-                  color: colors.team1.color,
-                  textColor: colors.team1.textColor,
-                  hasHammer: settingsHammerTeam == 0,
-                  hadLastStoneFirstEnd: settingsHammerTeam == 0,
-                );
-                final team2 = CurlingTeam(
-                  name: colors.team2.name,
-                  color: colors.team2.color,
-                  textColor: colors.team2.textColor,
-                  hasHammer: settingsHammerTeam == 1,
-                  hadLastStoneFirstEnd: settingsHammerTeam == 1,
-                );
+              // A league game is between two of the league's teams.
+              onPressed:
+                  leagueGame &&
+                      (selectedLeague == null ||
+                          team1Pick == null ||
+                          team2Pick == null)
+                  ? null
+                  : () {
+                      final league = leagueGame ? selectedLeague : null;
+                      final team1 = CurlingTeam(
+                        name: league == null
+                            ? colors.team1.name
+                            : team1Pick!.name,
+                        colorName: colors.team1.name,
+                        teamId: league == null ? null : team1Pick!.id,
+                        externalId: league == null
+                            ? null
+                            : team1Pick!.externalId,
+                        color: colors.team1.color,
+                        textColor: colors.team1.textColor,
+                        hasHammer: settingsHammerTeam == 0,
+                        hadLastStoneFirstEnd: settingsHammerTeam == 0,
+                      );
+                      final team2 = CurlingTeam(
+                        name: league == null
+                            ? colors.team2.name
+                            : team2Pick!.name,
+                        colorName: colors.team2.name,
+                        teamId: league == null ? null : team2Pick!.id,
+                        externalId: league == null
+                            ? null
+                            : team2Pick!.externalId,
+                        color: colors.team2.color,
+                        textColor: colors.team2.textColor,
+                        hasHammer: settingsHammerTeam == 1,
+                        hadLastStoneFirstEnd: settingsHammerTeam == 1,
+                      );
 
-                final newCurlingGame = CurlingGame(
-                  team1: team1,
-                  team2: team2,
-                  numberOfEnds: settingsTotalEnds,
-                  numberOfPlayersPerTeam: settingsNumberOfPlayersPerTeam,
-                );
+                      final newCurlingGame = CurlingGame(
+                        team1: team1,
+                        team2: team2,
+                        numberOfEnds: settingsTotalEnds,
+                        numberOfPlayersPerTeam: settingsNumberOfPlayersPerTeam,
+                        league: league == null
+                            ? null
+                            : GameLeague(id: league.id, name: league.name),
+                      );
 
-                Navigator.pop(context, newCurlingGame);
-              },
+                      Navigator.pop(context, newCurlingGame);
+                    },
               child: Text(
                 context.l10n.gameStartDialogButtonLabelStartGame,
                 style: const TextStyle(
@@ -214,6 +354,80 @@ class GameStartDialog extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  /// The league to start with: the one playing now, or the club's only one.
+  /// With several to choose from and no clear answer, the user picks.
+  League? _suggestedLeague() {
+    final playing = leagues.where((l) => l.isPlayingAt(now())).toList();
+    if (playing.length == 1) return playing.single;
+    return leagues.length == 1 ? leagues.single : null;
+  }
+
+  static final ButtonStyle _pickerButtonStyle = OutlinedButton.styleFrom(
+    textStyle: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+  );
+
+  /// A button in a rock color that picks the team throwing it.
+  Widget _teamButton(
+    BuildContext context, {
+    required RockColor color,
+    required League? league,
+    required LeagueTeam? picked,
+    required LeagueTeam? other,
+    required ValueChanged<LeagueTeam> onPicked,
+  }) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.color,
+        foregroundColor: color.textColor,
+        disabledBackgroundColor: color.color.withValues(alpha: 0.3),
+        textStyle: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+      ),
+      onPressed: league == null
+          ? null
+          : () async {
+              final team = await _pick<LeagueTeam>(
+                context,
+                title: context.l10n.teamPickerDialogTitle(color.name),
+                // A team cannot play itself.
+                items: [
+                  for (final team in league.teams)
+                    if (team.id != other?.id) team,
+                ],
+                label: (team) => team.name,
+              );
+              if (team != null) onPicked(team);
+            },
+      child: Text(
+        picked?.name ??
+            context.l10n.gameStartDialogPickTeamButtonLabel(color.name),
+      ),
+    );
+  }
+
+  Future<T?> _pick<T>(
+    BuildContext context, {
+    required String title,
+    required List<T> items,
+    required String Function(T) label,
+  }) {
+    return showDialog<T>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(title, style: const TextStyle(fontSize: 32)),
+        children: [
+          for (final item in items)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, item),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              child: Text(label(item), style: const TextStyle(fontSize: 32)),
+            ),
+        ],
+      ),
     );
   }
 

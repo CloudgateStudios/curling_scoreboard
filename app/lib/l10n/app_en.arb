@@ -28,6 +28,54 @@
   "@gameStartDialogTitle": {
     "description": "Title of the dialog shown to setup the game."
   },
+  "gameStartDialogFormLabelGameType": "Game Type:",
+  "@gameStartDialogFormLabelGameType": {
+    "description": "Description text for choosing between an open game and a league game in the game start dialog."
+  },
+  "gameStartDialogGameTypeOpen": "Open",
+  "@gameStartDialogGameTypeOpen": {
+    "description": "Game type for a game that is not part of a league, with teams named by rock color."
+  },
+  "gameStartDialogGameTypeLeague": "League",
+  "@gameStartDialogGameTypeLeague": {
+    "description": "Game type for a game between two teams of one of the club's leagues."
+  },
+  "gameStartDialogFormLabelLeague": "League:",
+  "@gameStartDialogFormLabelLeague": {
+    "description": "Description text for the league setting in the game start dialog."
+  },
+  "gameStartDialogPickLeagueButtonLabel": "Pick a League",
+  "@gameStartDialogPickLeagueButtonLabel": {
+    "description": "Button text shown in place of a league name until a league has been chosen."
+  },
+  "gameStartDialogFormLabelTeams": "Teams:",
+  "@gameStartDialogFormLabelTeams": {
+    "description": "Description text for choosing the two teams of a league game in the game start dialog."
+  },
+  "gameStartDialogPickTeamButtonLabel": "Pick {color} Team",
+  "@gameStartDialogPickTeamButtonLabel": {
+    "description": "Button text on a rock color until the team throwing that color has been chosen.",
+    "placeholders": {
+      "color": {
+        "type": "String",
+        "example": "Red"
+      }
+    }
+  },
+  "leaguePickerDialogTitle": "League",
+  "@leaguePickerDialogTitle": {
+    "description": "Title of the dialog listing the club's leagues to choose from."
+  },
+  "teamPickerDialogTitle": "{color} Team",
+  "@teamPickerDialogTitle": {
+    "description": "Title of the dialog listing a league's teams, to choose the one throwing a rock color.",
+    "placeholders": {
+      "color": {
+        "type": "String",
+        "example": "Red"
+      }
+    }
+  },
   "gameStartDialogFormLabelNumberOfEnds": "Number of Ends:",
   "@gameStartDialogFormLabelNumberOfEnds": {
     "description": "Description text for the number of ends setting in the game start dialog."

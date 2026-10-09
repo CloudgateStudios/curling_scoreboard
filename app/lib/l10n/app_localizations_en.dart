@@ -30,6 +30,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameStartDialogTitle => 'Game Setup';
 
   @override
+  String get gameStartDialogFormLabelGameType => 'Game Type:';
+
+  @override
+  String get gameStartDialogGameTypeOpen => 'Open';
+
+  @override
+  String get gameStartDialogGameTypeLeague => 'League';
+
+  @override
+  String get gameStartDialogFormLabelLeague => 'League:';
+
+  @override
+  String get gameStartDialogPickLeagueButtonLabel => 'Pick a League';
+
+  @override
+  String get gameStartDialogFormLabelTeams => 'Teams:';
+
+  @override
+  String gameStartDialogPickTeamButtonLabel(String color) {
+    return 'Pick $color Team';
+  }
+
+  @override
+  String get leaguePickerDialogTitle => 'League';
+
+  @override
+  String teamPickerDialogTitle(String color) {
+    return '$color Team';
+  }
+
+  @override
   String get gameStartDialogFormLabelNumberOfEnds => 'Number of Ends:';
 
   @override
