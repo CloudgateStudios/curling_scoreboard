@@ -130,12 +130,6 @@ abstract class AppLocalizations {
   /// **'Finish Game'**
   String get appBarFinishGameButtonLabel;
 
-  /// Title of the dialog shown to setup the game.
-  ///
-  /// In en, this message translates to:
-  /// **'Game Setup'**
-  String get gameStartDialogTitle;
-
   /// Small label above the league name on the league bar of the game start dialog.
   ///
   /// In en, this message translates to:

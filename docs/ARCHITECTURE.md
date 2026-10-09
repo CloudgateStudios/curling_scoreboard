@@ -245,7 +245,11 @@ timestamp is an instant, and "Mondays at 18:30" is not one.
 
 `LeagueService` on a paired scoreboard listens to its club's active leagues
 and, like the rock colors, keeps the last ones it saw for an offline start.
-While there are any, the game start dialog gains one bar above its settings.
+The game setup screen fills the display, and each of its settings is a row
+of equal-width segments spanning the same width, so the controls line up down
+both edges and grow with the screen.
+
+While there are any leagues, the setup screen gains one bar above its settings.
 Leaving the bar alone starts an open game exactly as before.
 
 The left of the bar is the league. It follows the scoreboard's local clock:

@@ -47,6 +47,75 @@ void main() {
     });
   });
 
+  group('GameStartDialog fills the screen', () {
+    // A Galaxy Tab A8 in landscape, with and without Android's bars.
+    for (final size in const [Size(1280, 800), Size(1280, 728)]) {
+      testWidgets('with controls lined up at $size', (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: GameStartDialog(
+              leagues: [
+                League.tryParse('l', {'name': 'Monday Night'})!,
+              ],
+            ),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        expect(tester.getSize(find.byType(GameStartDialog)), size);
+
+        // 2 and 4 are both a number of ends and a number of players; the
+        // ends row comes first.
+        Rect segment(String text, {bool last = false}) {
+          final cells = find.ancestor(
+            of: find.widgetWithText(GameStartSegmentControlText, text),
+            matching: find.byType(InkWell),
+          );
+          return tester.getRect(last ? cells.last : cells.first);
+        }
+
+        // Each control starts and ends where the others do, however many
+        // segments it has, and its segments are the same width.
+        final left = segment('2').left;
+        final right = segment('10').right;
+        expect(segment('0').left, left);
+        expect(
+          segment('4', last: true).right,
+          moreOrLessEquals(right, epsilon: 1),
+        );
+        expect(segment('Red').left, left);
+        expect(segment('Yellow').right, moreOrLessEquals(right, epsilon: 1));
+        expect(
+          segment('Red').width,
+          moreOrLessEquals(segment('Yellow').width, epsilon: 1),
+        );
+        expect(
+          segment('6').width,
+          moreOrLessEquals(segment('10').width, epsilon: 1),
+        );
+
+        // The league bar spans the same width as the rows under it.
+        final bar = tester.getRect(
+          find
+              .ancestor(
+                of: find.text('Pick teams'),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        expect(bar.right, moreOrLessEquals(right, epsilon: 1));
+
+        // Controls are comfortably larger than a minimum touch target.
+        expect(segment('8').height, greaterThan(100));
+      });
+    }
+  });
+
   group('GameStartDialog layout for a league game', () {
     // Long names and the largest league expected, which is what stretches
     // the setup screen and the team picker.

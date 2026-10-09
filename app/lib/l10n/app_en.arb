@@ -24,10 +24,6 @@
   "@buttonLabelFinishGame": {
     "description": "Button text for ending the game."
   },
-  "gameStartDialogTitle": "Game Setup",
-  "@gameStartDialogTitle": {
-    "description": "Title of the dialog shown to setup the game."
-  },
   "gameStartDialogLeagueBarLeagueLabel": "League",
   "@gameStartDialogLeagueBarLeagueLabel": {
     "description": "Small label above the league name on the league bar of the game start dialog."

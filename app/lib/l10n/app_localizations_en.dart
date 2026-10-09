@@ -27,9 +27,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appBarFinishGameButtonLabel => 'Finish Game';
 
   @override
-  String get gameStartDialogTitle => 'Game Setup';
-
-  @override
   String get gameStartDialogLeagueBarLeagueLabel => 'League';
 
   @override
