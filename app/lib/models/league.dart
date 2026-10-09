@@ -122,9 +122,33 @@ class League {
       teams: [
         if (teams is List)
           for (final team in teams) ?LeagueTeam.tryParse(team),
-      ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
+      ]..sort((a, b) => compareNames(a.name, b.name)),
     );
   }
+
+  /// Orders names the way a person would list them: ignoring case, and with
+  /// numbers by value, so "Team 2" comes before "Team 10".
+  static int compareNames(String a, String b) {
+    final partsA = _nameParts.allMatches(a.toLowerCase()).toList();
+    final partsB = _nameParts.allMatches(b.toLowerCase()).toList();
+    for (var i = 0; i < partsA.length && i < partsB.length; i++) {
+      final partA = partsA[i].group(0)!;
+      final partB = partsB[i].group(0)!;
+      final numberA = BigInt.tryParse(partA);
+      final numberB = BigInt.tryParse(partB);
+      final order = numberA != null && numberB != null
+          ? numberA.compareTo(numberB)
+          : partA.compareTo(partB);
+      if (order != 0) return order;
+    }
+    final order = partsA.length.compareTo(partsB.length);
+    // Names that only differ by case or leading zeros still need a fixed
+    // order, so the list never shuffles between loads.
+    return order != 0 ? order : a.compareTo(b);
+  }
+
+  // Runs of digits, and the runs of everything else between them.
+  static final _nameParts = RegExp(r'\d+|\D+');
 
   /// How long before a draw's start time its league is already offered, to
   /// cover a game set up while the teams are still arriving.
@@ -139,7 +163,7 @@ class League {
   final String? seasonEnd;
   final List<LeagueDraw> draws;
 
-  /// Sorted by name.
+  /// Sorted by name, see [compareNames].
   final List<LeagueTeam> teams;
 
   /// Whether the league is in one of its draws at [now], which is the

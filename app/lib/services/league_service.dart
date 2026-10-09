@@ -91,7 +91,7 @@ class LeagueService {
   static List<League> _parse(Map<String, dynamic> documents) => [
     for (final MapEntry(:key, :value) in documents.entries)
       ?League.tryParse(key, value),
-  ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  ]..sort((a, b) => League.compareNames(a.name, b.name));
 
   List<League> _readCache() {
     final cached = _prefs.getString(_cacheKey);

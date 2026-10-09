@@ -69,6 +69,51 @@ void main() {
     });
   });
 
+  group('League team order', () {
+    List<String> sorted(List<String> names) => League.tryParse('l', {
+      'name': 'League',
+      'teams': [
+        for (final (i, name) in names.indexed) {'id': 't$i', 'name': name},
+      ],
+    })!.teams.map((t) => t.name).toList();
+
+    test('is alphabetical, whatever order the club entered them in', () {
+      expect(sorted(['Rock Stars', 'Blank Ends', 'House Party']), [
+        'Blank Ends',
+        'House Party',
+        'Rock Stars',
+      ]);
+    });
+
+    test('ignores case', () {
+      expect(sorted(['zebra', 'Apple', 'banana', 'Cherry']), [
+        'Apple',
+        'banana',
+        'Cherry',
+        'zebra',
+      ]);
+    });
+
+    test('puts numbers in counting order', () {
+      expect(sorted(['Team 10', 'Team 2', 'Team 1', 'Team 12', 'Team 3']), [
+        'Team 1',
+        'Team 2',
+        'Team 3',
+        'Team 10',
+        'Team 12',
+      ]);
+      expect(sorted(['Sheet 2 Crew', '10 Enders', '8 Enders']), [
+        '8 Enders',
+        '10 Enders',
+        'Sheet 2 Crew',
+      ]);
+    });
+
+    test('is the same every time for names that differ only by case', () {
+      expect(sorted(['team a', 'Team A']), sorted(['Team A', 'team a']));
+    });
+  });
+
   group('League.isPlayingAt', () {
     test('is playing during a draw, on its day', () {
       final league = mondayNight();
