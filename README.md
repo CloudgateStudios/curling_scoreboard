@@ -169,7 +169,7 @@ Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curl
 | When these change                                                     | Checks                                                                                  |
 | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `app/`                                                                | Formatting, analysis, web build, tests, Android release build, unused localized strings |
-| `admin/`                                                              | Type checking, lint, build                                                              |
+| `admin/`                                                              | Type checking, lint, tests, build                                                       |
 | `functions/`                                                          | Build, lint                                                                             |
 | `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests and Cloud Functions tests against the emulators                   |
 | `scripts/`                                                            | Syntax check                                                                            |

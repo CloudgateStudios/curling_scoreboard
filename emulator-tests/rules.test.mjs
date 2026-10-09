@@ -5,7 +5,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, collectionGroup, query, where, getDocs,
-  deleteField, collection, addDoc, serverTimestamp, writeBatch,
+  deleteDoc, deleteField, collection, addDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import fs from 'fs';
 
@@ -204,6 +204,66 @@ await check('attack: club admin stores other settings in the scoreboard config',
 
 await check('attack: club admin writes another config document', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/config/other'), { rockColors: blueGreen }));
+
+// --- leagues ---
+const league = {
+  name: 'Monday Night',
+  active: true,
+  draws: [{ day: 1, start: '18:30', end: '20:30' }],
+  teams: [{ id: 't1', name: 'Team Smith' }, { id: 't2', name: 'Team Jones', externalId: '1043' }],
+};
+
+await check('club admin: create a league', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/monday'), league));
+
+await check('club admin: update a league with a season', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/monday'), { ...league, seasonStart: '2026-10-01' }));
+
+await check('club admin: list their leagues', 'allow', () =>
+  getDocs(collection(adminA, 'clubs/club-a/leagues')));
+
+await check('scoreboard: read a league in its club', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/leagues/monday')));
+
+// What the scoreboard app runs to offer teams.
+await check('scoreboard: list the active leagues in its club', 'allow', () =>
+  getDocs(query(collection(claimedBoard, 'clubs/club-a/leagues'), where('active', '==', true))));
+
+await check('attack: scoreboard lists another club leagues', 'deny', () =>
+  getDocs(collection(claimedBoard, 'clubs/club-b/leagues')));
+
+await check('attack: scoreboard without claims lists its club leagues', 'deny', () =>
+  getDocs(collection(board, 'clubs/club-a/leagues')));
+
+await check('attack: replaced scoreboard lists leagues with its old claims', 'deny', () =>
+  getDocs(collection(replacedBoard, 'clubs/club-a/leagues')));
+
+await check('attack: unpaired device reads a league', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-a/leagues/monday')));
+
+await check('attack: scoreboard changes a league', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/leagues/monday'), { ...league, name: 'Renamed' }));
+
+await check('attack: club admin creates a league in another club', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/leagues/monday'), league));
+
+await check('attack: league with no name', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, name: '' }));
+
+await check('attack: league whose teams are not a list', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, teams: 'everyone' }));
+
+await check('attack: league with an unexpected field', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, scoreboardUid: 'attacker' }));
+
+await check('attack: league with far too many teams', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'),
+    { ...league, teams: Array.from({ length: 301 }, (_, i) => ({ id: `t${i}`, name: `Team ${i}` })) }));
+
+await check('club admin: delete a league', 'allow', async () => {
+  await setDoc(doc(adminA, 'clubs/club-a/leagues/temporary'), league);
+  await deleteDoc(doc(adminA, 'clubs/club-a/leagues/temporary'));
+});
 
 await check('attack: scoreboard reads its club doc', 'deny', () =>
   getDoc(doc(claimedBoard, 'clubs/club-a')));

@@ -33,6 +33,22 @@ service cloud.firestore {
           && color.hex.matches('^#[0-9a-fA-F]{6}$');
     }
 
+    // Only the outline of a league is checked. Club admins are trusted with
+    // their own club's teams; this just keeps the document a sensible size
+    // and shape for the scoreboards that read it.
+    function isLeague(league) {
+      return league.keys().hasAll(['name', 'active', 'draws', 'teams'])
+          && league.keys().hasOnly(['name', 'active', 'seasonStart', 'seasonEnd', 'draws', 'teams'])
+          && league.name is string
+          && league.name.size() > 0
+          && league.name.size() <= 80
+          && league.active is bool
+          && league.draws is list
+          && league.draws.size() <= 30
+          && league.teams is list
+          && league.teams.size() <= 300;
+    }
+
     // Super admins can read and write everything.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
@@ -77,6 +93,14 @@ service cloud.firestore {
                 || (request.resource.data.rockColors.keys().hasOnly(['team1', 'team2'])
                     && isRockColor(request.resource.data.rockColors.team1)
                     && isRockColor(request.resource.data.rockColors.team2)));
+      }
+
+      // Leagues and their teams. Club admins manage them; the club's paired
+      // scoreboards read them to offer teams when a league game is started.
+      match /leagues/{leagueId} {
+        allow read: if isClubAdmin(clubId) || isClubScoreboard(clubId);
+        allow create, update: if isClubAdmin(clubId) && isLeague(request.resource.data);
+        allow delete: if isClubAdmin(clubId);
       }
 
       match /sheets/{sheetId} {

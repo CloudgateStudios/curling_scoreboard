@@ -87,6 +87,37 @@ export interface Game {
   ends: GameEnd[];
 }
 
+/** One regular time a league plays, in the club's local time. */
+export interface LeagueDraw {
+  /** 1 (Monday) to 7 (Sunday). */
+  day: number;
+  /** 24 hour `HH:mm`. */
+  start: string;
+  end: string;
+}
+
+export interface LeagueTeam {
+  /** Stable across renames and imports, so games can refer to the team. */
+  id: string;
+  name: string;
+  /** The team's ID in the club's own league software, for reporting scores. */
+  externalId?: string;
+}
+
+/** A league and the teams in it, which scoreboards offer when a game is
+ *  started as a league game. */
+export interface League {
+  id: string;
+  name: string;
+  /** Inactive leagues are kept but not offered on scoreboards. */
+  active: boolean;
+  /** `YYYY-MM-DD`, inclusive. Absent means no limit on that side. */
+  seasonStart?: string;
+  seasonEnd?: string;
+  draws: LeagueDraw[];
+  teams: LeagueTeam[];
+}
+
 export type UserRole = 'superadmin' | 'clubadmin' | null;
 
 export interface AuthUser {

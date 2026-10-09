@@ -41,6 +41,22 @@ clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
     team2: { name: string, hex: string }
   }
 
+clubs/{clubId}/leagues/{leagueId}
+  name: string
+  active: bool               // inactive leagues are not offered on scoreboards
+  seasonStart?: string       // 'YYYY-MM-DD', inclusive
+  seasonEnd?: string
+  draws: [{                  // when it plays each week, in the club's local time
+    day: int                 // 1 (Monday) to 7 (Sunday)
+    start: string            // 'HH:mm', 24 hour
+    end: string
+  }]
+  teams: [{
+    id: string               // stable across renames and imports
+    name: string
+    externalId?: string      // the team's ID in the club's own league software
+  }]
+
 clubs/{clubId}/admins/{uid}
   email: string
   displayName: string | null
@@ -102,13 +118,13 @@ admin scripts.
 | Role                 | Claims                                  | Signs in with           | Can                                                                                   |
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
-| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, read game history |
-| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` |
+| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, manage leagues and teams, read game history |
+| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` and `leagues` |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
 its sheet has always been decided by the sheet's `scoreboardUid`, and reading
-the club's `config` needs both: the claims and a sheet that still names that
+the club's `config` and `leagues` needs both: the claims and a sheet that still names that
 scoreboard. So a scoreboard that is disconnected or replaced loses access
 straight away, whatever its claims say.
 
@@ -194,6 +210,33 @@ never lands in the middle of a game. They are written with `liveGame` and the
 completed game as each team's `color`, and the team `name` is the color's
 name ("Blue", "Green"), which is what the REST API returns.
 
+## Leagues and teams
+
+A league is one document holding its weekly schedule and its teams. Teams are
+embedded, not a subcollection, so a scoreboard gets everything it needs to
+offer teams in one read per league, and an import replaces a league's teams
+in a single write.
+
+Club admins manage leagues in the admin portal: by hand on a league's page,
+or by importing a CSV file with one row per team.
+
+```
+league,day,start,end,team,external_id
+Monday Night,Mon,18:30,20:30,Team Smith,1042
+```
+
+Only `league` and `team` are required. The file is parsed in the browser
+(`admin/src/lib/leagueCsv.ts`) and the portal shows what would be added,
+renamed and removed before writing anything, all in one batch. Leagues match
+by name. Teams match by `external_id` when both sides have one, otherwise by
+name, and keep their `id`, so a re-import or a rename does not orphan games
+recorded against a team. Teams the file does not mention are kept or removed,
+whichever the admin chooses. Times and days are plain values with no time
+zone: scoreboards compare them with their own clock.
+
+Dates and times are stored as strings for the same reason. A Firestore
+timestamp is an instant, and "Mondays at 18:30" is not one.
+
 ## Scoreboard status
 
 So the admin portal can show what each sheet is running, a paired scoreboard
@@ -221,11 +264,13 @@ this is exposed there.
 Routes depend on the signed in role:
 
 - Super admin: `/` lists every club and creates new ones; `/clubs/:clubId`
-  shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history.
-- Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history.
+  shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
+  `/clubs/:clubId/leagues/:leagueId` a league.
+- Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
+  `/leagues/:leagueId` a league.
 
 The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days, the rock colors and the API key. Only super admins can add sheets, rotate the
+last seven days, leagues, the rock colors and the API key. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)
 

@@ -58,6 +58,8 @@ Access the app depends on:
 - a club admin reading their own club and its API key
 - a paired scoreboard and a club admin reading the club's `config`
 - a club admin setting and clearing their club's rock colors
+- a club admin creating, updating, listing and deleting leagues
+- a paired scoreboard reading and listing its club's leagues
 - anyone reading `appConfig/scoreboard` to pick up new builds
 
 Access that must stay denied:
@@ -77,6 +79,10 @@ Access that must stay denied:
   claims, or one whose claims name a sheet it is no longer paired with
 - a scoreboard writing its club's `config`, or reading its club document or
   API key
+- reading or listing leagues as a scoreboard from another club, one without
+  claims, or one that has been replaced; a scoreboard changing a league
+- a club admin creating a league in another club, or one that is malformed
+  or oversized
 - a club admin setting rock colors for another club, storing malformed
   colors or anything else in the scoreboard config, or writing other
   `config` documents
