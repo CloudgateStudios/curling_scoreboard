@@ -264,6 +264,19 @@ describe('REST API live games', () => {
     assert.equal(body.liveGame, null);
   });
 
+  test('reports which team had last stone in the first end', async () => {
+    const body = await sheetWithLiveGame('sheet-lsfe', {
+      updatedAt: minutesAgo(1),
+      currentEnd: 4,
+      // Red scored last, so yellow has the hammer now, but red had it first.
+      team1: { name: 'Red', score: 2, hasHammer: false, hadLastStoneFirstEnd: true },
+      team2: { name: 'Yellow', score: 1, hasHammer: true, hadLastStoneFirstEnd: false },
+    });
+    assert.equal(body.liveGame.team1.hadLastStoneFirstEnd, true);
+    assert.equal(body.liveGame.team2.hadLastStoneFirstEnd, false);
+    assert.equal(body.liveGame.team1.hasHammer, false);
+  });
+
   test('keeps a game written before updatedAt was recorded', async () => {
     const body = await sheetWithLiveGame('sheet-legacy', { currentEnd: 2, ...teams });
     assert.equal(body.hasLiveGame, true);

@@ -66,22 +66,7 @@ class SyncService {
           // Lets readers expire a live game whose scoreboard went away
           // without finishing it.
           'updatedAt': FieldValue.serverTimestamp(),
-          'currentEnd': game.currentPlayingEnd,
-          'league': ?game.league?.toJson(),
-          'team1': {
-            'name': game.team1.name,
-            'color': _colorOf(game.team1),
-            ..._leagueTeamOf(game.team1),
-            'score': game.team1TotalScore,
-            'hasHammer': game.team1.hasHammer,
-          },
-          'team2': {
-            'name': game.team2.name,
-            'color': _colorOf(game.team2),
-            ..._leagueTeamOf(game.team2),
-            'score': game.team2TotalScore,
-            'hasHammer': game.team2.hasHammer,
-          },
+          ...liveGameFields(game),
         },
       });
       _recordSuccess();
@@ -89,6 +74,27 @@ class SyncService {
       _recordError('pushLiveGame', e);
     }
   }
+
+  /// What a sheet's `liveGame` says about [game], apart from when it was
+  /// written. The public REST API returns each team as it is stored here, so
+  /// these fields are what API consumers see.
+  @visibleForTesting
+  static Map<String, dynamic> liveGameFields(CurlingGame game) => {
+    'currentEnd': game.currentPlayingEnd,
+    'league': ?game.league?.toJson(),
+    'team1': _liveTeam(game.team1, game.team1TotalScore),
+    'team2': _liveTeam(game.team2, game.team2TotalScore),
+  };
+
+  static Map<String, dynamic> _liveTeam(CurlingTeam team, int score) => {
+    'name': team.name,
+    'color': _colorOf(team),
+    ..._leagueTeamOf(team),
+    'score': score,
+    'hasHammer': team.hasHammer,
+    // Fixed for the whole game, unlike hasHammer, which follows the scoring.
+    'hadLastStoneFirstEnd': team.hadLastStoneFirstEnd,
+  };
 
   /// Overwrites the sheet's `device` field with [status], stamped with the
   /// server's time so the admin portal can tell when it last heard from this
@@ -154,12 +160,12 @@ class SyncService {
 
   // Recorded with the game so it still reads correctly if the club later
   // changes its rocks.
-  Map<String, dynamic> _colorOf(CurlingTeam team) =>
+  static Map<String, dynamic> _colorOf(CurlingTeam team) =>
       RockColor(name: team.colorName, color: team.color).toJson();
 
   // Which league team this is, so a score can be matched to it however the
   // team is later renamed. Empty outside league games.
-  Map<String, dynamic> _leagueTeamOf(CurlingTeam team) => {
+  static Map<String, dynamic> _leagueTeamOf(CurlingTeam team) => {
     'teamId': ?team.teamId,
     'externalId': ?team.externalId,
   };

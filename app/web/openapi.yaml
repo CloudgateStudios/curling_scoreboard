@@ -106,6 +106,12 @@ components:
         hasHammer:
           type: boolean
           description: Whether this team has last stone in the current end.
+        hadLastStoneFirstEnd:
+          type: boolean
+          description: >
+            Whether this team had last stone (hammer) in end 1. Fixed for the
+            whole game, unlike hasHammer. Absent on games from scoreboards
+            that predate it.
 
     GameLeague:
       type: object
