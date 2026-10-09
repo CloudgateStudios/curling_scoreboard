@@ -8,7 +8,8 @@ import {
 } from '../../lib/leagueCsv';
 import { formatDraws, leagueData, newTeamId } from '../../lib/leagues';
 import type { League } from '../../types';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './LeagueImportDialog.module.css';
 
 const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(`${CSV_EXAMPLE}\n`)}`;
 
@@ -62,16 +63,16 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
   }
 
   return (
-    <div className={styles.modal}>
-      <div className={`${styles.modalCard} ${styles.wideModalCard}`}>
-        <h2 className={styles.modalTitle}>Import Leagues from CSV</h2>
+    <div className={common.modal}>
+      <div className={`${common.modalCard} ${common.wideModalCard}`}>
+        <h2 className={common.modalTitle}>Import Leagues from CSV</h2>
 
-        <p className={styles.apiDocsBlurb}>
+        <p className={common.blurb}>
           One row per team. Only <code>league</code> and <code>team</code> are required; leave the
           schedule columns out to keep a league's current schedule.
         </p>
         <pre className={styles.csvExample}>{CSV_EXAMPLE}</pre>
-        <p className={styles.apiDocsBlurb}>
+        <p className={common.blurb}>
           {/* The same text as shown above, so the sample is always a file
               this dialog accepts. */}
           <a href={SAMPLE_CSV_HREF} download="leagues-sample.csv">
@@ -100,7 +101,7 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
             </fieldset>
 
             {parsed.problems.length > 0 && (
-              <div className={styles.error}>
+              <div className={common.error}>
                 {parsed.problems.length} row{parsed.problems.length !== 1 ? 's' : ''} in {fileName} will be skipped:
                 <ul className={styles.importProblems}>
                   {parsed.problems.slice(0, 10).map((p) => (
@@ -114,13 +115,13 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
             <div className={styles.importPreview}>
               {plans.map((plan) => (
                 <div key={plan.league.name} className={styles.importLeague}>
-                  <div className={styles.sheetName}>
+                  <div className={common.rowName}>
                     {plan.league.name}{' '}
-                    <span className={plan.existingId ? styles.idleChip : styles.pairedChip}>
+                    <span className={plan.existingId ? common.idleChip : common.pairedChip}>
                       {plan.existingId ? 'Update' : 'New league'}
                     </span>
                   </div>
-                  <div className={styles.rockColorName}>
+                  <div className={common.muted}>
                     {formatDraws(plan.league.draws)} · {plan.league.teams.length} team
                     {plan.league.teams.length !== 1 ? 's' : ''} after import
                   </div>
@@ -134,20 +135,20 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
                   </ul>
                 </div>
               ))}
-              {plans.length === 0 && <p className={styles.empty}>Nothing to import from this file.</p>}
+              {plans.length === 0 && <p className={common.empty}>Nothing to import from this file.</p>}
             </div>
           </>
         )}
 
-        {error && <p className={styles.error}>{error}</p>}
+        {error && <p className={common.error}>{error}</p>}
 
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.ghostButton} onClick={onClose}>
+        <div className={common.modalActions}>
+          <button type="button" className={common.ghostButton} onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className={styles.primaryButton}
+            className={common.primaryButton}
             onClick={handleImport}
             disabled={saving || plans.length === 0}
           >

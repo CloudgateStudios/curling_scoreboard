@@ -1,7 +1,8 @@
 import type { Timestamp } from 'firebase/firestore';
 import { formatAgo } from '../../lib/format';
 import type { Sheet } from '../../types';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './SheetDeviceStatus.module.css';
 
 // Scoreboards report every 30 minutes (Constants.deviceStatusHeartbeat in the
 // app). Two missed reports, plus some slack, is treated as offline.
@@ -49,9 +50,9 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
 
   if (!device) {
     return (
-      <div className={styles.sheetMeta}>
+      <div className={common.rowMeta}>
         <span
-          className={styles.idleChip}
+          className={common.idleChip}
           title="The scoreboard has not reported in since it was paired. It may be switched off, or running a version from before status reporting."
         >
           No status reported
@@ -91,33 +92,33 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
 
   return (
     <>
-      <div className={styles.sheetMeta}>
+      <div className={common.rowMeta}>
         {device.appVersion && (
-          <span className={styles.versionChip} title={device.buildId && `Build ${shortBuild(device.buildId)}`}>
+          <span className={common.versionChip} title={device.buildId && `Build ${shortBuild(device.buildId)}`}>
             v{device.appVersion}
           </span>
         )}
         {online ? (
-          <span className={styles.onlineChip}>Online · seen {formatAgo(lastSeen, now)}</span>
+          <span className={common.onlineChip}>Online · seen {formatAgo(lastSeen, now)}</span>
         ) : (
-          <span className={styles.warningChip}>
+          <span className={common.warningChip}>
             Offline{lastSeen ? ` · last seen ${formatAgo(lastSeen, now)}` : ''}
           </span>
         )}
         {updatePending && (
           <span
-            className={styles.warningChip}
+            className={common.warningChip}
             title="A newer build is deployed. The scoreboard loads it between games."
           >
             Update pending
           </span>
         )}
         {syncErrorIsRecent && (
-          <span className={styles.errorChip} title={`${syncError.operation}: ${syncError.message}`}>
+          <span className={common.errorChip} title={`${syncError.operation}: ${syncError.message}`}>
             Sync error {formatAgo(syncError.at.toDate(), now)}
           </span>
         )}
-        {skew && <span className={styles.warningChip}>Clock {skew}</span>}
+        {skew && <span className={common.warningChip}>Clock {skew}</span>}
       </div>
       <details className={styles.deviceDetails}>
         <summary>Device details</summary>

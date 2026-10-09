@@ -3,7 +3,8 @@ import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/
 import { db } from '../../lib/firebase';
 import type { Game, Sheet } from '../../types';
 import { GameCard } from '../GameCard';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './RecentGames.module.css';
 
 interface RecentGame extends Game {
   sheetId: string;
@@ -11,6 +12,9 @@ interface RecentGame extends Game {
 }
 
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Days with games shown until the rest are asked for, to keep a busy week short. */
+const DAYS_SHOWN = 2;
 
 function groupByDay(games: RecentGame[]): { label: string; games: RecentGame[] }[] {
   const map = new Map<string, RecentGame[]>();
@@ -41,6 +45,7 @@ export function RecentGames({ clubId, sheets }: Props) {
   // than set at the start of the effect.
   const [result, setResult] = useState<{ key: string; games: RecentGame[] } | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const sheetMeta = JSON.parse(sheetKey) as { id: string; name: string }[];
@@ -77,23 +82,26 @@ export function RecentGames({ clubId, sheets }: Props) {
 
   const loading = hasSheets && result?.key !== requestKey;
   const games = hasSheets && !loading ? result!.games : [];
+  const days = groupByDay(games);
+  const shownDays = showAll ? days : days.slice(0, DAYS_SHOWN);
+  const hiddenGames = games.length - shownDays.reduce((n, day) => n + day.games.length, 0);
 
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Recent Games — Last 7 Days</h2>
+    <div className={common.section}>
+      <div className={common.sectionHeader}>
+        <h2 className={common.sectionTitle}>Recent Games — Last 7 Days</h2>
         <span className={styles.gameCount}>
           {loading ? '…' : `${games.length} game${games.length !== 1 ? 's' : ''}`}
         </span>
       </div>
 
-      {loading && <p className={styles.empty}>Loading…</p>}
+      {loading && <p className={common.empty}>Loading…</p>}
 
       {!loading && games.length === 0 && (
-        <p className={styles.empty}>No completed games in the last 7 days.</p>
+        <p className={common.empty}>No completed games in the last 7 days.</p>
       )}
 
-      {!loading && groupByDay(games).map(({ label, games: dayGames }) => (
+      {!loading && shownDays.map(({ label, games: dayGames }) => (
         <div key={label} className={styles.dayGroup}>
           <h3 className={styles.dayLabel}>{label}</h3>
           <div className={styles.gameList}>
@@ -115,6 +123,14 @@ export function RecentGames({ clubId, sheets }: Props) {
           </div>
         </div>
       ))}
+
+      {!loading && days.length > DAYS_SHOWN && (
+        <button className={common.linkButton} onClick={() => setShowAll(!showAll)}>
+          {showAll
+            ? 'Show fewer'
+            : `Show ${hiddenGames} more game${hiddenGames !== 1 ? 's' : ''} from earlier this week`}
+        </button>
+      )}
     </div>
   );
 }

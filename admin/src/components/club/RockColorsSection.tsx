@@ -4,10 +4,11 @@ import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
 import {
   DEFAULT_ROCK_COLORS, MAX_ROCK_COLOR_NAME_LENGTH, ROCK_COLOR_PRESETS, isDefaultRockColors,
-  rockColorPreset, rockColorsFrom, sameRockColor,
+  rockColorPreset, rockColorsFrom, rockColorsTooSimilar, rockTextColor, sameRockColor,
 } from '../../lib/rockColors';
 import type { RockColor, RockColors, TeamSlot } from '../../types';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './RockColorsSection.module.css';
 
 interface Props {
   clubId: string;
@@ -45,6 +46,7 @@ export function RockColorsSection({ clubId }: Props) {
   }, [clubId]);
 
   const sameColor = draft.team1.hex.toUpperCase() === draft.team2.hex.toUpperCase();
+  const tooSimilar = !sameColor && rockColorsTooSimilar(draft);
   const missingName = SLOTS.some((slot) => !draft[slot].name.trim());
   const changed = !sameRockColor(draft.team1, saved.team1) || !sameRockColor(draft.team2, saved.team2);
 
@@ -92,9 +94,9 @@ export function RockColorsSection({ clubId }: Props) {
   }
 
   return (
-    <div className={styles.section}>
-      <h2 className={styles.sectionTitle}>Rock Colors</h2>
-      <p className={styles.apiDocsBlurb}>
+    <div className={common.section}>
+      <h2 className={common.sectionTitle}>Rock Colors</h2>
+      <p className={common.blurb}>
         The colors your scoreboards show and name the teams by. A change applies to the next game
         started on each paired scoreboard.
       </p>
@@ -135,7 +137,7 @@ export function RockColorsSection({ clubId }: Props) {
                 onClick={() => chooseCustom(slot)}
               />
             </div>
-            {!custom[slot] && <span className={styles.rockColorName}>{draft[slot].name}</span>}
+            {!custom[slot] && <span className={common.muted}>{draft[slot].name}</span>}
           </div>
 
           {custom[slot] && (
@@ -152,7 +154,7 @@ export function RockColorsSection({ clubId }: Props) {
               <label className={styles.customColorField}>
                 Name
                 <input
-                  className={styles.input}
+                  className={`${common.input} ${styles.customColorName}`}
                   placeholder="e.g. Navy"
                   maxLength={MAX_ROCK_COLOR_NAME_LENGTH}
                   value={draft[slot].name}
@@ -165,23 +167,42 @@ export function RockColorsSection({ clubId }: Props) {
         </div>
       ))}
 
+      <div className={styles.rockPreview} aria-label="Scoreboard preview">
+        {SLOTS.map((slot, i) => (
+          <div
+            key={slot}
+            className={styles.rockPreviewTeam}
+            style={{ background: draft[slot].hex, color: rockTextColor(draft[slot].hex) }}
+          >
+            <span className={styles.rockPreviewScore}>{i === 0 ? 3 : 2}</span>
+            <span className={styles.rockPreviewName}>{draft[slot].name.trim() || 'Unnamed'}</span>
+          </div>
+        ))}
+      </div>
+      <p className={styles.rockPreviewCaption}>How the score looks on your scoreboards.</p>
+
       <div className={styles.rockColorActions}>
         <button
-          className={styles.primaryButton}
+          className={common.primaryButton}
           onClick={handleSave}
           disabled={saving || sameColor || missingName || !changed}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
         {!isDefaultRockColors(draft) && (
-          <button className={styles.ghostButton} onClick={resetToDefaults}>
+          <button className={common.ghostButton} onClick={resetToDefaults}>
             Back to Red and Yellow
           </button>
         )}
       </div>
-      {sameColor && <p className={styles.error}>Choose two different colors.</p>}
-      {missingName && <p className={styles.error}>Give each custom color a name.</p>}
-      {error && <p className={styles.error}>{error}</p>}
+      {sameColor && <p className={common.error}>Choose two different colors.</p>}
+      {tooSimilar && (
+        <p className={common.warning}>
+          These two colors look alike and may be hard to tell apart across the rink.
+        </p>
+      )}
+      {missingName && <p className={common.error}>Give each custom color a name.</p>}
+      {error && <p className={common.error}>{error}</p>}
     </div>
   );
 }

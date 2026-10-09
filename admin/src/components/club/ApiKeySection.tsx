@@ -3,7 +3,8 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { generateApiKey } from '../../lib/credentials';
 import { errorMessage } from '../../lib/format';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './ApiKeySection.module.css';
 
 interface Props {
   clubId: string;
@@ -33,9 +34,9 @@ export function ApiKeySection({ clubId, canRegenerate }: Props) {
   }
 
   return (
-    <div className={styles.section}>
-      <h2 className={styles.sectionTitle}>API Access</h2>
-      <p className={styles.apiDocsBlurb}>
+    <div className={common.section}>
+      <h2 className={common.sectionTitle}>API Access</h2>
+      <p className={common.blurb}>
         Want to know how to use the API?{' '}
         <a href="https://curlingscoreboard.app/api-docs/" target="_blank" rel="noopener noreferrer">
           View the API documentation
@@ -44,12 +45,12 @@ export function ApiKeySection({ clubId, canRegenerate }: Props) {
       <div className={styles.apiKeyRow}>
         <code className={styles.apiKey}>{apiKey || '—'}</code>
         {canRegenerate && (
-          <button className={styles.ghostButton} onClick={handleRegenerate}>
+          <button className={common.ghostButton} onClick={handleRegenerate}>
             Regenerate Key
           </button>
         )}
       </div>
-      {error && <p className={styles.error}>{error}</p>}
+      {error && <p className={common.error}>{error}</p>}
     </div>
   );
 }
