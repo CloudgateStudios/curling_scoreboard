@@ -1,7 +1,9 @@
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/app_localizations_en.dart';
 import 'package:curling_scoreboard/main.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
+import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,6 +116,56 @@ void main() {
         expect(segment('8').height, greaterThan(100));
       });
     }
+  });
+
+  group('LeagueMatchupPicker', () {
+    League leagueOf(int teams) => League.tryParse('l', {
+      'name': 'League',
+      'teams': [
+        for (var i = 1; i <= teams; i++) {'id': 't$i', 'name': 'Team $i'},
+      ],
+    })!;
+
+    Future<Size> teamButtonSize(WidgetTester tester, int teams) async {
+      tester.view.physicalSize = const Size(1280, 728);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LeagueMatchupPicker(
+            league: leagueOf(teams),
+            rockColors: RockColors.defaults(AppLocalizationsEn()),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      return tester.getSize(find.widgetWithText(ElevatedButton, 'Team 1'));
+    }
+
+    testWidgets('gives team buttons the same size in a league of 3 as in '
+        'one of 13', (tester) async {
+      final few = await teamButtonSize(tester, 3);
+      final many = await teamButtonSize(tester, 13);
+      final full = await teamButtonSize(tester, 16);
+      expect(few, many);
+      expect(few, full);
+    });
+
+    testWidgets('still fits a league too big for the usual grid', (
+      tester,
+    ) async {
+      final usual = await teamButtonSize(tester, 13);
+      final big = await teamButtonSize(tester, 22);
+      expect(big.width, lessThan(usual.width));
+      // Every team is on screen.
+      final last = tester.getRect(
+        find.widgetWithText(ElevatedButton, 'Team 22'),
+      );
+      expect(last.bottom, lessThan(728));
+    });
   });
 
   group('GameStartDialog layout for a league game', () {

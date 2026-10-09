@@ -242,16 +242,21 @@ class _Tile {
   final RockColor? color;
 }
 
-/// Lays tiles out to fill the space they are given without scrolling, so
-/// every team is on screen at once and as large as it can be.
+/// Lays tiles out on a fixed grid that fills the space it is given without
+/// scrolling, so every team is on screen at once.
 class _TileGrid extends StatelessWidget {
   const _TileGrid({required this.children});
 
   final List<_Tile> children;
 
+  static const _columns = 4;
+  static const _rows = 4;
   static const _spacing = 12.0;
   static const _padding = 12.0;
-  static const _maxFontSize = 56.0;
+
+  // Low enough that most leagues land on it, so their text matches too.
+  // Only a league with an unusually long team name goes smaller.
+  static const _maxFontSize = 40.0;
 
   @override
   Widget build(BuildContext context) {
@@ -260,10 +265,14 @@ class _TileGrid extends StatelessWidget {
         final count = children.length;
         if (count == 0) return const SizedBox.shrink();
 
-        // Four across suits a league of up to sixteen; beyond that, add
-        // columns before the rows get too short to read.
-        final columns = count <= 16 ? (count < 4 ? count : 4) : 5;
-        final rows = (count / columns).ceil();
+        // Always laid out as four by four, which holds the thirteen teams
+        // of the largest league expected. A smaller league leaves cells
+        // empty instead of growing its buttons, so the screen looks the
+        // same from one league to the next. Only a league too big for the
+        // grid changes it.
+        final columns = count <= _columns * _rows ? _columns : _columns + 1;
+        final neededRows = (count / columns).ceil();
+        final rows = neededRows < _rows ? _rows : neededRows;
         final width =
             (constraints.maxWidth - _spacing * (columns - 1)) / columns;
         final height = (constraints.maxHeight - _spacing * (rows - 1)) / rows;

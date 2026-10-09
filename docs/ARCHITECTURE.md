@@ -264,9 +264,12 @@ The right of the bar opens a full screen team picker for that league. With no
 league to go on, it asks for the league first and carries straight on.
 
 The picker is only teams: no title and no league control, so the buttons get
-the room. Every team in the league is one large button, sized to fill the
-screen without scrolling, and all in one text size, the largest at which the
-longest name fits. The first team tapped throws the first rock color and the
+the room. Every team in the league is one large button on a fixed four by
+four grid, which holds the thirteen teams of the largest league expected. A
+smaller league leaves cells empty instead of growing its buttons, so the
+screen looks the same from one league to the next; only a league of more than
+sixteen changes the grid. All buttons share one text size, capped so that
+most leagues match, and smaller only when a team name is unusually long. The first team tapped throws the first rock color and the
 second the other. Two slots at the top show who is picked; tapping a slot or
 a picked team clears it, a third tap replaces the second team, and a swap
 button exchanges the colors. Cancel and Done are bottom right. Back on the
