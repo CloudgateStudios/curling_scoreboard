@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
-import { formatDraws, leagueData, leagueFrom } from '../../lib/leagues';
+import { compareLeagues, formatDraws, leagueData, leagueFrom } from '../../lib/leagues';
 import type { League } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
+import { LeagueWeek } from './LeagueWeek';
 import styles from '../../pages/ClubDetail.module.css';
 
 interface Props {
@@ -24,9 +25,7 @@ export function LeaguesSection({ clubId, onOpenLeague }: Props) {
   useEffect(() => {
     return onSnapshot(collection(db, 'clubs', clubId, 'leagues'), (snap) => {
       setLeagues(
-        snap.docs
-          .map((d) => leagueFrom(d.id, d.data()))
-          .sort((a, b) => a.name.localeCompare(b.name)),
+        snap.docs.map((d) => leagueFrom(d.id, d.data())).sort(compareLeagues),
       );
     });
   }, [clubId]);
@@ -86,6 +85,8 @@ export function LeaguesSection({ clubId, onOpenLeague }: Props) {
       )}
 
       {error && <p className={styles.error}>{error}</p>}
+
+      <LeagueWeek leagues={leagues} onOpenLeague={onOpenLeague} />
 
       <div className={styles.sheetList}>
         {leagues.map((league) => (
