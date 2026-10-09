@@ -333,6 +333,12 @@ under `/api/**` through a Hosting rewrite. It is read only:
 - `GET /api/v1/clubs/{clubId}`
 - `GET /api/v1/clubs/{clubId}/sheets/{sheetId}`
 - `GET /api/v1/clubs/{clubId}/sheets/{sheetId}/games?limit=`
+- `GET /api/v1/clubs/{clubId}/leagues`
+- `GET /api/v1/clubs/{clubId}/leagues/{leagueId}`
+
+Live and completed games carry `league` (null for an open game) and, in a
+league game, each team's `teamId` and `externalId`, which match the teams the
+league endpoints return.
 
 Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is

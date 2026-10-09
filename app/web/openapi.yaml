@@ -27,6 +27,8 @@ tags:
     description: Club-level information including all sheets and their live game status.
   - name: Sheets
     description: Individual sheet data with the current live game, if one is in progress.
+  - name: Leagues
+    description: A club's leagues and the teams in them.
   - name: Games
     description: Historical completed game records for a specific sheet.
 
@@ -78,13 +80,25 @@ components:
         name:
           type: string
           description: >
-            The name of the team's rock color, as the club has set it. Not
-            always Red or Yellow.
+            In a league game, the team's name. Otherwise the name of its rock
+            color as the club has set it, which is not always Red or Yellow.
           example: Red
         color:
           allOf:
             - $ref: '#/components/schemas/RockColor'
           description: Absent on games from scoreboards that predate it.
+        teamId:
+          type: string
+          description: >
+            League games only. The league team's ID, which stays the same if
+            the team is renamed. See the Leagues endpoints.
+          example: 4f9c2a71b3de
+        externalId:
+          type: string
+          description: >
+            League games only, and only when the club supplied one. The
+            team's ID in the club's own league software.
+          example: '1042'
         score:
           type: integer
           minimum: 0
@@ -93,9 +107,89 @@ components:
           type: boolean
           description: Whether this team has last stone in the current end.
 
+    GameLeague:
+      type: object
+      description: The league a game is part of, as it was named when the game started.
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          example: monday-night
+        name:
+          type: string
+          example: Monday Night
+
+    LeagueDraw:
+      type: object
+      description: One regular time a league plays each week, in the club's local time.
+      required: [day, start, end]
+      properties:
+        day:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: Day of the week, from 1 (Monday) to 7 (Sunday).
+          example: 1
+        start:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+          description: 24 hour local time.
+          example: '18:30'
+        end:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+          example: '20:30'
+
+    LeagueTeam:
+      type: object
+      required: [id, name, externalId]
+      properties:
+        id:
+          type: string
+          description: Stays the same if the team is renamed. Matches `teamId` on a game's teams.
+          example: 4f9c2a71b3de
+        name:
+          type: string
+          example: Team Smith
+        externalId:
+          type: [string, 'null']
+          description: The team's ID in the club's own league software, if the club supplied one.
+          example: '1042'
+
+    League:
+      type: object
+      required: [id, name, active, seasonStart, seasonEnd, draws, teams]
+      properties:
+        id:
+          type: string
+          example: monday-night
+        name:
+          type: string
+          example: Monday Night
+        active:
+          type: boolean
+          description: Whether scoreboards currently offer this league when starting a game.
+        seasonStart:
+          type: [string, 'null']
+          format: date
+          description: First day of the season, or null if the club has not set one.
+          example: '2026-10-05'
+        seasonEnd:
+          type: [string, 'null']
+          format: date
+          example: '2027-03-29'
+        draws:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeagueDraw'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeagueTeam'
+
     LiveGame:
       type: object
-      required: [updatedAt, currentEnd, team1, team2]
+      required: [updatedAt, currentEnd, league, team1, team2]
       properties:
         updatedAt:
           type: [string, 'null']
@@ -109,6 +203,11 @@ components:
           type: integer
           minimum: 1
           example: 5
+        league:
+          oneOf:
+            - $ref: '#/components/schemas/GameLeague'
+            - type: 'null'
+          description: Null for an open game, which is not part of a league.
         team1:
           $ref: '#/components/schemas/LiveGameTeam'
         team2:
@@ -160,13 +259,25 @@ components:
         name:
           type: string
           description: >
-            The name of the team's rock color, as the club had set it. Not
-            always Red or Yellow.
+            In a league game, the team's name. Otherwise the name of its rock
+            color as the club had set it, which is not always Red or Yellow.
           example: Red
         color:
           allOf:
             - $ref: '#/components/schemas/RockColor'
           description: Absent on games recorded before colors were.
+        teamId:
+          type: string
+          description: >
+            League games only. The league team's ID, which stays the same if
+            the team is renamed. See the Leagues endpoints.
+          example: 4f9c2a71b3de
+        externalId:
+          type: string
+          description: >
+            League games only, and only when the club supplied one. The
+            team's ID in the club's own league software.
+          example: '1042'
         totalScore:
           type: integer
           minimum: 0
@@ -210,7 +321,7 @@ components:
 
     Game:
       type: object
-      required: [id, startedAt, finishedAt, numberOfEnds, team1, team2, ends]
+      required: [id, startedAt, finishedAt, numberOfEnds, league, team1, team2, ends]
       properties:
         id:
           type: string
@@ -226,6 +337,11 @@ components:
         numberOfEnds:
           type: integer
           example: 8
+        league:
+          oneOf:
+            - $ref: '#/components/schemas/GameLeague'
+            - type: 'null'
+          description: Null for an open game, and for games recorded before leagues were.
         team1:
           $ref: '#/components/schemas/GameTeam'
         team2:
@@ -273,6 +389,105 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clubs/{clubId}/leagues:
+    get:
+      summary: List leagues
+      description: |
+        Returns the club's leagues, ordered by name, each with its weekly schedule and teams.
+        Inactive leagues are included, with `active` set to false.
+      operationId: listLeagues
+      tags: [Leagues]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+      responses:
+        '200':
+          description: The club's leagues. Empty if it has none.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [leagues]
+                properties:
+                  leagues:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/League'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clubs/{clubId}/leagues/{leagueId}:
+    get:
+      summary: Get league
+      description: Returns a single league with its weekly schedule and teams.
+      operationId: getLeague
+      tags: [Leagues]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+        - name: leagueId
+          in: path
+          required: true
+          description: Unique identifier for the league within the club.
+          schema:
+            type: string
+          example: monday-night
+      responses:
+        '200':
+          description: League found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/League'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club or league not found.
           content:
             application/json:
               schema:

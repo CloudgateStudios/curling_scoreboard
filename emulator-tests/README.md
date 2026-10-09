@@ -99,7 +99,9 @@ Access that must stay denied:
 - The REST API requires a key, rejects a wrong one, accepts the club's key,
   returns 404 for an unknown club, ignores a key left on the club
   document from before the API key migration, and leaves the scoreboard's
-  device status out of sheet responses.
+  device status out of sheet responses. It lists a club's leagues and
+  returns one, only with the club's own key and only the documented fields,
+  and reports the league and teams on live and completed games.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, and a club
   admin with the right claims.
