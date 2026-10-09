@@ -10,6 +10,8 @@ import { formatDraws, leagueData, newTeamId } from '../../lib/leagues';
 import type { League } from '../../types';
 import styles from '../../pages/ClubDetail.module.css';
 
+const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(`${CSV_EXAMPLE}\n`)}`;
+
 interface Props {
   clubId: string;
   leagues: League[];
@@ -69,6 +71,14 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
           schedule columns out to keep a league's current schedule.
         </p>
         <pre className={styles.csvExample}>{CSV_EXAMPLE}</pre>
+        <p className={styles.apiDocsBlurb}>
+          {/* The same text as shown above, so the sample is always a file
+              this dialog accepts. */}
+          <a href={SAMPLE_CSV_HREF} download="leagues-sample.csv">
+            Download this as a sample CSV
+          </a>{' '}
+          to fill in with your own leagues and teams.
+        </p>
 
         <input
           type="file"
