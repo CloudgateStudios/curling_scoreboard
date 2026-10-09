@@ -6,6 +6,7 @@ firestore
 fvmrc
 ltrb
 notmain
+nums
 prefs
 pubspec
 RRGGBB
