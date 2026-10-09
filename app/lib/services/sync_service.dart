@@ -69,11 +69,13 @@ class SyncService {
           'currentEnd': game.currentPlayingEnd,
           'team1': {
             'name': game.team1.name,
+            'color': _colorOf(game.team1),
             'score': game.team1TotalScore,
             'hasHammer': game.team1.hasHammer,
           },
           'team2': {
             'name': game.team2.name,
+            'color': _colorOf(game.team2),
             'score': game.team2TotalScore,
             'hasHammer': game.team2.hasHammer,
           },
@@ -112,11 +114,13 @@ class SyncService {
           'numberOfEnds': game.numberOfEnds,
           'team1': {
             'name': game.team1.name,
+            'color': _colorOf(game.team1),
             'totalScore': game.team1TotalScore,
             'hadLastStoneFirstEnd': game.team1.hadLastStoneFirstEnd,
           },
           'team2': {
             'name': game.team2.name,
+            'color': _colorOf(game.team2),
             'totalScore': game.team2TotalScore,
             'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
           },
@@ -141,6 +145,11 @@ class SyncService {
       _recordError('saveCompletedGame', e);
     }
   }
+
+  // Recorded with the game so it still reads correctly if the club later
+  // changes its rocks.
+  Map<String, dynamic> _colorOf(CurlingTeam team) =>
+      RockColor(name: team.colorName, color: team.color).toJson();
 
   String? _teamNameFor(CurlingGame game, ScoringTeam? team) => switch (team) {
     ScoringTeam.team1 => game.team1.name,

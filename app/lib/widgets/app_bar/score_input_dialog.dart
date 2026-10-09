@@ -1,4 +1,3 @@
-import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:flutter/material.dart';
@@ -9,8 +8,12 @@ class ScoreInputDialog extends StatelessWidget {
     required this.defaultScore,
     required this.end,
     this.defaultTeam,
+    this.rockColors,
     super.key,
   });
+
+  /// The rock colors of the game being scored. Red and yellow when null.
+  final RockColors? rockColors;
 
   final int end;
   final ScoringTeam? defaultTeam;
@@ -28,12 +31,14 @@ class ScoreInputDialog extends StatelessWidget {
     var selectedScore = defaultScore;
     var currentScoreSelectedIndex = defaultScore;
 
+    final colors = rockColors ?? RockColors.defaults(context.l10n);
+
     final teamNames = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: EnterEditScoreDialogTeamText(team: context.l10n.teamNameRed),
+        child: EnterEditScoreDialogTeamText(team: colors.team1.name),
       ),
-      1: EnterEditScoreDialogTeamText(team: context.l10n.teamNameYellow),
+      1: EnterEditScoreDialogTeamText(team: colors.team2.name),
     };
 
     final scoreItems = {
@@ -91,10 +96,14 @@ class ScoreInputDialog extends StatelessWidget {
                     selectionIndex: currentTeamSelectedIndex,
                     borderColor: Colors.grey,
                     selectedColor: currentTeamSelectedIndex == 0
-                        ? Constants.redTeamColor
-                        : Constants.yellowTeamColor,
+                        ? colors.team1.color
+                        : colors.team2.color,
                     unselectedColor: Colors.white,
-                    selectedTextStyle: const TextStyle(color: Colors.white),
+                    selectedTextStyle: TextStyle(
+                      color: currentTeamSelectedIndex == 0
+                          ? colors.team1.textColor
+                          : colors.team2.textColor,
+                    ),
                     unselectedTextStyle: const TextStyle(color: Colors.black),
                     borderWidth: 1,
                     borderRadius: 20,

@@ -177,4 +177,27 @@ void main() {
     expect(returned!.score, 0);
     expect(returned!.scoringTeam, isNull);
   });
+
+  testWidgets('ScoreInputDialog names the teams by the game rock colors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithMaterialApp(
+        const ScoreInputDialog(
+          defaultTeam: ScoringTeam.team1,
+          defaultScore: 1,
+          end: 1,
+          rockColors: RockColors(
+            team1: RockColor(name: 'Blue', color: Color(0xFF2196F3)),
+            team2: RockColor(name: 'Green', color: Color(0xFF4CAF50)),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Blue'), findsOneWidget);
+    expect(find.text('Green'), findsOneWidget);
+    expect(find.text('Red'), findsNothing);
+    expect(find.text('Yellow'), findsNothing);
+  });
 }

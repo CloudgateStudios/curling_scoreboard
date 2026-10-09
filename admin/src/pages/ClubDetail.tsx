@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import type { Club, Sheet } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
+import { RockColorsSection } from '../components/club/RockColorsSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import styles from './ClubDetail.module.css';
@@ -75,6 +76,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       <RecentGames clubId={resolvedClubId} sheets={sheets} />
       <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
       {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
+      <RockColorsSection clubId={resolvedClubId} />
       <SheetsSection
         clubId={resolvedClubId}
         sheets={sheets}

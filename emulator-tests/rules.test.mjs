@@ -30,8 +30,8 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/sheets/sheet-paired'), {
     name: 'Sheet Paired', scoreboardUid: 'scoreboard-1',
   });
-  await setDoc(doc(db, 'clubs/club-a/config/scoreboard'), { example: true });
-  await setDoc(doc(db, 'clubs/club-b/config/scoreboard'), { example: true });
+  await setDoc(doc(db, 'clubs/club-a/config/scoreboard'), {});
+  await setDoc(doc(db, 'clubs/club-b/config/scoreboard'), {});
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
   await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B' });
   await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
@@ -167,7 +167,43 @@ await check('attack: unpaired device reads a club config', 'deny', () =>
   getDoc(doc(anon, 'clubs/club-a/config/scoreboard')));
 
 await check('attack: scoreboard writes its club config', 'deny', () =>
-  setDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard'), { example: false }));
+  setDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard'), { rockColors: {} }));
+
+const blueGreen = {
+  team1: { name: 'Blue', hex: '#2196F3' },
+  team2: { name: 'Green', hex: '#4CAF50' },
+};
+
+await check('club admin: set their club rock colors', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'), { rockColors: blueGreen }));
+
+await check('scoreboard: read the rock colors its club set', 'allow', async () => {
+  const snap = await getDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard'));
+  if (snap.get('rockColors.team1.name') !== 'Blue') throw new Error('rock colors not stored');
+});
+
+await check('club admin: go back to the default rock colors', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'), { rockColors: deleteField() }, { merge: true }));
+
+await check('attack: club admin sets another club rock colors', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/config/scoreboard'), { rockColors: blueGreen }));
+
+await check('attack: rock color that is not a hex color', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'),
+    { rockColors: { ...blueGreen, team1: { name: 'Blue', hex: 'javascript:alert(1)' } } }));
+
+await check('attack: rock color with an oversized name', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'),
+    { rockColors: { ...blueGreen, team2: { name: 'G'.repeat(21), hex: '#4CAF50' } } }));
+
+await check('attack: only one rock color', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'), { rockColors: { team1: blueGreen.team1 } }));
+
+await check('attack: club admin stores other settings in the scoreboard config', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/scoreboard'), { rockColors: blueGreen, extra: true }));
+
+await check('attack: club admin writes another config document', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/other'), { rockColors: blueGreen }));
 
 await check('attack: scoreboard reads its club doc', 'deny', () =>
   getDoc(doc(claimedBoard, 'clubs/club-a')));

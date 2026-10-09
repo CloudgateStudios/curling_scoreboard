@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
 
 class GameStartDialog extends StatelessWidget {
-  const GameStartDialog({super.key});
+  const GameStartDialog({this.rockColors, super.key});
+
+  /// The paired club's rock colors. Red and yellow when null.
+  final RockColors? rockColors;
 
   @override
   Widget build(BuildContext context) {
@@ -29,12 +32,14 @@ class GameStartDialog extends StatelessWidget {
     var currentNumberOfPlayersPerTeamSelectedIndex =
         Constants.defaultNumberOfPlayersPerTeam;
 
+    final colors = rockColors ?? RockColors.defaults(context.l10n);
+
     final hammerChoices = {
       0: Padding(
         padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: GameStartSegmentControlText(text: context.l10n.teamNameRed),
+        child: GameStartSegmentControlText(text: colors.team1.name),
       ),
-      1: GameStartSegmentControlText(text: context.l10n.teamNameYellow),
+      1: GameStartSegmentControlText(text: colors.team2.name),
     };
 
     var settingsHammerTeam = Constants.defaultHammerTeam;
@@ -175,16 +180,16 @@ class GameStartDialog extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 final team1 = CurlingTeam(
-                  name: context.l10n.teamNameRed,
-                  color: Constants.redTeamColor,
-                  textColor: Constants.textHighContrastColor,
+                  name: colors.team1.name,
+                  color: colors.team1.color,
+                  textColor: colors.team1.textColor,
                   hasHammer: settingsHammerTeam == 0,
                   hadLastStoneFirstEnd: settingsHammerTeam == 0,
                 );
                 final team2 = CurlingTeam(
-                  name: context.l10n.teamNameYellow,
-                  color: Constants.yellowTeamColor,
-                  textColor: Constants.textDefaultColor,
+                  name: colors.team2.name,
+                  color: colors.team2.color,
+                  textColor: colors.team2.textColor,
                   hasHammer: settingsHammerTeam == 1,
                   hadLastStoneFirstEnd: settingsHammerTeam == 1,
                 );

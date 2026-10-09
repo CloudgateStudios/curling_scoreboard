@@ -42,6 +42,19 @@ export interface DeviceStatus {
   lastSyncError?: { operation: string; message: string; at: Timestamp };
 }
 
+/** One color of rocks: what it is called and how it is drawn. */
+export interface RockColor {
+  name: string;
+  /** `#RRGGBB` */
+  hex: string;
+}
+
+/** The two colors of rocks a club plays with. Team 1 throws `team1`. */
+export interface RockColors {
+  team1: RockColor;
+  team2: RockColor;
+}
+
 export interface LiveGame {
   /** Server time of the scoreboard's last write. Absent on live games written
    *  before it was recorded. */

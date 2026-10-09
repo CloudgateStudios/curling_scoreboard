@@ -8,6 +8,7 @@ import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/device_status_service.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
+import 'package:curling_scoreboard/services/rock_colors_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
@@ -29,9 +30,11 @@ Future<void> main() async {
         : dev.DefaultFirebaseOptions.currentPlatform,
   );
   final prefs = await SharedPreferences.getInstance();
+  final registrationService = RegistrationService(prefs);
   runApp(
     CurlingScoreboardApp(
-      registrationService: RegistrationService(prefs),
+      registrationService: registrationService,
+      rockColorsService: RockColorsService(prefs, registrationService)..start(),
       updateService: UpdateService.forCurrentPlatform(prefs)?..start(),
     ),
   );
@@ -40,11 +43,13 @@ Future<void> main() async {
 class CurlingScoreboardApp extends StatelessWidget {
   const CurlingScoreboardApp({
     required this.registrationService,
+    this.rockColorsService,
     this.updateService,
     super.key,
   });
 
   final RegistrationService registrationService;
+  final RockColorsService? rockColorsService;
   final UpdateService? updateService;
 
   @override
@@ -58,6 +63,7 @@ class CurlingScoreboardApp extends StatelessWidget {
       ),
       home: CurlingScoreboardScreen(
         registrationService: registrationService,
+        rockColorsService: rockColorsService,
         updateService: updateService,
       ),
     );
@@ -67,11 +73,16 @@ class CurlingScoreboardApp extends StatelessWidget {
 class CurlingScoreboardScreen extends StatefulWidget {
   const CurlingScoreboardScreen({
     required this.registrationService,
+    this.rockColorsService,
     this.updateService,
     super.key,
   });
 
   final RegistrationService registrationService;
+
+  /// The paired club's rock colors. Without it the scoreboard is red and
+  /// yellow.
+  final RockColorsService? rockColorsService;
   final UpdateService? updateService;
 
   @override
@@ -84,6 +95,9 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   late final DeviceStatusService _deviceStatus;
 
   CurlingGame get gameObject => _gameController.game;
+
+  RockColors get _gameRockColors =>
+      RockColors.ofTeams(gameObject.team1, gameObject.team2);
 
   /// True while the game start dialog is up, which is the only time a reload
   /// cannot lose a game in progress.
@@ -169,7 +183,20 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         // There is no sensible way to cancel out of starting a game: the
         // scoreboard has nothing to show without one. barrierDismissible does
         // not stop the system back button, so block popping outright too.
-        return const PopScope(canPop: false, child: GameStartDialog());
+        final rockColors = widget.rockColorsService;
+        if (rockColors == null) {
+          return const PopScope(canPop: false, child: GameStartDialog());
+        }
+        // The dialog can sit open for days between games, so it follows the
+        // club's colors. Once a game starts its colors are fixed.
+        return PopScope(
+          canPop: false,
+          child: ValueListenableBuilder<RockColors?>(
+            valueListenable: rockColors.clubColors,
+            builder: (context, colors, _) =>
+                GameStartDialog(rockColors: colors),
+          ),
+        );
       },
     );
     _awaitingGameStart = false;
@@ -226,6 +253,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           defaultTeam: gameObject.whichTeamHasHammer(),
           defaultScore: 0,
           end: gameObject.currentPlayingEnd,
+          rockColors: _gameRockColors,
         );
       },
     );
@@ -257,6 +285,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           defaultTeam: gameObject.ends[end - 1].scoringTeam,
           defaultScore: gameObject.ends[end - 1].score,
           end: end,
+          rockColors: _gameRockColors,
         );
       },
     );
@@ -490,6 +519,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                           );
                           if (confirmed ?? false) {
                             await reg.disconnect();
+                            widget.rockColorsService?.start();
                             if (context.mounted) {
                               setStateDialog(() {});
                               setState(() {});
@@ -510,6 +540,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                             // Let the admin portal see the newly paired
                             // scoreboard without waiting for a heartbeat.
                             _deviceStatus.reportNow();
+                            widget.rockColorsService?.start();
                             if (context.mounted) {
                               setStateDialog(() {});
                               setState(() {});

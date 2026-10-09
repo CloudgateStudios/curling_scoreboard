@@ -7,7 +7,8 @@ class CurlingTeam {
     required this.textColor,
     required this.hasHammer,
     this.hadLastStoneFirstEnd = false,
-  });
+    String? colorName,
+  }) : colorName = colorName ?? name;
 
   factory CurlingTeam.fromJson(Map<String, dynamic> json) => CurlingTeam(
     name: json['name'] as String,
@@ -15,9 +16,14 @@ class CurlingTeam {
     textColor: _colorFromArgb32(json['textColor'] as int),
     hasHammer: json['hasHammer'] as bool,
     hadLastStoneFirstEnd: json['hadLastStoneFirstEnd'] as bool? ?? false,
+    colorName: json['colorName'] as String?,
   );
 
   String name;
+
+  /// What the team's rock color is called. The same as [name] unless the
+  /// team has a name of its own.
+  String colorName;
   Color color;
   Color textColor;
   bool hasHammer;
@@ -25,6 +31,7 @@ class CurlingTeam {
 
   Map<String, dynamic> toJson() => {
     'name': name,
+    'colorName': colorName,
     'color': color.toARGB32(),
     'textColor': textColor.toARGB32(),
     'hasHammer': hasHammer,
