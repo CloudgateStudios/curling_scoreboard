@@ -33,7 +33,8 @@ export function LeagueDetail({ user }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const backTo = routeClubId ? `/clubs/${routeClubId}` : '/';
+  // Back to the club's Leagues tab, which is where the league was opened from.
+  const backTo = `${routeClubId ? `/clubs/${routeClubId}` : '/'}?tab=leagues`;
 
   useEffect(() => {
     if (!clubId || !leagueId) return;

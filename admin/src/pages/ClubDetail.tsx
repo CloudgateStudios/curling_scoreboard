@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import type { Club, Sheet } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
@@ -11,6 +11,14 @@ import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import styles from './ClubDetail.module.css';
 
+const TABS = [
+  { id: 'sheets', label: 'Sheets & Games' },
+  { id: 'leagues', label: 'Leagues' },
+  { id: 'settings', label: 'Settings' },
+] as const;
+
+type Tab = (typeof TABS)[number]['id'];
+
 interface Props {
   // Optional: club admin dashboard passes the club directly to avoid an extra fetch
   club?: Club;
@@ -20,6 +28,10 @@ interface Props {
 export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   const { clubId } = useParams<{ clubId: string }>();
   const navigate = useNavigate();
+  // The tab lives in the URL so going back from a league or a sheet's games
+  // lands on the tab it was opened from.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: Tab = TABS.find((t) => t.id === searchParams.get('tab'))?.id ?? 'sheets';
 
   const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
   const [sheets, setSheets] = useState<Sheet[]>([]);
@@ -59,6 +71,10 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
     navigate(clubProp ? `/leagues/${leagueId}` : `/clubs/${resolvedClubId}/leagues/${leagueId}`);
   }
 
+  function selectTab(next: Tab) {
+    setSearchParams(next === 'sheets' ? {} : { tab: next }, { replace: true });
+  }
+
   if (!club) {
     return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
   }
@@ -78,17 +94,46 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         </div>
       </div>
 
-      <RecentGames clubId={resolvedClubId} sheets={sheets} />
-      <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
-      {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
-      <LeaguesSection clubId={resolvedClubId} onOpenLeague={handleOpenLeague} />
-      <RockColorsSection clubId={resolvedClubId} />
-      <SheetsSection
-        clubId={resolvedClubId}
-        sheets={sheets}
-        canAddSheets={!isClubAdmin}
-        onViewGames={handleViewGames}
-      />
+      <div className={styles.tabs} role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={tab === t.id ? styles.tabSelected : styles.tab}
+            onClick={() => selectTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'sheets' && (
+        <div className={styles.columns}>
+          <SheetsSection
+            clubId={resolvedClubId}
+            sheets={sheets}
+            canAddSheets={!isClubAdmin}
+            onViewGames={handleViewGames}
+          />
+          <RecentGames clubId={resolvedClubId} sheets={sheets} />
+        </div>
+      )}
+
+      {tab === 'leagues' && (
+        <LeaguesSection clubId={resolvedClubId} onOpenLeague={handleOpenLeague} />
+      )}
+
+      {tab === 'settings' && (
+        <div className={styles.settingsGrid}>
+          <RockColorsSection clubId={resolvedClubId} />
+          <div>
+            <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
+            {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

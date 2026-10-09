@@ -1,7 +1,7 @@
 import type { RockColor, RockColors } from '../types';
 
-/** The colors a club can pick for its rocks. A fixed list, so every choice
- *  is one that reads clearly on the scoreboard. */
+/** The colors offered for a club's rocks, chosen to read clearly on the
+ *  scoreboard. A club can also pick a custom color of its own. */
 export const ROCK_COLOR_PRESETS: RockColor[] = [
   { name: 'Red', hex: '#F44336' },
   { name: 'Yellow', hex: '#FFEB3B' },
@@ -21,10 +21,22 @@ export const DEFAULT_ROCK_COLORS: RockColors = {
   team2: ROCK_COLOR_PRESETS[1],
 };
 
+/** Longest name the Firestore rules accept for a rock color. */
+export const MAX_ROCK_COLOR_NAME_LENGTH = 20;
+
+export function sameRockColor(a: RockColor, b: RockColor): boolean {
+  return a.name === b.name && a.hex.toUpperCase() === b.hex.toUpperCase();
+}
+
+/** The preset [color] is, or undefined for a custom color. */
+export function rockColorPreset(color: RockColor): RockColor | undefined {
+  return ROCK_COLOR_PRESETS.find((preset) => sameRockColor(preset, color));
+}
+
 export function isDefaultRockColors(colors: RockColors): boolean {
   return (
-    colors.team1.hex === DEFAULT_ROCK_COLORS.team1.hex &&
-    colors.team2.hex === DEFAULT_ROCK_COLORS.team2.hex
+    sameRockColor(colors.team1, DEFAULT_ROCK_COLORS.team1) &&
+    sameRockColor(colors.team2, DEFAULT_ROCK_COLORS.team2)
   );
 }
 
