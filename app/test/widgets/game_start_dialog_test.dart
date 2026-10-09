@@ -413,7 +413,7 @@ void main() {
       ),
       findsNothing,
     );
-    const screen = Rect.fromLTWH(0, 0, 1280, 728);
+    final screen = Offset.zero & const Size(1280, 728);
     for (final option in options.evaluate()) {
       final rect = tester.getRect(find.byWidget(option.widget));
       expect(screen.contains(rect.topLeft), isTrue);
