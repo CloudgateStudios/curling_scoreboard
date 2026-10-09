@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { validateApiKey } from '../middleware/apiKey';
+import { leaguesRouter } from './leagues';
 import { buildSheetResponse, sheetsRouter } from './sheets';
 
 export const clubsRouter = Router();
@@ -10,6 +11,7 @@ export const clubsRouter = Router();
 const clubRouter = Router({ mergeParams: true });
 clubRouter.use(validateApiKey);
 clubRouter.use(sheetsRouter);
+clubRouter.use(leaguesRouter);
 
 clubRouter.get('/', async (req: Request, res: Response) => {
   const clubId = req.params['clubId'] as string;

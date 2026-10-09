@@ -229,8 +229,28 @@ describe('REST API live games', () => {
     const body = await sheetWithLiveGame('sheet-started', { updatedAt, currentEnd: 1, ...teams });
     assert.equal(body.hasLiveGame, true);
     assert.deepEqual(body.liveGame, {
-      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, ...teams,
+      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, league: null, ...teams,
     });
+  });
+
+  test('reports the league and teams of a league game', async () => {
+    const league = { id: 'monday', name: 'Monday Night' };
+    const leagueTeams = {
+      team1: {
+        name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, teamId: 't1', externalId: '1042',
+        score: 2, hasHammer: false,
+      },
+      team2: {
+        name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, teamId: 't2',
+        score: 1, hasHammer: true,
+      },
+    };
+    const body = await sheetWithLiveGame('sheet-league', {
+      updatedAt: minutesAgo(1), currentEnd: 3, league, ...leagueTeams,
+    });
+    assert.deepEqual(body.liveGame.league, league);
+    assert.deepEqual(body.liveGame.team1, leagueTeams.team1);
+    assert.deepEqual(body.liveGame.team2, leagueTeams.team2);
   });
 
   test('still reports a game with no score change for just under two hours', async () => {
@@ -248,6 +268,96 @@ describe('REST API live games', () => {
     const body = await sheetWithLiveGame('sheet-legacy', { currentEnd: 2, ...teams });
     assert.equal(body.hasLiveGame, true);
     assert.equal(body.liveGame.updatedAt, null);
+  });
+});
+
+describe('REST API leagues', () => {
+  const headers = { 'x-api-key': 'key-leagues' };
+  const monday = {
+    name: 'Monday Night',
+    active: true,
+    seasonStart: '2026-10-05',
+    draws: [{ day: 1, start: '18:30', end: '20:30' }],
+    teams: [{ id: 't1', name: 'Team Smith', externalId: '1042' }, { id: 't2', name: 'Team Jones' }],
+    // Not part of a league today; stands in for anything added later.
+    internalNote: 'do not publish',
+  };
+
+  before(async () => {
+    await db.doc('clubs/club-leagues').set({ name: 'Club Leagues' });
+    await db.doc('clubs/club-leagues/private/apiKey').set({ key: 'key-leagues' });
+    await db.doc('clubs/club-leagues/leagues/monday').set(monday);
+    await db.doc('clubs/club-leagues/leagues/archived').set({
+      name: 'Archived League', active: false, draws: [], teams: [],
+    });
+    await db.doc('clubs/club-leagues/sheets/sheet-1').set({ name: 'Sheet 1' });
+    const game = (league) => ({
+      startedAt: Timestamp.fromMillis(Date.now() - 3 * 60 * 60 * 1000),
+      finishedAt: league ? Timestamp.fromMillis(Date.now() - 60 * 60 * 1000) : Timestamp.fromMillis(Date.now() - 2 * 60 * 60 * 1000),
+      numberOfEnds: 8,
+      ...(league ? { league } : {}),
+      team1: { name: league ? 'Team Smith' : 'Red', totalScore: 6, hadLastStoneFirstEnd: true, ...(league ? { teamId: 't1', externalId: '1042' } : {}) },
+      team2: { name: league ? 'Team Jones' : 'Yellow', totalScore: 4, hadLastStoneFirstEnd: false, ...(league ? { teamId: 't2' } : {}) },
+      ends: [],
+    });
+    await db.collection('clubs/club-leagues/sheets/sheet-1/games').add(game({ id: 'monday', name: 'Monday Night' }));
+    await db.collection('clubs/club-leagues/sheets/sheet-1/games').add(game(null));
+  });
+
+  test('lists a club\'s leagues by name, with their teams', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-leagues/leagues`, { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(body.leagues.map((l) => l.id), ['archived', 'monday']);
+    assert.equal(body.leagues[0].active, false);
+    assert.deepEqual(body.leagues[1], {
+      id: 'monday',
+      name: 'Monday Night',
+      active: true,
+      seasonStart: '2026-10-05',
+      seasonEnd: null,
+      draws: [{ day: 1, start: '18:30', end: '20:30' }],
+      teams: [
+        { id: 't1', name: 'Team Smith', externalId: '1042' },
+        { id: 't2', name: 'Team Jones', externalId: null },
+      ],
+    });
+  });
+
+  test('returns one league, and only its documented fields', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-leagues/leagues/monday`, { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(Object.keys(body).sort(),
+      ['active', 'draws', 'id', 'name', 'seasonEnd', 'seasonStart', 'teams']);
+  });
+
+  test('returns 404 for an unknown league', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-leagues/leagues/missing`, { headers });
+    assert.equal(res.status, 404);
+  });
+
+  test('returns an empty list for a club with no leagues', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a/leagues`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { leagues: [] });
+  });
+
+  test('needs the club\'s own key', async () => {
+    assert.equal((await fetch(`${API_URL}/clubs/club-leagues/leagues`)).status, 401);
+    const res = await fetch(`${API_URL}/clubs/club-leagues/leagues`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 403);
+  });
+
+  test('reports the league and teams of completed games', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-leagues/sheets/sheet-1/games`, { headers });
+    assert.equal(res.status, 200);
+    const [leagueGame, openGame] = (await res.json()).games;
+    assert.deepEqual(leagueGame.league, { id: 'monday', name: 'Monday Night' });
+    assert.equal(leagueGame.team1.teamId, 't1');
+    assert.equal(leagueGame.team1.externalId, '1042');
+    assert.equal(openGame.league, null);
+    assert.equal(openGame.team1.teamId, undefined);
   });
 });
 
