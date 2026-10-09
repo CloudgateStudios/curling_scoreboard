@@ -255,9 +255,11 @@ Leaving the bar alone starts an open game exactly as before.
 The left of the bar is the league. It follows the scoreboard's local clock:
 if exactly one league is in a draw (from half an hour before it starts until
 it ends, within the league's season) the bar names it and marks it as playing
-now, and a club's only league is always named. Tapping it lists the club's
-leagues, the ones playing now first, to choose another; that clears any teams
-already picked. The bar re-reads the clock every minute, because the setup
+now, and a club's only league is always named. Tapping it opens a modal of
+the club's leagues, the ones playing now first, to choose another; that
+clears any teams already picked. The modal puts leagues two across once there
+are more than three and shares its height between the rows, so a club's ten
+or so leagues are all on screen without scrolling. The bar re-reads the clock every minute, because the setup
 screen is left open between games, sometimes overnight.
 
 The right of the bar opens a full screen team picker for that league. With no

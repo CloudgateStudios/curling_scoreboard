@@ -348,7 +348,7 @@ void main() {
 
     await tapAndSettle(tester, 'Monday Night');
     expect(find.text('Which league?'), findsOneWidget);
-    final options = find.byType(SimpleDialogOption);
+    final options = find.byType(LeagueChooserOption);
     expect(
       find.descendant(of: options.first, matching: find.text('Monday Night')),
       findsOneWidget,
@@ -372,6 +372,92 @@ void main() {
     await tapAndSettle(tester, 'Done');
     await tapAndSettle(tester, 'Start Game');
     expect(started()!.league?.id, 'thursday');
+  });
+
+  testWidgets('League chooser shows ten leagues at once on the tablet', (
+    tester,
+  ) async {
+    final leagues = [
+      for (var i = 1; i <= 10; i++)
+        League.tryParse('l$i', {
+          'name': 'League number $i of the season',
+          // The fourth is the one in a draw on a Monday evening.
+          'draws': [
+            {'day': i == 4 ? 1 : 3, 'start': '18:30', 'end': '20:30'},
+          ],
+          'teams': [
+            {'id': 'a$i', 'name': 'Team A$i'},
+            {'id': 'b$i', 'name': 'Team B$i'},
+          ],
+        })!,
+    ];
+    final started = await openDialog(
+      tester,
+      leagues: leagues,
+      now: mondayEvening,
+    );
+    // The size of a Galaxy Tab A8 with Android's bars showing.
+    tester.view.physicalSize = const Size(1280, 728);
+    await tester.pumpAndSettle();
+
+    await tapAndSettle(tester, 'League number 4 of the season');
+    expect(tester.takeException(), isNull);
+
+    final options = find.byType(LeagueChooserOption);
+    expect(options, findsNWidgets(10));
+    // Nothing scrolls: every league is on screen, at a size worth tapping.
+    expect(
+      find.descendant(
+        of: find.byType(Dialog).last,
+        matching: find.byType(Scrollable),
+      ),
+      findsNothing,
+    );
+    const screen = Rect.fromLTWH(0, 0, 1280, 728);
+    for (final option in options.evaluate()) {
+      final rect = tester.getRect(find.byWidget(option.widget));
+      expect(screen.contains(rect.topLeft), isTrue);
+      expect(screen.contains(rect.bottomRight), isTrue);
+      expect(rect.height, greaterThan(60));
+    }
+    // The league playing now is first.
+    expect(
+      find.descendant(
+        of: options.first,
+        matching: find.text('League number 4 of the season'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: options,
+        matching: find.text('League number 9 of the season'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tapAndSettle(tester, 'Pick teams');
+    await tapTeam(tester, 'Team A9');
+    await tapTeam(tester, 'Team B9');
+    await tapAndSettle(tester, 'Done');
+    await tapAndSettle(tester, 'Start Game');
+    expect(started()!.league?.id, 'l9');
+  });
+
+  testWidgets('League chooser can be cancelled', (tester) async {
+    await openDialog(
+      tester,
+      leagues: [mondayNight, thursdayDoubles],
+      now: mondayEvening,
+    );
+
+    await tapAndSettle(tester, 'Monday Night');
+    expect(find.text('Which league?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Which league?'), findsNothing);
+    expect(find.text('Monday Night'), findsOneWidget);
   });
 
   testWidgets('GameStartDialog clears the teams when the league changes', (
@@ -412,7 +498,7 @@ void main() {
     await tapAndSettle(tester, 'Monday Night');
     await tester.tap(
       find.descendant(
-        of: find.byType(SimpleDialogOption),
+        of: find.byType(LeagueChooserOption),
         matching: find.text('Monday Night'),
       ),
     );

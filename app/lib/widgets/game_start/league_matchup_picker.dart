@@ -26,42 +26,147 @@ Future<League?> showLeagueChooser(
 }) {
   return showDialog<League>(
     context: context,
-    builder: (context) => SimpleDialog(
-      title: Text(
-        context.l10n.leagueChooserTitle,
-        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-      ),
-      children: [
-        for (final playing in [true, false])
-          for (final league in leagues)
-            if (league.isPlayingAt(now) == playing)
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(context, league),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      league.name,
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (playing)
-                      Text(
-                        context.l10n.leaguePlayingNowLabel,
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                  ],
+    builder: (_) => _LeagueChooser(leagues: leagues, now: now),
+  );
+}
+
+/// A modal listing a club's leagues as large buttons. A club can have ten
+/// or so, so they go two across once there are more than a few, and the
+/// rows share the height instead of scrolling: every league is on screen.
+class _LeagueChooser extends StatelessWidget {
+  const _LeagueChooser({required this.leagues, required this.now});
+
+  final List<League> leagues;
+  final DateTime now;
+
+  static const _rowHeight = 96.0;
+  static const _spacing = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    // Whatever is on the ice now comes first.
+    final ordered = [
+      for (final playing in [true, false])
+        for (final league in leagues)
+          if (league.isPlayingAt(now) == playing) league,
+    ];
+    final columns = ordered.length > 3 ? 2 : 1;
+    final rows = [
+      for (var i = 0; i < ordered.length; i += columns)
+        ordered.sublist(
+          i,
+          i + columns > ordered.length ? ordered.length : i + columns,
+        ),
+    ];
+
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: columns == 1 ? 560 : 960),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.leagueChooserTitle,
+                style: const TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-      ],
-    ),
-  );
+              const SizedBox(height: 16),
+              for (final (index, row) in rows.indexed)
+                Flexible(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: index == 0 ? 0 : _spacing),
+                    child: SizedBox(
+                      height: _rowHeight,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: _spacing,
+                        children: [
+                          for (final league in row)
+                            Expanded(
+                              child: LeagueChooserOption(
+                                league: league,
+                                playing: league.isPlayingAt(now),
+                              ),
+                            ),
+                          // Keeps an odd league out the same width as the
+                          // rest.
+                          for (var i = row.length; i < columns; i++)
+                            const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    l10n.matchupPickerCancelButtonLabel,
+                    style: const TextStyle(fontSize: 32),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One league in the league chooser. Tapping it chooses the league.
+class LeagueChooserOption extends StatelessWidget {
+  const LeagueChooserOption({
+    required this.league,
+    required this.playing,
+    super.key,
+  });
+
+  final League league;
+
+  /// Whether the league is in a draw right now, which is marked.
+  final bool playing;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: playing
+            ? Colors.blueAccent.withValues(alpha: 0.16)
+            : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      ),
+      onPressed: () => Navigator.pop(context, league),
+      // A long league name shrinks to its button instead of wrapping.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              league.name,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
+            if (playing)
+              Text(
+                context.l10n.leaguePlayingNowLabel,
+                style: const TextStyle(fontSize: 20),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A full screen for choosing the two teams of a league game.
