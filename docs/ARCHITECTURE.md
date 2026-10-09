@@ -69,8 +69,10 @@ clubs/{clubId}/sheets/{sheetId}
   liveGame?: {               // the game in progress, removed when it ends
     updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
-    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool }
-    team2: { name: string, color: { name, hex }, score: int, hasHammer: bool }
+    league?: { id: string, name: string }   // league games only
+    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
+             teamId?: string, externalId?: string }   // the last two in league games
+    team2: { ...the same }
   }
   device?: {                 // what the scoreboard last said about itself
     appVersion: string
@@ -93,8 +95,10 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
   startedAt: timestamp
   finishedAt: timestamp
   numberOfEnds: int
-  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
-  team2: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
+  league?: { id: string, name: string }     // league games only
+  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool,
+           teamId?: string, externalId?: string }     // the last two in league games
+  team2: { ...the same }
   ends: [{
     endNumber: int
     scoringTeam: string | null       // team name; null for a blank end
@@ -107,8 +111,8 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
 Club IDs are readable slugs (`windy-city-curling`) when the super admin picks
 one, otherwise Firestore auto IDs. `scoringTeamSlot` was added because two
 teams can share a name; older games only have `scoringTeam`. A team's `name`
-is the name of its rock color, and `color` is absent on games from before it
-was recorded.
+is the name of its rock color in an open game and the league team's name in a
+league game; `color` is absent on games from before it was recorded.
 
 ## Roles
 
@@ -236,6 +240,53 @@ zone: scoreboards compare them with their own clock.
 
 Dates and times are stored as strings for the same reason. A Firestore
 timestamp is an instant, and "Mondays at 18:30" is not one.
+
+### League games on the scoreboard
+
+`LeagueService` on a paired scoreboard listens to its club's active leagues
+and, like the rock colors, keeps the last ones it saw for an offline start.
+The game setup screen fills the display, and each of its settings is a row
+of equal-width segments spanning the same width, so the controls line up down
+both edges and grow with the screen.
+
+While there are any leagues, the setup screen gains one bar above its settings.
+Leaving the bar alone starts an open game exactly as before.
+
+The left of the bar is the league. It follows the scoreboard's local clock:
+if exactly one league is in a draw (from half an hour before it starts until
+it ends, within the league's season) the bar names it and marks it as playing
+now, and a club's only league is always named. Tapping it opens a modal of
+the club's leagues, the ones playing now first, to choose another; that
+clears any teams already picked. The modal puts leagues two across once there
+are more than three and shares its height between the rows, so a club's ten
+or so leagues are all on screen without scrolling. The bar re-reads the clock every minute, because the setup
+screen is left open between games, sometimes overnight.
+
+The right of the bar opens a full screen team picker for that league. With no
+league to go on, it asks for the league first and carries straight on.
+
+The picker is only teams: no title and no league control, so the buttons get
+the room. Every team in the league is one large button on a fixed four by
+four grid, which holds the thirteen teams of the largest league expected. A
+smaller league leaves cells empty instead of growing its buttons, so the
+screen looks the same from one league to the next; only a league of more than
+sixteen changes the grid. All buttons share one text size, capped so that
+most leagues match, and smaller only when a team name is unusually long. The first team tapped throws the first rock color and the
+second the other. Two slots at the top show who is picked; tapping a slot or
+a picked team clears it, a third tap replaces the second team, and a swap
+button exchanges the colors. Cancel and Done are bottom right. Back on the
+setup screen the bar shows the matchup and the hammer choice names the two
+teams.
+
+Done sits in the same corner as Start Game, so the setup screen ignores taps
+for a moment after the picker closes. Otherwise a double tap on Done would
+start the game.
+
+The game carries the league and each team's `teamId` and `externalId`, which
+are written with `liveGame` and the completed game. The name and IDs are
+copied at the start of the game, so the record stands by itself whatever
+happens to the league afterwards, and it is what a later score reporter needs
+to match a result to a team.
 
 ## Scoreboard status
 
