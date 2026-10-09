@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import type { Club, Sheet } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
+import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
@@ -54,6 +55,10 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
     }
   }
 
+  function handleOpenLeague(leagueId: string) {
+    navigate(clubProp ? `/leagues/${leagueId}` : `/clubs/${resolvedClubId}/leagues/${leagueId}`);
+  }
+
   if (!club) {
     return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
   }
@@ -76,6 +81,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       <RecentGames clubId={resolvedClubId} sheets={sheets} />
       <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
       {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
+      <LeaguesSection clubId={resolvedClubId} onOpenLeague={handleOpenLeague} />
       <RockColorsSection clubId={resolvedClubId} />
       <SheetsSection
         clubId={resolvedClubId}

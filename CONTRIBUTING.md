@@ -34,6 +34,7 @@ dart run translations_cleaner list-unused-terms --abort-on-unused
 ```bash
 npx tsc --noEmit
 npm run lint
+npm test
 npm run build
 ```
 

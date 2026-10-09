@@ -12,8 +12,9 @@
  *   - 2 clubs (Windy City Curling, Milwaukee Curling Club)
  *   - 3 sheets under Windy City, 5 sheets under Milwaukee
  *   - 3 completed game records per sheet
+ *   - 2 leagues with teams under each club
  *
- * The script is idempotent for clubs and sheets (uses set with merge).
+ * The script is idempotent for clubs, sheets and leagues (uses set with merge).
  * Running it again appends additional game documents to each sheet.
  */
 
@@ -52,6 +53,33 @@ const CLUBS = [
       { id: 'sheet-4', name: 'Sheet 4' },
       { id: 'sheet-5', name: 'Sheet 5' },
     ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Leagues, the same for every club. Team IDs are fixed so re-running the
+// script leaves them alone.
+// ---------------------------------------------------------------------------
+
+const LEAGUES = [
+  {
+    id: 'monday-night',
+    name: 'Monday Night',
+    active: true,
+    draws: [
+      { day: 1, start: '18:30', end: '20:30' },
+      { day: 1, start: '20:45', end: '22:45' },
+    ],
+    teams: ['Team Smith', 'Team Jones', 'Sweeping Beauties', 'Rock Stars', 'House Party', 'The Hog Liners']
+      .map((name, i) => ({ id: `monday-${i + 1}`, name, externalId: String(1000 + i) })),
+  },
+  {
+    id: 'thursday-doubles',
+    name: 'Thursday Doubles',
+    active: true,
+    draws: [{ day: 4, start: '19:00', end: '21:00' }],
+    teams: ['Stone Cold', 'Double Trouble', 'Two for the Show', 'Pebble Pushers']
+      .map((name, i) => ({ id: `thursday-${i + 1}`, name })),
   },
 ];
 
@@ -177,6 +205,11 @@ async function seed() {
     await clubRef.set({ name: club.name }, { merge: true });
     await clubRef.collection('private').doc('apiKey').set({ key: club.apiKey });
     console.log(`Club: ${club.name} (API key: ${club.apiKey})`);
+
+    for (const { id, ...league } of LEAGUES) {
+      await clubRef.collection('leagues').doc(id).set(league, { merge: true });
+      console.log(`  League: ${league.name} (${league.teams.length} teams)`);
+    }
 
     for (let si = 0; si < club.sheets.length; si++) {
       const sheet = club.sheets[si];
