@@ -266,6 +266,8 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           defaultScore: 0,
           end: gameObject.currentPlayingEnd,
           rockColors: _gameRockColors,
+          team1Name: gameObject.team1.name,
+          team2Name: gameObject.team2.name,
         );
       },
     );
@@ -298,6 +300,8 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           defaultScore: gameObject.ends[end - 1].score,
           end: end,
           rockColors: _gameRockColors,
+          team1Name: gameObject.team1.name,
+          team2Name: gameObject.team2.name,
         );
       },
     );
