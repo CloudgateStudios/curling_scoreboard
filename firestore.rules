@@ -12,6 +12,18 @@ service cloud.firestore {
           && request.auth.token.clubId == clubId;
     }
 
+    // A scoreboard paired with a sheet in this club. pairSheet sets the
+    // claims, which only say which sheet to look at: the sheet itself has to
+    // name this scoreboard, so access ends the moment it is disconnected or
+    // another device is paired in its place.
+    function isClubScoreboard(clubId) {
+      return request.auth != null
+          && request.auth.token.role == 'scoreboard'
+          && request.auth.token.clubId == clubId
+          && get(/databases/$(database)/documents/clubs/$(clubId)/sheets/$(request.auth.token.sheetId))
+              .data.get('scoreboardUid', null) == request.auth.uid;
+    }
+
     // Super admins can read and write everything.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
@@ -38,6 +50,13 @@ service cloud.firestore {
 
       match /admins/{uid} {
         allow read: if isClubAdmin(clubId);
+      }
+
+      // Club settings the scoreboards need, which is why they are kept off
+      // the club document: paired scoreboards can read these and nothing
+      // else about the club.
+      match /config/{docId} {
+        allow read: if isClubAdmin(clubId) || isClubScoreboard(clubId);
       }
 
       match /sheets/{sheetId} {

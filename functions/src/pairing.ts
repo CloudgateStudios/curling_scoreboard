@@ -1,5 +1,27 @@
+import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+
+// Custom claims that tell the security rules which sheet a scoreboard says it
+// is paired with. The rules still check the sheet's scoreboardUid, so a claim
+// left behind by an old pairing grants nothing.
+export function scoreboardClaims(clubId: string, sheetId: string): Record<string, string> {
+  return { role: 'scoreboard', clubId, sheetId };
+}
+
+// Best effort: the claims are already useless once the sheet belongs to
+// another device, and an anonymous user may well have been deleted since.
+async function clearScoreboardClaims(uid: string): Promise<void> {
+  try {
+    const auth = getAuth();
+    const user = await auth.getUser(uid);
+    if (user.customClaims?.['role'] === 'scoreboard') {
+      await auth.setCustomUserClaims(uid, null);
+    }
+  } catch (err) {
+    console.warn(`Could not clear scoreboard claims for ${uid}`, err);
+  }
+}
 
 // Pairs the calling scoreboard with the sheet holding the given pairing code.
 // Done server side so clients never need to query or read pairing codes,
@@ -9,6 +31,13 @@ export const pairSheet = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'Sign in before pairing.');
   }
   const uid = request.auth.uid;
+
+  // Pairing replaces the caller's custom claims, which would strip an admin
+  // of their access. Scoreboards sign in anonymously and have no role.
+  const role = request.auth.token['role'] as string | undefined;
+  if (role !== undefined && role !== 'scoreboard') {
+    throw new HttpsError('failed-precondition', 'Admin accounts cannot pair as a scoreboard.');
+  }
 
   const raw = (request.data as { pairingCode?: unknown } | undefined)?.pairingCode;
   const pairingCode = typeof raw === 'string' ? raw.trim().toUpperCase() : '';
@@ -29,7 +58,12 @@ export const pairSheet = onCall(async (request) => {
   const sheetRef = matches.docs[0].ref;
   const clubRef = sheetRef.parent.parent!;
 
-  return db.runTransaction(async (tx) => {
+  // Set before the sheet is claimed so the scoreboard never ends up paired
+  // without them. If claiming then fails they point at a sheet that is not
+  // the caller's, which the rules do not honour.
+  await getAuth().setCustomUserClaims(uid, scoreboardClaims(clubRef.id, sheetRef.id));
+
+  const { previousUid, ...result } = await db.runTransaction(async (tx) => {
     const [sheetSnap, clubSnap] = await Promise.all([tx.get(sheetRef), tx.get(clubRef)]);
 
     // Another device may have used the code between the query and now.
@@ -47,10 +81,14 @@ export const pairSheet = onCall(async (request) => {
     });
 
     return {
+      previousUid: sheetSnap.get('scoreboardUid') as string | undefined,
       clubId: clubRef.id,
       sheetId: sheetRef.id,
       clubName: (clubSnap.get('name') as string | undefined) ?? '',
       sheetName: (sheetSnap.get('name') as string | undefined) ?? '',
     };
   });
+
+  if (previousUid && previousUid !== uid) await clearScoreboardClaims(previousUid);
+  return result;
 });

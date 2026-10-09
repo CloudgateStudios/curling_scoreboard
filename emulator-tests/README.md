@@ -56,6 +56,7 @@ Access the app depends on:
 - a paired scoreboard reporting its device status
 - a paired scoreboard clearing its own uid on disconnect
 - a club admin reading their own club and its API key
+- a paired scoreboard and a club admin reading the club's `config`
 - anyone reading `appConfig/scoreboard` to pick up new builds
 
 Access that must stay denied:
@@ -71,6 +72,10 @@ Access that must stay denied:
 - reading or listing club documents without being that club's admin
 - reading any club's API key without being its admin, or a club admin
   changing their own key
+- reading a club's `config` as a scoreboard from another club, one without
+  claims, or one whose claims name a sheet it is no longer paired with
+- a scoreboard writing its club's `config`, or reading its club document or
+  API key
 - writing `appConfig`
 
 ### Functions
@@ -78,7 +83,9 @@ Access that must stay denied:
 - `pairSheet` turns away callers who are not signed in, missing and unknown
   codes; pairs the caller with the sheet (matching codes after trimming and
   upper-casing), recording when and dropping the previous scoreboard's device
-  status; and does not accept a code twice.
+  status; and does not accept a code twice. It gives the scoreboard claims
+  naming its sheet, takes them away from the scoreboard it replaces, and
+  refuses admin accounts.
 - The REST API requires a key, rejects a wrong one, accepts the club's key,
   returns 404 for an unknown club, ignores a key left on the club
   document from before the API key migration, and leaves the scoreboard's

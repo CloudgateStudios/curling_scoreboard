@@ -63,6 +63,8 @@ before(async () => {
     name: 'Sheet Other', scoreboardUid: 'some-device', device: { appVersion: '0.0.46' },
   });
   // A club still in the pre-migration shape, with the key on the club doc.
+  // Kept apart from club-a, whose sheets the API tests list.
+  await db.doc('clubs/club-pairing').set({ name: 'Club Pairing' });
   await db.doc('clubs/legacy').set({ name: 'Legacy Club', apiKey: 'legacy-key' });
 });
 
@@ -106,6 +108,67 @@ describe('pairSheet', () => {
 
     const second = await anonymous();
     await rejectsWith(second.call('pairSheet', { pairingCode: 'ABC234' }), 'functions/not-found');
+  });
+
+  test('gives the scoreboard claims naming its sheet', async () => {
+    await db.doc('clubs/club-pairing/sheets/sheet-claims').set({ name: 'Sheet Claims', pairingCode: 'CLM234' });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: 'CLM234' });
+
+    const user = await adminAuth.getUser(client.auth.currentUser.uid);
+    assert.deepEqual(user.customClaims, { role: 'scoreboard', clubId: 'club-pairing', sheetId: 'sheet-claims' });
+
+    // The app forces a token refresh after pairing to pick the claims up.
+    const token = await client.auth.currentUser.getIdTokenResult(true);
+    assert.equal(token.claims.role, 'scoreboard');
+    assert.equal(token.claims.sheetId, 'sheet-claims');
+  });
+
+  test('takes the claims away from the scoreboard it replaces', async () => {
+    const sheet = db.doc('clubs/club-pairing/sheets/sheet-repair');
+    await sheet.set({ name: 'Sheet Repair', pairingCode: 'RPR234' });
+    const first = await anonymous();
+    await first.call('pairSheet', { pairingCode: 'RPR234' });
+
+    await sheet.update({ pairingCode: 'RPR567' });
+    const second = await anonymous();
+    await second.call('pairSheet', { pairingCode: 'RPR567' });
+
+    assert.equal((await adminAuth.getUser(first.auth.currentUser.uid)).customClaims?.role, undefined);
+    assert.deepEqual((await adminAuth.getUser(second.auth.currentUser.uid)).customClaims,
+      { role: 'scoreboard', clubId: 'club-pairing', sheetId: 'sheet-repair' });
+  });
+
+  test('pairs over a previous scoreboard that no longer exists', async () => {
+    // Names a uid with no Auth user behind it.
+    await db.doc('clubs/club-pairing/sheets/sheet-gone').set({
+      name: 'Sheet Gone', scoreboardUid: 'deleted-device', pairingCode: 'GNE234',
+    });
+    const client = await anonymous();
+    const result = await client.call('pairSheet', { pairingCode: 'GNE234' });
+    assert.equal(result.data.sheetId, 'sheet-gone');
+  });
+
+  test('lets a scoreboard move to another sheet', async () => {
+    await db.doc('clubs/club-pairing/sheets/sheet-move-1').set({ name: 'Move 1', pairingCode: 'MVE234' });
+    await db.doc('clubs/club-pairing/sheets/sheet-move-2').set({ name: 'Move 2', pairingCode: 'MVE567' });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: 'MVE234' });
+    await client.auth.currentUser.getIdToken(true);
+    await client.call('pairSheet', { pairingCode: 'MVE567' });
+
+    const user = await adminAuth.getUser(client.auth.currentUser.uid);
+    assert.equal(user.customClaims.sheetId, 'sheet-move-2');
+  });
+
+  test('refuses admin accounts, whose claims it would replace', async () => {
+    await db.doc('clubs/club-pairing/sheets/sheet-admin').set({ name: 'Sheet Admin', pairingCode: 'ADM234' });
+    const clubAdmin = await userWithClaims('pairing-admin@club-a.example', { role: 'clubadmin', clubId: 'club-a' });
+    await rejectsWith(clubAdmin.call('pairSheet', { pairingCode: 'ADM234' }), 'functions/failed-precondition');
+
+    const user = await adminAuth.getUser(clubAdmin.auth.currentUser.uid);
+    assert.deepEqual(user.customClaims, { role: 'clubadmin', clubId: 'club-a' });
+    assert.equal((await db.doc('clubs/club-pairing/sheets/sheet-admin').get()).get('pairingCode'), 'ADM234');
   });
 });
 
