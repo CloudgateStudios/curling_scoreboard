@@ -67,15 +67,18 @@ class SyncService {
           // without finishing it.
           'updatedAt': FieldValue.serverTimestamp(),
           'currentEnd': game.currentPlayingEnd,
+          'league': ?game.league?.toJson(),
           'team1': {
             'name': game.team1.name,
             'color': _colorOf(game.team1),
+            ..._leagueTeamOf(game.team1),
             'score': game.team1TotalScore,
             'hasHammer': game.team1.hasHammer,
           },
           'team2': {
             'name': game.team2.name,
             'color': _colorOf(game.team2),
+            ..._leagueTeamOf(game.team2),
             'score': game.team2TotalScore,
             'hasHammer': game.team2.hasHammer,
           },
@@ -112,15 +115,18 @@ class SyncService {
           'startedAt': Timestamp.fromDate(game.startedAt),
           'finishedAt': Timestamp.now(),
           'numberOfEnds': game.numberOfEnds,
+          'league': ?game.league?.toJson(),
           'team1': {
             'name': game.team1.name,
             'color': _colorOf(game.team1),
+            ..._leagueTeamOf(game.team1),
             'totalScore': game.team1TotalScore,
             'hadLastStoneFirstEnd': game.team1.hadLastStoneFirstEnd,
           },
           'team2': {
             'name': game.team2.name,
             'color': _colorOf(game.team2),
+            ..._leagueTeamOf(game.team2),
             'totalScore': game.team2TotalScore,
             'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
           },
@@ -150,6 +156,13 @@ class SyncService {
   // changes its rocks.
   Map<String, dynamic> _colorOf(CurlingTeam team) =>
       RockColor(name: team.colorName, color: team.color).toJson();
+
+  // Which league team this is, so a score can be matched to it however the
+  // team is later renamed. Empty outside league games.
+  Map<String, dynamic> _leagueTeamOf(CurlingTeam team) => {
+    'teamId': ?team.teamId,
+    'externalId': ?team.externalId,
+  };
 
   String? _teamNameFor(CurlingGame game, ScoringTeam? team) => switch (team) {
     ScoringTeam.team1 => game.team1.name,

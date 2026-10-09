@@ -24,9 +24,49 @@
   "@buttonLabelFinishGame": {
     "description": "Button text for ending the game."
   },
-  "gameStartDialogTitle": "Game Setup",
-  "@gameStartDialogTitle": {
-    "description": "Title of the dialog shown to setup the game."
+  "gameStartDialogLeagueBarLeagueLabel": "League",
+  "@gameStartDialogLeagueBarLeagueLabel": {
+    "description": "Small label above the league name on the league bar of the game start dialog."
+  },
+  "gameStartDialogLeagueBarChooseLeague": "Choose league",
+  "@gameStartDialogLeagueBarChooseLeague": {
+    "description": "Shown in place of a league name on the league bar of the game start dialog when no league is selected yet."
+  },
+  "leaguePlayingNowLabel": "Playing now",
+  "@leaguePlayingNowLabel": {
+    "description": "Marks a league that is scheduled to be playing at the current time."
+  },
+  "leagueChooserTitle": "Which league?",
+  "@leagueChooserTitle": {
+    "description": "Title of the dialog listing the club's leagues to choose from."
+  },
+  "gameStartDialogLeagueBarPickTeams": "Pick teams",
+  "@gameStartDialogLeagueBarPickTeams": {
+    "description": "Second line of the league bar on the game start dialog, inviting the user to choose the two teams."
+  },
+  "gameStartDialogLeagueBarClearTooltip": "Clear teams",
+  "@gameStartDialogLeagueBarClearTooltip": {
+    "description": "Tooltip for the button that removes the picked league teams, going back to an open game."
+  },
+  "matchupVersus": "vs",
+  "@matchupVersus": {
+    "description": "Separator shown between the names of the two teams in a game."
+  },
+  "matchupPickerEmptySlotLabel": "Tap a team",
+  "@matchupPickerEmptySlotLabel": {
+    "description": "Text shown on a rock color in the league team picker until a team has been picked for it."
+  },
+  "matchupPickerSwapTooltip": "Swap colors",
+  "@matchupPickerSwapTooltip": {
+    "description": "Tooltip for the button that swaps which rock color each picked team is throwing."
+  },
+  "matchupPickerCancelButtonLabel": "Cancel",
+  "@matchupPickerCancelButtonLabel": {
+    "description": "Button text to leave the league team picker without changing anything."
+  },
+  "matchupPickerDoneButtonLabel": "Done",
+  "@matchupPickerDoneButtonLabel": {
+    "description": "Button text to confirm the two teams picked in the league team picker."
   },
   "gameStartDialogFormLabelNumberOfEnds": "Number of Ends:",
   "@gameStartDialogFormLabelNumberOfEnds": {
@@ -79,10 +119,6 @@
     "description": "Text label for the game end report table column listing the time taken for the end."
   },
   "gameEndDialogGameTimeTableHeader": "Game Time",
-  "@gameEndDialogEndTableHeader": {
-    "description": "Text label for the game end report table column listing the time taken for the end."
-  },
-  "gameEndDialogTotalsTableHeader": "Totals",
   "@gameEndDialogEndTableHeader": {
     "description": "Text label for the game end report table column listing the time taken for the end."
   },

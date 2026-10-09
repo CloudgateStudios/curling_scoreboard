@@ -37,6 +37,7 @@ gamesRouter.get('/games', async (req: Request, res: Response) => {
         startedAt: (d['startedAt'] as Timestamp).toDate().toISOString(),
         finishedAt: (d['finishedAt'] as Timestamp).toDate().toISOString(),
         numberOfEnds: d['numberOfEnds'] as number,
+        league: d['league'] ?? null,
         team1: d['team1'],
         team2: d['team2'],
         ends: d['ends'],

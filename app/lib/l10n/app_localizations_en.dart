@@ -27,7 +27,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appBarFinishGameButtonLabel => 'Finish Game';
 
   @override
-  String get gameStartDialogTitle => 'Game Setup';
+  String get gameStartDialogLeagueBarLeagueLabel => 'League';
+
+  @override
+  String get gameStartDialogLeagueBarChooseLeague => 'Choose league';
+
+  @override
+  String get leaguePlayingNowLabel => 'Playing now';
+
+  @override
+  String get leagueChooserTitle => 'Which league?';
+
+  @override
+  String get gameStartDialogLeagueBarPickTeams => 'Pick teams';
+
+  @override
+  String get gameStartDialogLeagueBarClearTooltip => 'Clear teams';
+
+  @override
+  String get matchupVersus => 'vs';
+
+  @override
+  String get matchupPickerEmptySlotLabel => 'Tap a team';
+
+  @override
+  String get matchupPickerSwapTooltip => 'Swap colors';
+
+  @override
+  String get matchupPickerCancelButtonLabel => 'Cancel';
+
+  @override
+  String get matchupPickerDoneButtonLabel => 'Done';
 
   @override
   String get gameStartDialogFormLabelNumberOfEnds => 'Number of Ends:';
@@ -67,9 +97,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gameEndDialogGameTimeTableHeader => 'Game Time';
-
-  @override
-  String get gameEndDialogTotalsTableHeader => 'Totals';
 
   @override
   String get gameEndDialogButtonLabelDismiss => 'Dismiss';
