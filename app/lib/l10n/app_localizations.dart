@@ -136,59 +136,71 @@ abstract class AppLocalizations {
   /// **'Game Setup'**
   String get gameStartDialogTitle;
 
-  /// Description text for choosing between an open game and a league game in the game start dialog.
+  /// Title of the bar on the game start dialog that opens the league team picker, when no league is playing right now.
   ///
   /// In en, this message translates to:
-  /// **'Game Type:'**
-  String get gameStartDialogFormLabelGameType;
+  /// **'League game'**
+  String get gameStartDialogLeagueBarTitle;
 
-  /// Game type for a game that is not part of a league, with teams named by rock color.
+  /// Title of the bar on the game start dialog that opens the league team picker, naming the league scheduled to play now.
   ///
   /// In en, this message translates to:
-  /// **'Open'**
-  String get gameStartDialogGameTypeOpen;
+  /// **'{league} is playing'**
+  String gameStartDialogLeagueBarTitlePlaying(String league);
 
-  /// Game type for a game between two teams of one of the club's leagues.
+  /// Second line of the league bar on the game start dialog, inviting the user to choose the two teams.
   ///
   /// In en, this message translates to:
-  /// **'League'**
-  String get gameStartDialogGameTypeLeague;
+  /// **'Pick teams'**
+  String get gameStartDialogLeagueBarPickTeams;
 
-  /// Description text for the league setting in the game start dialog.
+  /// Tooltip for the button that removes the picked league teams, going back to an open game.
   ///
   /// In en, this message translates to:
-  /// **'League:'**
-  String get gameStartDialogFormLabelLeague;
+  /// **'Clear teams'**
+  String get gameStartDialogLeagueBarClearTooltip;
 
-  /// Button text shown in place of a league name until a league has been chosen.
+  /// Separator shown between the names of the two teams in a game.
   ///
   /// In en, this message translates to:
-  /// **'Pick a League'**
-  String get gameStartDialogPickLeagueButtonLabel;
+  /// **'vs'**
+  String get matchupVersus;
 
-  /// Description text for choosing the two teams of a league game in the game start dialog.
+  /// Title of the league team picker while the league has not been chosen yet.
   ///
   /// In en, this message translates to:
-  /// **'Teams:'**
-  String get gameStartDialogFormLabelTeams;
+  /// **'Which league?'**
+  String get matchupPickerChooseLeagueTitle;
 
-  /// Button text on a rock color until the team throwing that color has been chosen.
+  /// Button text in the league team picker to go back and choose a different league.
   ///
   /// In en, this message translates to:
-  /// **'Pick {color} Team'**
-  String gameStartDialogPickTeamButtonLabel(String color);
+  /// **'Change league'**
+  String get matchupPickerChangeLeagueButtonLabel;
 
-  /// Title of the dialog listing the club's leagues to choose from.
+  /// Text shown on a rock color in the league team picker until a team has been picked for it.
   ///
   /// In en, this message translates to:
-  /// **'League'**
-  String get leaguePickerDialogTitle;
+  /// **'Tap a team'**
+  String get matchupPickerEmptySlotLabel;
 
-  /// Title of the dialog listing a league's teams, to choose the one throwing a rock color.
+  /// Tooltip for the button that swaps which rock color each picked team is throwing.
   ///
   /// In en, this message translates to:
-  /// **'{color} Team'**
-  String teamPickerDialogTitle(String color);
+  /// **'Swap colors'**
+  String get matchupPickerSwapTooltip;
+
+  /// Button text to leave the league team picker without changing anything.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get matchupPickerCancelButtonLabel;
+
+  /// Button text to confirm the two teams picked in the league team picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get matchupPickerDoneButtonLabel;
 
   /// Description text for the number of ends setting in the game start dialog.
   ///

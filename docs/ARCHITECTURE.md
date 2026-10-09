@@ -245,15 +245,25 @@ timestamp is an instant, and "Mondays at 18:30" is not one.
 
 `LeagueService` on a paired scoreboard listens to its club's active leagues
 and, like the rock colors, keeps the last ones it saw for an offline start.
-While there are any, the game start dialog offers a game type: Open, which is
-the default and works as it always has, or League.
+While there are any, the game start dialog gains one bar above its settings.
+Leaving the bar alone starts an open game exactly as before.
 
-Choosing League looks at the scoreboard's local clock. If exactly one league
-is in a draw (from half an hour before it starts until it ends, within the
-league's season) that league is selected; so is a club's only league. Any
-other time the user picks from the list, with the leagues playing now first.
-The dialog then shows a button in each rock color to pick the team throwing
-it, and the game cannot start until both are picked.
+The bar looks at the scoreboard's local clock. If exactly one league is in a
+draw (from half an hour before it starts until it ends, within the league's
+season) the bar names it. Tapping the bar opens a full screen team picker on
+that league, or on a club's only league; any other time the picker first
+asks which league, with the ones playing now listed first.
+
+The picker shows every team in the league as one large button, sized to fill
+the screen without scrolling. The first team tapped throws the first rock
+color and the second the other. Two slots at the top show who is picked;
+tapping a slot or a picked team clears it, a third tap replaces the second
+team, and a swap button exchanges the colors. Back on the setup screen the
+bar shows the matchup and the hammer choice names the two teams.
+
+Done in the picker sits in the same corner as Start Game, so Start Game
+ignores taps for a moment after the picker closes. Otherwise a double tap on
+Done would start the game.
 
 The game carries the league and each team's `teamId` and `externalId`, which
 are written with `liveGame` and the completed game. The name and IDs are

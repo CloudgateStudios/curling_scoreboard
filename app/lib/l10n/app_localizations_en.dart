@@ -30,35 +30,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameStartDialogTitle => 'Game Setup';
 
   @override
-  String get gameStartDialogFormLabelGameType => 'Game Type:';
+  String get gameStartDialogLeagueBarTitle => 'League game';
 
   @override
-  String get gameStartDialogGameTypeOpen => 'Open';
-
-  @override
-  String get gameStartDialogGameTypeLeague => 'League';
-
-  @override
-  String get gameStartDialogFormLabelLeague => 'League:';
-
-  @override
-  String get gameStartDialogPickLeagueButtonLabel => 'Pick a League';
-
-  @override
-  String get gameStartDialogFormLabelTeams => 'Teams:';
-
-  @override
-  String gameStartDialogPickTeamButtonLabel(String color) {
-    return 'Pick $color Team';
+  String gameStartDialogLeagueBarTitlePlaying(String league) {
+    return '$league is playing';
   }
 
   @override
-  String get leaguePickerDialogTitle => 'League';
+  String get gameStartDialogLeagueBarPickTeams => 'Pick teams';
 
   @override
-  String teamPickerDialogTitle(String color) {
-    return '$color Team';
-  }
+  String get gameStartDialogLeagueBarClearTooltip => 'Clear teams';
+
+  @override
+  String get matchupVersus => 'vs';
+
+  @override
+  String get matchupPickerChooseLeagueTitle => 'Which league?';
+
+  @override
+  String get matchupPickerChangeLeagueButtonLabel => 'Change league';
+
+  @override
+  String get matchupPickerEmptySlotLabel => 'Tap a team';
+
+  @override
+  String get matchupPickerSwapTooltip => 'Swap colors';
+
+  @override
+  String get matchupPickerCancelButtonLabel => 'Cancel';
+
+  @override
+  String get matchupPickerDoneButtonLabel => 'Done';
 
   @override
   String get gameStartDialogFormLabelNumberOfEnds => 'Number of Ends:';

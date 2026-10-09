@@ -2,6 +2,7 @@ import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/src/version.dart';
+import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
 
@@ -23,6 +24,10 @@ class GameStartDialog extends StatelessWidget {
   /// The scoreboard's local time, which decides the league suggested for a
   /// league game.
   final DateTime Function() now;
+
+  /// How long Start Game ignores taps after the team picker closes.
+  @visibleForTesting
+  static const startGuardDuration = Duration(milliseconds: 700);
 
   @override
   Widget build(BuildContext context) {
@@ -47,24 +52,38 @@ class GameStartDialog extends StatelessWidget {
 
     final colors = rockColors ?? RockColors.defaults(context.l10n);
 
-    final hammerChoices = {
-      0: Padding(
-        padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-        child: GameStartSegmentControlText(text: colors.team1.name),
-      ),
-      1: GameStartSegmentControlText(text: colors.team2.name),
-    };
+    // The teams of a league game, picked on their own screen. Null for an
+    // open game.
+    LeagueMatchup? matchup;
 
-    var leagueGame = false;
-    League? selectedLeague;
-    LeagueTeam? team1Pick;
-    LeagueTeam? team2Pick;
+    // The picker's Done button sits where Start Game does, so a double tap
+    // on Done would start the game. Start Game sits out the moment after
+    // the picker closes.
+    var startGuarded = false;
 
     var settingsHammerTeam = Constants.defaultHammerTeam;
     var currentHammerTeamSelectedIndex = Constants.defaultHammerTeam;
 
     return StatefulBuilder(
       builder: (context, setState) {
+        // In a league game the hammer goes to a team, so the choice shows
+        // the teams' names once they are picked.
+        final hammerChoices = {
+          0: Padding(
+            padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
+            child: GameStartSegmentControlText(
+              text: matchup?.team1.name ?? colors.team1.name,
+            ),
+          ),
+          1: Padding(
+            // Team names run longer than color names and need the room.
+            padding: EdgeInsets.symmetric(horizontal: matchup == null ? 0 : 30),
+            child: GameStartSegmentControlText(
+              text: matchup?.team2.name ?? colors.team2.name,
+            ),
+          ),
+        };
+
         // In order to have the text update correctly need to have this inside
         // the stateful builder context.
         final numberOfPlayersPerTeam = {
@@ -111,175 +130,138 @@ class GameStartDialog extends StatelessWidget {
           content: FittedBox(
             fit: BoxFit.scaleDown,
             child: Form(
-              child: Table(
-                defaultColumnWidth: const IntrinsicColumnWidth(),
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: [
-                  if (leagues.isNotEmpty)
-                    _settingRow(
-                      label: context.l10n.gameStartDialogFormLabelGameType,
-                      control: MaterialSegmentedControl(
-                        children: {
-                          0: Padding(
-                            padding: const EdgeInsets.fromLTRB(50, 0, 50, 0),
-                            child: GameStartSegmentControlText(
-                              text: context.l10n.gameStartDialogGameTypeOpen,
-                            ),
+              child: IntrinsicWidth(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (leagues.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _LeagueBar(
+                          colors: colors,
+                          matchup: matchup,
+                          suggested: LeagueMatchupPicker.suggestedLeague(
+                            leagues,
+                            now(),
                           ),
-                          1: GameStartSegmentControlText(
-                            text: context.l10n.gameStartDialogGameTypeLeague,
-                          ),
-                        },
-                        selectionIndex: leagueGame ? 1 : 0,
-                        borderColor: Colors.grey,
-                        selectedColor: Colors.blueAccent,
-                        unselectedColor: Colors.white,
-                        selectedTextStyle: const TextStyle(color: Colors.white),
-                        unselectedTextStyle: const TextStyle(
-                          color: Colors.black,
-                        ),
-                        borderWidth: 1,
-                        borderRadius: 20,
-                        horizontalPadding: const EdgeInsets.all(10),
-                        verticalOffset: 25,
-                        onSegmentTapped: (index) {
-                          setState(() {
-                            leagueGame = index == 1;
-                            if (leagueGame) {
-                              selectedLeague ??= _suggestedLeague();
+                          onPick: () async {
+                            final picked = await showDialog<LeagueMatchup>(
+                              context: context,
+                              builder: (_) => LeagueMatchupPicker(
+                                leagues: leagues,
+                                rockColors: colors,
+                                now: now,
+                                initial: matchup,
+                              ),
+                            );
+                            if (!context.mounted) return;
+                            setState(() {
+                              if (picked != null) matchup = picked;
+                              startGuarded = true;
+                            });
+                            await Future<void>.delayed(startGuardDuration);
+                            if (context.mounted) {
+                              setState(() => startGuarded = false);
                             }
-                          });
-                        },
-                      ),
-                    ),
-                  if (leagueGame)
-                    _settingRow(
-                      label: context.l10n.gameStartDialogFormLabelLeague,
-                      control: OutlinedButton(
-                        style: _pickerButtonStyle,
-                        onPressed: () async {
-                          final league = await _pick<League>(
-                            context,
-                            title: context.l10n.leaguePickerDialogTitle,
-                            // Whatever is on the ice now comes first.
-                            items: [
-                              ...leagues.where((l) => l.isPlayingAt(now())),
-                              ...leagues.where((l) => !l.isPlayingAt(now())),
-                            ],
-                            label: (league) => league.name,
-                          );
-                          if (league == null ||
-                              league.id == selectedLeague?.id) {
-                            return;
-                          }
-                          setState(() {
-                            selectedLeague = league;
-                            team1Pick = null;
-                            team2Pick = null;
-                          });
-                        },
-                        child: Text(
-                          selectedLeague?.name ??
-                              context.l10n.gameStartDialogPickLeagueButtonLabel,
+                          },
+                          onClear: () => setState(() => matchup = null),
                         ),
                       ),
-                    ),
-                  if (leagueGame)
-                    _settingRow(
-                      label: context.l10n.gameStartDialogFormLabelTeams,
-                      control: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _teamButton(
-                            context,
-                            color: colors.team1,
-                            league: selectedLeague,
-                            picked: team1Pick,
-                            other: team2Pick,
-                            onPicked: (team) =>
-                                setState(() => team1Pick = team),
+                    Table(
+                      defaultColumnWidth: const IntrinsicColumnWidth(),
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      children: [
+                        _settingRow(
+                          label:
+                              context.l10n.gameStartDialogFormLabelNumberOfEnds,
+                          control: MaterialSegmentedControl(
+                            children: numberOfEnds,
+                            selectionIndex: currentNumberOfEndsSelectedIndex,
+                            borderColor: Colors.grey,
+                            selectedColor: Colors.blueAccent,
+                            unselectedColor: Colors.white,
+                            selectedTextStyle: const TextStyle(
+                              color: Colors.white,
+                            ),
+                            unselectedTextStyle: const TextStyle(
+                              color: Colors.black,
+                            ),
+                            borderWidth: 1,
+                            borderRadius: 20,
+                            horizontalPadding: const EdgeInsets.all(10),
+                            verticalOffset: 25,
+                            onSegmentTapped: (index) {
+                              setState(() {
+                                currentNumberOfEndsSelectedIndex = index;
+                                settingsTotalEnds = index;
+                              });
+                            },
                           ),
-                          const SizedBox(width: 20),
-                          _teamButton(
-                            context,
-                            color: colors.team2,
-                            league: selectedLeague,
-                            picked: team2Pick,
-                            other: team1Pick,
-                            onPicked: (team) =>
-                                setState(() => team2Pick = team),
+                        ),
+                        _settingRow(
+                          label: context
+                              .l10n
+                              .gameStartDialogFormLabelPlayersPerTeam,
+                          control: MaterialSegmentedControl(
+                            children: numberOfPlayersPerTeam,
+                            selectionIndex:
+                                currentNumberOfPlayersPerTeamSelectedIndex,
+                            borderColor: Colors.grey,
+                            selectedColor: Colors.blueAccent,
+                            unselectedColor: Colors.white,
+                            selectedTextStyle: const TextStyle(
+                              color: Colors.white,
+                            ),
+                            unselectedTextStyle: const TextStyle(
+                              color: Colors.black,
+                            ),
+                            borderWidth: 1,
+                            borderRadius: 20,
+                            horizontalPadding: const EdgeInsets.all(10),
+                            verticalOffset: 25,
+                            onSegmentTapped: (index) {
+                              setState(() {
+                                currentNumberOfPlayersPerTeamSelectedIndex =
+                                    index;
+                                settingsNumberOfPlayersPerTeam = index;
+                              });
+                            },
                           ),
-                        ],
-                      ),
+                        ),
+                        _settingRow(
+                          label: context
+                              .l10n
+                              .gameStartDialogFormLabelFirstEndHammer,
+                          control: MaterialSegmentedControl(
+                            children: hammerChoices,
+                            selectionIndex: currentHammerTeamSelectedIndex,
+                            borderColor: Colors.grey,
+                            selectedColor: Colors.blueAccent,
+                            unselectedColor: Colors.white,
+                            selectedTextStyle: const TextStyle(
+                              color: Colors.white,
+                            ),
+                            unselectedTextStyle: const TextStyle(
+                              color: Colors.black,
+                            ),
+                            borderWidth: 1,
+                            borderRadius: 20,
+                            horizontalPadding: const EdgeInsets.all(10),
+                            verticalOffset: 25,
+                            onSegmentTapped: (index) {
+                              setState(() {
+                                currentHammerTeamSelectedIndex = index;
+                                settingsHammerTeam = index;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  _settingRow(
-                    label: context.l10n.gameStartDialogFormLabelNumberOfEnds,
-                    control: MaterialSegmentedControl(
-                      children: numberOfEnds,
-                      selectionIndex: currentNumberOfEndsSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentNumberOfEndsSelectedIndex = index;
-                          settingsTotalEnds = index;
-                        });
-                      },
-                    ),
-                  ),
-                  _settingRow(
-                    label: context.l10n.gameStartDialogFormLabelPlayersPerTeam,
-                    control: MaterialSegmentedControl(
-                      children: numberOfPlayersPerTeam,
-                      selectionIndex:
-                          currentNumberOfPlayersPerTeamSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentNumberOfPlayersPerTeamSelectedIndex = index;
-                          settingsNumberOfPlayersPerTeam = index;
-                        });
-                      },
-                    ),
-                  ),
-                  _settingRow(
-                    label: context.l10n.gameStartDialogFormLabelFirstEndHammer,
-                    control: MaterialSegmentedControl(
-                      children: hammerChoices,
-                      selectionIndex: currentHammerTeamSelectedIndex,
-                      borderColor: Colors.grey,
-                      selectedColor: Colors.blueAccent,
-                      unselectedColor: Colors.white,
-                      selectedTextStyle: const TextStyle(color: Colors.white),
-                      unselectedTextStyle: const TextStyle(color: Colors.black),
-                      borderWidth: 1,
-                      borderRadius: 20,
-                      horizontalPadding: const EdgeInsets.all(10),
-                      verticalOffset: 25,
-                      onSegmentTapped: (index) {
-                        setState(() {
-                          currentHammerTeamSelectedIndex = index;
-                          settingsHammerTeam = index;
-                        });
-                      },
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -292,142 +274,56 @@ class GameStartDialog extends StatelessWidget {
                 style: TextStyle(color: Colors.grey),
               ),
             ),
-            ElevatedButton(
-              // A league game is between two of the league's teams.
-              onPressed:
-                  leagueGame &&
-                      (selectedLeague == null ||
-                          team1Pick == null ||
-                          team2Pick == null)
-                  ? null
-                  : () {
-                      final league = leagueGame ? selectedLeague : null;
-                      final team1 = CurlingTeam(
-                        name: league == null
-                            ? colors.team1.name
-                            : team1Pick!.name,
-                        colorName: colors.team1.name,
-                        teamId: league == null ? null : team1Pick!.id,
-                        externalId: league == null
-                            ? null
-                            : team1Pick!.externalId,
-                        color: colors.team1.color,
-                        textColor: colors.team1.textColor,
-                        hasHammer: settingsHammerTeam == 0,
-                        hadLastStoneFirstEnd: settingsHammerTeam == 0,
-                      );
-                      final team2 = CurlingTeam(
-                        name: league == null
-                            ? colors.team2.name
-                            : team2Pick!.name,
-                        colorName: colors.team2.name,
-                        teamId: league == null ? null : team2Pick!.id,
-                        externalId: league == null
-                            ? null
-                            : team2Pick!.externalId,
-                        color: colors.team2.color,
-                        textColor: colors.team2.textColor,
-                        hasHammer: settingsHammerTeam == 1,
-                        hadLastStoneFirstEnd: settingsHammerTeam == 1,
-                      );
+            AbsorbPointer(
+              absorbing: startGuarded,
+              child: ElevatedButton(
+                onPressed: () {
+                  final league = matchup?.league;
+                  final team1 = CurlingTeam(
+                    name: matchup?.team1.name ?? colors.team1.name,
+                    colorName: colors.team1.name,
+                    teamId: matchup?.team1.id,
+                    externalId: matchup?.team1.externalId,
+                    color: colors.team1.color,
+                    textColor: colors.team1.textColor,
+                    hasHammer: settingsHammerTeam == 0,
+                    hadLastStoneFirstEnd: settingsHammerTeam == 0,
+                  );
+                  final team2 = CurlingTeam(
+                    name: matchup?.team2.name ?? colors.team2.name,
+                    colorName: colors.team2.name,
+                    teamId: matchup?.team2.id,
+                    externalId: matchup?.team2.externalId,
+                    color: colors.team2.color,
+                    textColor: colors.team2.textColor,
+                    hasHammer: settingsHammerTeam == 1,
+                    hadLastStoneFirstEnd: settingsHammerTeam == 1,
+                  );
 
-                      final newCurlingGame = CurlingGame(
-                        team1: team1,
-                        team2: team2,
-                        numberOfEnds: settingsTotalEnds,
-                        numberOfPlayersPerTeam: settingsNumberOfPlayersPerTeam,
-                        league: league == null
-                            ? null
-                            : GameLeague(id: league.id, name: league.name),
-                      );
+                  final newCurlingGame = CurlingGame(
+                    team1: team1,
+                    team2: team2,
+                    numberOfEnds: settingsTotalEnds,
+                    numberOfPlayersPerTeam: settingsNumberOfPlayersPerTeam,
+                    league: league == null
+                        ? null
+                        : GameLeague(id: league.id, name: league.name),
+                  );
 
-                      Navigator.pop(context, newCurlingGame);
-                    },
-              child: Text(
-                context.l10n.gameStartDialogButtonLabelStartGame,
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
+                  Navigator.pop(context, newCurlingGame);
+                },
+                child: Text(
+                  context.l10n.gameStartDialogButtonLabelStartGame,
+                  style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
           ],
         );
       },
-    );
-  }
-
-  /// The league to start with: the one playing now, or the club's only one.
-  /// With several to choose from and no clear answer, the user picks.
-  League? _suggestedLeague() {
-    final playing = leagues.where((l) => l.isPlayingAt(now())).toList();
-    if (playing.length == 1) return playing.single;
-    return leagues.length == 1 ? leagues.single : null;
-  }
-
-  static final ButtonStyle _pickerButtonStyle = OutlinedButton.styleFrom(
-    textStyle: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
-    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-  );
-
-  /// A button in a rock color that picks the team throwing it.
-  Widget _teamButton(
-    BuildContext context, {
-    required RockColor color,
-    required League? league,
-    required LeagueTeam? picked,
-    required LeagueTeam? other,
-    required ValueChanged<LeagueTeam> onPicked,
-  }) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color.color,
-        foregroundColor: color.textColor,
-        disabledBackgroundColor: color.color.withValues(alpha: 0.3),
-        textStyle: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-      ),
-      onPressed: league == null
-          ? null
-          : () async {
-              final team = await _pick<LeagueTeam>(
-                context,
-                title: context.l10n.teamPickerDialogTitle(color.name),
-                // A team cannot play itself.
-                items: [
-                  for (final team in league.teams)
-                    if (team.id != other?.id) team,
-                ],
-                label: (team) => team.name,
-              );
-              if (team != null) onPicked(team);
-            },
-      child: Text(
-        picked?.name ??
-            context.l10n.gameStartDialogPickTeamButtonLabel(color.name),
-      ),
-    );
-  }
-
-  Future<T?> _pick<T>(
-    BuildContext context, {
-    required String title,
-    required List<T> items,
-    required String Function(T) label,
-  }) {
-    return showDialog<T>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(title, style: const TextStyle(fontSize: 32)),
-        children: [
-          for (final item in items)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, item),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              child: Text(label(item), style: const TextStyle(fontSize: 32)),
-            ),
-        ],
-      ),
     );
   }
 
@@ -485,6 +381,138 @@ class GameStartSegmentControlText extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+    );
+  }
+}
+
+/// The one thing league games add to the setup screen: a bar that opens the
+/// team picker, and afterwards shows the teams that were picked. Leaving it
+/// alone starts an open game.
+class _LeagueBar extends StatelessWidget {
+  const _LeagueBar({
+    required this.colors,
+    required this.matchup,
+    required this.suggested,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final RockColors colors;
+  final LeagueMatchup? matchup;
+
+  /// The league playing now, named on the bar before teams are picked.
+  final League? suggested;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final matchup = this.matchup;
+
+    return Material(
+      color: Colors.blueAccent.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onPick,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+          child: Row(
+            children: [
+              Expanded(
+                child: matchup == null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            suggested == null
+                                ? l10n.gameStartDialogLeagueBarTitle
+                                : l10n.gameStartDialogLeagueBarTitlePlaying(
+                                    suggested!.name,
+                                  ),
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            l10n.gameStartDialogLeagueBarPickTeams,
+                            style: const TextStyle(fontSize: 30),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            matchup.league.name,
+                            style: const TextStyle(fontSize: 30),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _TeamChip(
+                                color: colors.team1,
+                                name: matchup.team1.name,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Text(
+                                  l10n.matchupVersus,
+                                  style: const TextStyle(fontSize: 30),
+                                ),
+                              ),
+                              _TeamChip(
+                                color: colors.team2,
+                                name: matchup.team2.name,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+              ),
+              if (matchup == null)
+                const Icon(Icons.chevron_right, size: 60)
+              else
+                IconButton(
+                  iconSize: 50,
+                  tooltip: l10n.gameStartDialogLeagueBarClearTooltip,
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamChip extends StatelessWidget {
+  const _TeamChip({required this.color, required this.name});
+
+  final RockColor color;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: color.textColor,
+        ),
+      ),
     );
   }
 }

@@ -28,53 +28,55 @@
   "@gameStartDialogTitle": {
     "description": "Title of the dialog shown to setup the game."
   },
-  "gameStartDialogFormLabelGameType": "Game Type:",
-  "@gameStartDialogFormLabelGameType": {
-    "description": "Description text for choosing between an open game and a league game in the game start dialog."
+  "gameStartDialogLeagueBarTitle": "League game",
+  "@gameStartDialogLeagueBarTitle": {
+    "description": "Title of the bar on the game start dialog that opens the league team picker, when no league is playing right now."
   },
-  "gameStartDialogGameTypeOpen": "Open",
-  "@gameStartDialogGameTypeOpen": {
-    "description": "Game type for a game that is not part of a league, with teams named by rock color."
-  },
-  "gameStartDialogGameTypeLeague": "League",
-  "@gameStartDialogGameTypeLeague": {
-    "description": "Game type for a game between two teams of one of the club's leagues."
-  },
-  "gameStartDialogFormLabelLeague": "League:",
-  "@gameStartDialogFormLabelLeague": {
-    "description": "Description text for the league setting in the game start dialog."
-  },
-  "gameStartDialogPickLeagueButtonLabel": "Pick a League",
-  "@gameStartDialogPickLeagueButtonLabel": {
-    "description": "Button text shown in place of a league name until a league has been chosen."
-  },
-  "gameStartDialogFormLabelTeams": "Teams:",
-  "@gameStartDialogFormLabelTeams": {
-    "description": "Description text for choosing the two teams of a league game in the game start dialog."
-  },
-  "gameStartDialogPickTeamButtonLabel": "Pick {color} Team",
-  "@gameStartDialogPickTeamButtonLabel": {
-    "description": "Button text on a rock color until the team throwing that color has been chosen.",
+  "gameStartDialogLeagueBarTitlePlaying": "{league} is playing",
+  "@gameStartDialogLeagueBarTitlePlaying": {
+    "description": "Title of the bar on the game start dialog that opens the league team picker, naming the league scheduled to play now.",
     "placeholders": {
-      "color": {
+      "league": {
         "type": "String",
-        "example": "Red"
+        "example": "Monday Night"
       }
     }
   },
-  "leaguePickerDialogTitle": "League",
-  "@leaguePickerDialogTitle": {
-    "description": "Title of the dialog listing the club's leagues to choose from."
+  "gameStartDialogLeagueBarPickTeams": "Pick teams",
+  "@gameStartDialogLeagueBarPickTeams": {
+    "description": "Second line of the league bar on the game start dialog, inviting the user to choose the two teams."
   },
-  "teamPickerDialogTitle": "{color} Team",
-  "@teamPickerDialogTitle": {
-    "description": "Title of the dialog listing a league's teams, to choose the one throwing a rock color.",
-    "placeholders": {
-      "color": {
-        "type": "String",
-        "example": "Red"
-      }
-    }
+  "gameStartDialogLeagueBarClearTooltip": "Clear teams",
+  "@gameStartDialogLeagueBarClearTooltip": {
+    "description": "Tooltip for the button that removes the picked league teams, going back to an open game."
+  },
+  "matchupVersus": "vs",
+  "@matchupVersus": {
+    "description": "Separator shown between the names of the two teams in a game."
+  },
+  "matchupPickerChooseLeagueTitle": "Which league?",
+  "@matchupPickerChooseLeagueTitle": {
+    "description": "Title of the league team picker while the league has not been chosen yet."
+  },
+  "matchupPickerChangeLeagueButtonLabel": "Change league",
+  "@matchupPickerChangeLeagueButtonLabel": {
+    "description": "Button text in the league team picker to go back and choose a different league."
+  },
+  "matchupPickerEmptySlotLabel": "Tap a team",
+  "@matchupPickerEmptySlotLabel": {
+    "description": "Text shown on a rock color in the league team picker until a team has been picked for it."
+  },
+  "matchupPickerSwapTooltip": "Swap colors",
+  "@matchupPickerSwapTooltip": {
+    "description": "Tooltip for the button that swaps which rock color each picked team is throwing."
+  },
+  "matchupPickerCancelButtonLabel": "Cancel",
+  "@matchupPickerCancelButtonLabel": {
+    "description": "Button text to leave the league team picker without changing anything."
+  },
+  "matchupPickerDoneButtonLabel": "Done",
+  "@matchupPickerDoneButtonLabel": {
+    "description": "Button text to confirm the two teams picked in the league team picker."
   },
   "gameStartDialogFormLabelNumberOfEnds": "Number of Ends:",
   "@gameStartDialogFormLabelNumberOfEnds": {

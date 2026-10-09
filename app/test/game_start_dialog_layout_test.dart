@@ -48,15 +48,15 @@ void main() {
   });
 
   group('GameStartDialog layout for a league game', () {
-    // Long names and a long list, which is what stretches the dialog and
-    // the team picker.
+    // Long names and the largest league expected, which is what stretches
+    // the setup screen and the team picker.
     final league = League.tryParse('monday', {
       'name': 'Monday Night Competitive League',
       'draws': [
         {'day': 1, 'start': '18:30', 'end': '20:30'},
       ],
       'teams': [
-        for (var i = 1; i <= 24; i++)
+        for (var i = 1; i <= 13; i++)
           {
             'id': 't$i',
             'name':
@@ -89,23 +89,50 @@ void main() {
           expect(tester.takeException(), isNull);
         }
 
-        await tap('League');
-        await tap('Pick Red Team');
-        await tap('Team 01 of the Sweeping Beauties');
-        await tap('Pick Yellow Team');
-        await tap('Team 02 of the Sweeping Beauties');
+        await tap('Pick teams');
+        // All of the league's teams are on screen at once, without
+        // scrolling.
+        expect(find.byType(Scrollable), findsOneWidget);
+        for (var i = 1; i <= 13; i++) {
+          final name =
+              'Team ${i.toString().padLeft(2, '0')} of the '
+              'Sweeping Beauties';
+          final tile = tester.getRect(
+            find.widgetWithText(ElevatedButton, name),
+          );
+          expect(Offset.zero & size, _contains(tile), reason: name);
+        }
 
-        // Both names are on their buttons and the game can be started.
-        expect(find.text('Team 01 of the Sweeping Beauties'), findsOneWidget);
-        expect(
-          tester
-              .widget<ElevatedButton>(
-                find.widgetWithText(ElevatedButton, 'Start Game'),
-              )
-              .enabled,
-          isTrue,
+        await tester.tap(
+          find.widgetWithText(
+            ElevatedButton,
+            'Team 01 of the Sweeping Beauties',
+          ),
         );
+        await tester.tap(
+          find.widgetWithText(
+            ElevatedButton,
+            'Team 13 of the Sweeping Beauties',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tap('Done');
+        await tester.pump(GameStartDialog.startGuardDuration);
+
+        // Both names are on the setup screen and the game can be started.
+        expect(find.text('Team 13 of the Sweeping Beauties'), findsNWidgets(2));
+        await tap('Start Game');
       });
     });
   });
 }
+
+Matcher _contains(Rect inner) => predicate<Rect>(
+  (outer) =>
+      outer.left <= inner.left &&
+      outer.top <= inner.top &&
+      outer.right >= inner.right &&
+      outer.bottom >= inner.bottom,
+  'contains $inner',
+);
