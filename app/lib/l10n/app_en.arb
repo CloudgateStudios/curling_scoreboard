@@ -122,10 +122,6 @@
   "@gameEndDialogEndTableHeader": {
     "description": "Text label for the game end report table column listing the time taken for the end."
   },
-  "gameEndDialogTotalsTableHeader": "Totals",
-  "@gameEndDialogEndTableHeader": {
-    "description": "Text label for the game end report table column listing the time taken for the end."
-  },
   "gameEndDialogButtonLabelDismiss": "Dismiss",
   "@gameEndDialogButtonLabelDismiss": {
     "description": "Button label to dismiss the end game dialog"

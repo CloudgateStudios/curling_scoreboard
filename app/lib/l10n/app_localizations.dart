@@ -265,12 +265,6 @@ abstract class AppLocalizations {
   /// **'Game Time'**
   String get gameEndDialogGameTimeTableHeader;
 
-  /// No description provided for @gameEndDialogTotalsTableHeader.
-  ///
-  /// In en, this message translates to:
-  /// **'Totals'**
-  String get gameEndDialogTotalsTableHeader;
-
   /// Button label to dismiss the end game dialog
   ///
   /// In en, this message translates to:

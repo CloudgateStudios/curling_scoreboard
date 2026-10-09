@@ -99,9 +99,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameEndDialogGameTimeTableHeader => 'Game Time';
 
   @override
-  String get gameEndDialogTotalsTableHeader => 'Totals';
-
-  @override
   String get gameEndDialogButtonLabelDismiss => 'Dismiss';
 
   @override
