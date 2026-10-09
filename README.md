@@ -129,6 +129,19 @@ node migrate-api-keys.js                                              # dev
 FIREBASE_PROJECT_ID=curling-scoreboard-prod node migrate-api-keys.js  # prod
 ```
 
+### Backfilling scoreboard claims
+
+Pairing gives a scoreboard custom claims that let it read its club's settings. Scoreboards paired before that was added have none. After deploying the functions and rules that use the claims, run the one-off backfill once per project, so nobody has to pair again:
+
+```bash
+cd scripts
+npm install
+node backfill-scoreboard-claims.js                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-claims.js  # prod
+```
+
+Each scoreboard picks its claims up within the hour, the next time its sign in token refreshes.
+
 ---
 
 ## Admin accounts

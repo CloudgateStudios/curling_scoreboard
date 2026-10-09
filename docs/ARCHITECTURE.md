@@ -35,6 +35,9 @@ clubs/{clubId}
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
 
+clubs/{clubId}/config/{docId}
+  // Club settings the scoreboards read. Nothing is stored here yet.
+
 clubs/{clubId}/admins/{uid}
   email: string
   displayName: string | null
@@ -95,8 +98,14 @@ admin scripts.
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, read game history |
-| Paired scoreboard    | none (matched by `scoreboardUid`)       | Anonymous               | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself |
+| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
+
+A scoreboard's claims only tell the rules which sheet to look at. Access to
+its sheet has always been decided by the sheet's `scoreboardUid`, and reading
+the club's `config` needs both: the claims and a sheet that still names that
+scoreboard. So a scoreboard that is disconnected or replaced loses access
+straight away, whatever its claims say.
 
 The first super admin of a project is created with
 `scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
@@ -109,12 +118,17 @@ others. Club admins are created from the admin portal through
    portal. It is stored as `pairingCode` on the sheet.
 2. On the scoreboard, Settings → Connect to Club, the code is entered.
 3. The app signs in anonymously and calls the `pairSheet` callable function.
-4. `pairSheet` finds the sheet holding the code with a collection group query,
-   then in a transaction sets `scoreboardUid` to the caller's uid, records
-   `pairedAt`, and removes the code along with any `device` status left by the
-   previous scoreboard. It returns the club and sheet IDs and names.
-5. The app saves those four values in shared preferences. From then on it is
-   paired.
+4. `pairSheet` finds the sheet holding the code with a collection group query
+   and sets the caller's scoreboard claims. Then in a transaction it sets
+   `scoreboardUid` to the caller's uid, records `pairedAt`, and removes the
+   code along with any `device` status left by the previous scoreboard. It
+   clears the previous scoreboard's claims and returns the club and sheet IDs
+   and names.
+5. The app refreshes its ID token so the claims take effect, and saves those
+   four values in shared preferences. From then on it is paired.
+
+`pairSheet` refuses callers who already have an admin role, because setting
+the scoreboard claims would replace it.
 
 Clients cannot query or read pairing codes or club documents themselves. The
 rules used to allow that, which let any signed in client list every unpaired

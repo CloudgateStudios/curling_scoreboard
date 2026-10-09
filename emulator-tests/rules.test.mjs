@@ -30,6 +30,8 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/sheets/sheet-paired'), {
     name: 'Sheet Paired', scoreboardUid: 'scoreboard-1',
   });
+  await setDoc(doc(db, 'clubs/club-a/config/scoreboard'), { example: true });
+  await setDoc(doc(db, 'clubs/club-b/config/scoreboard'), { example: true });
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
   await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B' });
   await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
@@ -41,6 +43,12 @@ await env.withSecurityRulesDisabled(async (ctx) => {
 const unauthed = env.unauthenticatedContext().firestore();
 const anon = env.authenticatedContext('attacker').firestore();
 const board = env.authenticatedContext('scoreboard-1').firestore();
+// What pairSheet gives a scoreboard: claims naming the sheet it paired with.
+const claimedBoard = env.authenticatedContext('scoreboard-1',
+  { role: 'scoreboard', clubId: 'club-a', sheetId: 'sheet-paired' }).firestore();
+// A device whose sheet has since been paired with scoreboard-1 instead.
+const replacedBoard = env.authenticatedContext('old-device',
+  { role: 'scoreboard', clubId: 'club-a', sheetId: 'sheet-paired' }).firestore();
 const adminA = env.authenticatedContext('admin-a', { role: 'clubadmin', clubId: 'club-a' }).firestore();
 
 const results = [];
@@ -139,9 +147,44 @@ await check('scoreboard: save a completed game and clear liveGame together', 'al
     .update(doc(board, 'clubs/club-a/sheets/sheet-paired'), { liveGame: deleteField() })
     .commit());
 
+// --- club settings for paired scoreboards ---
+await check('scoreboard: read its club config', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard')));
+
+await check('club admin: read their club config', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/config/scoreboard')));
+
+await check('attack: scoreboard reads another club config', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-b/config/scoreboard')));
+
+await check('attack: scoreboard without claims reads its club config', 'deny', () =>
+  getDoc(doc(board, 'clubs/club-a/config/scoreboard')));
+
+await check('attack: replaced scoreboard reads club config with its old claims', 'deny', () =>
+  getDoc(doc(replacedBoard, 'clubs/club-a/config/scoreboard')));
+
+await check('attack: unpaired device reads a club config', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-a/config/scoreboard')));
+
+await check('attack: scoreboard writes its club config', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard'), { example: false }));
+
+await check('attack: scoreboard reads its club doc', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a')));
+
+await check('attack: scoreboard reads its club API key', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/apiKey')));
+
+// The claims do not get in the way of what a scoreboard already does.
+await check('scoreboard: push liveGame with claims', 'allow', () =>
+  updateDoc(doc(claimedBoard, 'clubs/club-a/sheets/sheet-paired'), { liveGame: { currentEnd: 1 } }));
+
 await check('scoreboard: disconnect by clearing its uid', 'allow', () =>
   updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
     { scoreboardUid: deleteField() }));
+
+await check('attack: disconnected scoreboard reads club config with its old claims', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard')));
 
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>

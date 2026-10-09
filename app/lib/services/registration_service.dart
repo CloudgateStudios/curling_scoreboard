@@ -49,6 +49,16 @@ class RegistrationService {
       rethrow;
     }
 
+    // pairSheet gives this scoreboard claims that let it read its club's
+    // settings. They only reach the security rules in a fresh ID token.
+    try {
+      await FirebaseAuth.instance.currentUser?.getIdToken(true);
+    } on Exception catch (e) {
+      // The token refreshes by itself within the hour, so this only delays
+      // those reads; the pairing has succeeded either way.
+      debugPrint('RegistrationService token refresh error: $e');
+    }
+
     await Future.wait([
       _prefs.setString(_clubIdKey, result['clubId'] as String),
       _prefs.setString(_sheetIdKey, result['sheetId'] as String),
