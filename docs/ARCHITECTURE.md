@@ -35,8 +35,11 @@ clubs/{clubId}
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
 
-clubs/{clubId}/config/{docId}
-  // Club settings the scoreboards read. Nothing is stored here yet.
+clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
+  rockColors?: {             // absent means red and yellow
+    team1: { name: string, hex: string }   // hex is '#RRGGBB'
+    team2: { name: string, hex: string }
+  }
 
 clubs/{clubId}/admins/{uid}
   email: string
@@ -50,8 +53,8 @@ clubs/{clubId}/sheets/{sheetId}
   liveGame?: {               // the game in progress, removed when it ends
     updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
-    team1: { name: string, score: int, hasHammer: bool }
-    team2: { name: string, score: int, hasHammer: bool }
+    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool }
+    team2: { name: string, color: { name, hex }, score: int, hasHammer: bool }
   }
   device?: {                 // what the scoreboard last said about itself
     appVersion: string
@@ -74,8 +77,8 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
   startedAt: timestamp
   finishedAt: timestamp
   numberOfEnds: int
-  team1: { name: string, totalScore: int, hadLastStoneFirstEnd: bool }
-  team2: { name: string, totalScore: int, hadLastStoneFirstEnd: bool }
+  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
+  team2: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool }
   ends: [{
     endNumber: int
     scoringTeam: string | null       // team name; null for a blank end
@@ -87,7 +90,9 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
 
 Club IDs are readable slugs (`windy-city-curling`) when the super admin picks
 one, otherwise Firestore auto IDs. `scoringTeamSlot` was added because two
-teams can share a name; older games only have `scoringTeam`.
+teams can share a name; older games only have `scoringTeam`. A team's `name`
+is the name of its rock color, and `color` is absent on games from before it
+was recorded.
 
 ## Roles
 
@@ -97,7 +102,7 @@ admin scripts.
 | Role                 | Claims                                  | Signs in with           | Can                                                                                   |
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
-| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, read game history |
+| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, read game history |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
@@ -171,6 +176,24 @@ whose `updatedAt` is more than 120 minutes old: the REST API reports it as
 null and the admin portal shows the sheet as idle. The stored field is left
 alone until that scoreboard next starts up or starts a game.
 
+## Rock colors
+
+The scoreboard is red and yellow out of the box: those two colors are built
+into the app (`RockColors.defaults`), so an unpaired or offline scoreboard
+needs nothing from Firebase to show them.
+
+A club that plays with other colors picks them in the admin portal from a
+fixed list, which writes `rockColors` to `clubs/{clubId}/config/scoreboard`.
+`RockColorsService` on a paired scoreboard listens to that document and keeps
+the last colors it saw in shared preferences, so they are still right when it
+starts up offline. Disconnecting clears them. Choosing red and yellow removes
+the setting, leaving the app's defaults as the only definition of them.
+
+Colors are read when a game starts and copied onto its teams, so a change
+never lands in the middle of a game. They are written with `liveGame` and the
+completed game as each team's `color`, and the team `name` is the color's
+name ("Blue", "Green"), which is what the REST API returns.
+
 ## Scoreboard status
 
 So the admin portal can show what each sheet is running, a paired scoreboard
@@ -202,7 +225,7 @@ Routes depend on the signed in role:
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history.
 
 The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days and the API key. Only super admins can add sheets, rotate the
+last seven days, the rock colors and the API key. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)
 

@@ -24,6 +24,15 @@ service cloud.firestore {
               .data.get('scoreboardUid', null) == request.auth.uid;
     }
 
+    function isRockColor(color) {
+      return color.keys().hasOnly(['name', 'hex'])
+          && color.name is string
+          && color.name.size() > 0
+          && color.name.size() <= 20
+          && color.hex is string
+          && color.hex.matches('^#[0-9a-fA-F]{6}$');
+    }
+
     // Super admins can read and write everything.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
@@ -57,6 +66,17 @@ service cloud.firestore {
       // else about the club.
       match /config/{docId} {
         allow read: if isClubAdmin(clubId) || isClubScoreboard(clubId);
+      }
+
+      // Club admins choose the rock colors their scoreboards use. Removing
+      // the setting puts the scoreboards back on red and yellow.
+      match /config/scoreboard {
+        allow write: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['rockColors'])
+            && (!('rockColors' in request.resource.data)
+                || (request.resource.data.rockColors.keys().hasOnly(['team1', 'team2'])
+                    && isRockColor(request.resource.data.rockColors.team1)
+                    && isRockColor(request.resource.data.rockColors.team2)));
       }
 
       match /sheets/{sheetId} {

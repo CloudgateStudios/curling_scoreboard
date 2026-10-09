@@ -55,13 +55,36 @@ components:
           type: string
           example: Invalid API key
 
+    RockColor:
+      type: object
+      description: >
+        The color of rocks a team is throwing. Clubs choose their own two
+        colors; red and yellow are the default. Recorded with each game, so
+        it stays as it was if the club changes its rocks later.
+      required: [name, hex]
+      properties:
+        name:
+          type: string
+          example: Red
+        hex:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+          example: '#F44336'
+
     LiveGameTeam:
       type: object
       required: [name, score, hasHammer]
       properties:
         name:
           type: string
+          description: >
+            The name of the team's rock color, as the club has set it. Not
+            always Red or Yellow.
           example: Red
+        color:
+          allOf:
+            - $ref: '#/components/schemas/RockColor'
+          description: Absent on games from scoreboards that predate it.
         score:
           type: integer
           minimum: 0
@@ -136,7 +159,14 @@ components:
       properties:
         name:
           type: string
+          description: >
+            The name of the team's rock color, as the club had set it. Not
+            always Red or Yellow.
           example: Red
+        color:
+          allOf:
+            - $ref: '#/components/schemas/RockColor'
+          description: Absent on games recorded before colors were.
         totalScore:
           type: integer
           minimum: 0

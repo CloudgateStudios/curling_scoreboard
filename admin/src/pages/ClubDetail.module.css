@@ -558,3 +558,49 @@
   font-size: 0.85rem;
   color: #666;
 }
+
+.rockColorRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rockColorLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #444;
+  min-width: 7rem;
+}
+
+.rockColorSwatches {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rockColorSwatch,
+.rockColorSwatchSelected {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rockColorSwatchSelected {
+  box-shadow: 0 0 0 2px white, 0 0 0 4px #1a73e8;
+}
+
+.rockColorName {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.rockColorActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
