@@ -25,9 +25,9 @@ class GameStartDialog extends StatelessWidget {
   /// league game.
   final DateTime Function() now;
 
-  /// How long Start Game ignores taps after the team picker closes.
+  /// How long the setup screen ignores taps after the team picker closes.
   @visibleForTesting
-  static const startGuardDuration = Duration(milliseconds: 700);
+  static const pickerGuardDuration = Duration(milliseconds: 700);
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +56,10 @@ class GameStartDialog extends StatelessWidget {
     // open game.
     LeagueMatchup? matchup;
 
-    // The picker's Done button sits where Start Game does, so a double tap
-    // on Done would start the game. Start Game sits out the moment after
-    // the picker closes.
-    var startGuarded = false;
+    // A double tap on the picker's Done would otherwise land on whatever
+    // is under it here as the picker closes. The setup screen sits out the
+    // moment after.
+    var guarded = false;
 
     var settingsHammerTeam = Constants.defaultHammerTeam;
     var currentHammerTeamSelectedIndex = Constants.defaultHammerTeam;
@@ -122,161 +122,162 @@ class GameStartDialog extends StatelessWidget {
           ),
         };
 
-        return AlertDialog(
-          title: Text(context.l10n.gameStartDialogTitle),
-          // The form is laid out at a fixed size for a large scoreboard
-          // display. Scaling it down keeps it whole on smaller screens
-          // instead of overflowing and clipping the controls.
-          content: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Form(
-              child: IntrinsicWidth(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (leagues.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: _LeagueBar(
-                          colors: colors,
-                          matchup: matchup,
-                          suggested: LeagueMatchupPicker.suggestedLeague(
-                            leagues,
-                            now(),
+        return AbsorbPointer(
+          absorbing: guarded,
+          child: AlertDialog(
+            title: Text(context.l10n.gameStartDialogTitle),
+            // The form is laid out at a fixed size for a large scoreboard
+            // display. Scaling it down keeps it whole on smaller screens
+            // instead of overflowing and clipping the controls.
+            content: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Form(
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (leagues.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: _LeagueBar(
+                            colors: colors,
+                            matchup: matchup,
+                            suggested: LeagueMatchupPicker.suggestedLeague(
+                              leagues,
+                              now(),
+                            ),
+                            onPick: () async {
+                              final picked = await showDialog<LeagueMatchup>(
+                                context: context,
+                                builder: (_) => LeagueMatchupPicker(
+                                  leagues: leagues,
+                                  rockColors: colors,
+                                  now: now,
+                                  initial: matchup,
+                                ),
+                              );
+                              if (!context.mounted) return;
+                              setState(() {
+                                if (picked != null) matchup = picked;
+                                guarded = true;
+                              });
+                              await Future<void>.delayed(pickerGuardDuration);
+                              if (context.mounted) {
+                                setState(() => guarded = false);
+                              }
+                            },
+                            onClear: () => setState(() => matchup = null),
                           ),
-                          onPick: () async {
-                            final picked = await showDialog<LeagueMatchup>(
-                              context: context,
-                              builder: (_) => LeagueMatchupPicker(
-                                leagues: leagues,
-                                rockColors: colors,
-                                now: now,
-                                initial: matchup,
+                        ),
+                      Table(
+                        defaultColumnWidth: const IntrinsicColumnWidth(),
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        children: [
+                          _settingRow(
+                            label: context
+                                .l10n
+                                .gameStartDialogFormLabelNumberOfEnds,
+                            control: MaterialSegmentedControl(
+                              children: numberOfEnds,
+                              selectionIndex: currentNumberOfEndsSelectedIndex,
+                              borderColor: Colors.grey,
+                              selectedColor: Colors.blueAccent,
+                              unselectedColor: Colors.white,
+                              selectedTextStyle: const TextStyle(
+                                color: Colors.white,
                               ),
-                            );
-                            if (!context.mounted) return;
-                            setState(() {
-                              if (picked != null) matchup = picked;
-                              startGuarded = true;
-                            });
-                            await Future<void>.delayed(startGuardDuration);
-                            if (context.mounted) {
-                              setState(() => startGuarded = false);
-                            }
-                          },
-                          onClear: () => setState(() => matchup = null),
-                        ),
+                              unselectedTextStyle: const TextStyle(
+                                color: Colors.black,
+                              ),
+                              borderWidth: 1,
+                              borderRadius: 20,
+                              horizontalPadding: const EdgeInsets.all(10),
+                              verticalOffset: 25,
+                              onSegmentTapped: (index) {
+                                setState(() {
+                                  currentNumberOfEndsSelectedIndex = index;
+                                  settingsTotalEnds = index;
+                                });
+                              },
+                            ),
+                          ),
+                          _settingRow(
+                            label: context
+                                .l10n
+                                .gameStartDialogFormLabelPlayersPerTeam,
+                            control: MaterialSegmentedControl(
+                              children: numberOfPlayersPerTeam,
+                              selectionIndex:
+                                  currentNumberOfPlayersPerTeamSelectedIndex,
+                              borderColor: Colors.grey,
+                              selectedColor: Colors.blueAccent,
+                              unselectedColor: Colors.white,
+                              selectedTextStyle: const TextStyle(
+                                color: Colors.white,
+                              ),
+                              unselectedTextStyle: const TextStyle(
+                                color: Colors.black,
+                              ),
+                              borderWidth: 1,
+                              borderRadius: 20,
+                              horizontalPadding: const EdgeInsets.all(10),
+                              verticalOffset: 25,
+                              onSegmentTapped: (index) {
+                                setState(() {
+                                  currentNumberOfPlayersPerTeamSelectedIndex =
+                                      index;
+                                  settingsNumberOfPlayersPerTeam = index;
+                                });
+                              },
+                            ),
+                          ),
+                          _settingRow(
+                            label: context
+                                .l10n
+                                .gameStartDialogFormLabelFirstEndHammer,
+                            control: MaterialSegmentedControl(
+                              children: hammerChoices,
+                              selectionIndex: currentHammerTeamSelectedIndex,
+                              borderColor: Colors.grey,
+                              selectedColor: Colors.blueAccent,
+                              unselectedColor: Colors.white,
+                              selectedTextStyle: const TextStyle(
+                                color: Colors.white,
+                              ),
+                              unselectedTextStyle: const TextStyle(
+                                color: Colors.black,
+                              ),
+                              borderWidth: 1,
+                              borderRadius: 20,
+                              horizontalPadding: const EdgeInsets.all(10),
+                              verticalOffset: 25,
+                              onSegmentTapped: (index) {
+                                setState(() {
+                                  currentHammerTeamSelectedIndex = index;
+                                  settingsHammerTeam = index;
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    Table(
-                      defaultColumnWidth: const IntrinsicColumnWidth(),
-                      defaultVerticalAlignment:
-                          TableCellVerticalAlignment.middle,
-                      children: [
-                        _settingRow(
-                          label:
-                              context.l10n.gameStartDialogFormLabelNumberOfEnds,
-                          control: MaterialSegmentedControl(
-                            children: numberOfEnds,
-                            selectionIndex: currentNumberOfEndsSelectedIndex,
-                            borderColor: Colors.grey,
-                            selectedColor: Colors.blueAccent,
-                            unselectedColor: Colors.white,
-                            selectedTextStyle: const TextStyle(
-                              color: Colors.white,
-                            ),
-                            unselectedTextStyle: const TextStyle(
-                              color: Colors.black,
-                            ),
-                            borderWidth: 1,
-                            borderRadius: 20,
-                            horizontalPadding: const EdgeInsets.all(10),
-                            verticalOffset: 25,
-                            onSegmentTapped: (index) {
-                              setState(() {
-                                currentNumberOfEndsSelectedIndex = index;
-                                settingsTotalEnds = index;
-                              });
-                            },
-                          ),
-                        ),
-                        _settingRow(
-                          label: context
-                              .l10n
-                              .gameStartDialogFormLabelPlayersPerTeam,
-                          control: MaterialSegmentedControl(
-                            children: numberOfPlayersPerTeam,
-                            selectionIndex:
-                                currentNumberOfPlayersPerTeamSelectedIndex,
-                            borderColor: Colors.grey,
-                            selectedColor: Colors.blueAccent,
-                            unselectedColor: Colors.white,
-                            selectedTextStyle: const TextStyle(
-                              color: Colors.white,
-                            ),
-                            unselectedTextStyle: const TextStyle(
-                              color: Colors.black,
-                            ),
-                            borderWidth: 1,
-                            borderRadius: 20,
-                            horizontalPadding: const EdgeInsets.all(10),
-                            verticalOffset: 25,
-                            onSegmentTapped: (index) {
-                              setState(() {
-                                currentNumberOfPlayersPerTeamSelectedIndex =
-                                    index;
-                                settingsNumberOfPlayersPerTeam = index;
-                              });
-                            },
-                          ),
-                        ),
-                        _settingRow(
-                          label: context
-                              .l10n
-                              .gameStartDialogFormLabelFirstEndHammer,
-                          control: MaterialSegmentedControl(
-                            children: hammerChoices,
-                            selectionIndex: currentHammerTeamSelectedIndex,
-                            borderColor: Colors.grey,
-                            selectedColor: Colors.blueAccent,
-                            unselectedColor: Colors.white,
-                            selectedTextStyle: const TextStyle(
-                              color: Colors.white,
-                            ),
-                            unselectedTextStyle: const TextStyle(
-                              color: Colors.black,
-                            ),
-                            borderWidth: 1,
-                            borderRadius: 20,
-                            horizontalPadding: const EdgeInsets.all(10),
-                            verticalOffset: 25,
-                            onSegmentTapped: (index) {
-                              setState(() {
-                                currentHammerTeamSelectedIndex = index;
-                                settingsHammerTeam = index;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          actionsAlignment: MainAxisAlignment.spaceBetween,
-          actions: [
-            const Padding(
-              padding: EdgeInsets.only(left: 20),
-              child: Text(
-                'v$packageVersion',
-                style: TextStyle(color: Colors.grey),
+            actionsAlignment: MainAxisAlignment.spaceBetween,
+            actions: [
+              const Padding(
+                padding: EdgeInsets.only(left: 20),
+                child: Text(
+                  'v$packageVersion',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
-            ),
-            AbsorbPointer(
-              absorbing: startGuarded,
-              child: ElevatedButton(
+              ElevatedButton(
                 onPressed: () {
                   final league = matchup?.league;
                   final team1 = CurlingTeam(
@@ -320,8 +321,8 @@ class GameStartDialog extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

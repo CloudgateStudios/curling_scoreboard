@@ -261,9 +261,11 @@ tapping a slot or a picked team clears it, a third tap replaces the second
 team, and a swap button exchanges the colors. Back on the setup screen the
 bar shows the matchup and the hammer choice names the two teams.
 
-Done in the picker sits in the same corner as Start Game, so Start Game
-ignores taps for a moment after the picker closes. Otherwise a double tap on
-Done would start the game.
+Cancel and Done share the picker's title row, so everything below goes to
+the team buttons, and every button uses one text size: the largest at which
+the longest team name fits. The setup screen ignores taps for a moment after
+the picker closes, so a double tap on Done cannot land on whatever is under
+it.
 
 The game carries the league and each team's `teamId` and `externalId`, which
 are written with `liveGame` and the completed game. The name and IDs are

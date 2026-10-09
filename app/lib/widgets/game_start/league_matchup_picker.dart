@@ -113,7 +113,7 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
 
     return Dialog.fullscreen(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -137,9 +137,45 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
                       style: const TextStyle(fontSize: 24),
                     ),
                   ),
+                const SizedBox(width: 24),
+                // Cancel and Done share the title's row, so everything
+                // below it can go to the team buttons.
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    l10n.matchupPickerCancelButtonLabel,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: league == null || team1 == null || team2 == null
+                      ? null
+                      : () => Navigator.pop(
+                          context,
+                          LeagueMatchup(
+                            league: league,
+                            team1: team1,
+                            team2: team2,
+                          ),
+                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 6,
+                    ),
+                    child: Text(
+                      l10n.matchupPickerDoneButtonLabel,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (league == null)
               Expanded(
                 child: _TileGrid(
@@ -154,7 +190,7 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
               )
             else ...[
               SizedBox(
-                height: 110,
+                height: 84,
                 child: Row(
                   children: [
                     Expanded(
@@ -180,7 +216,7 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Expanded(
                 child: _TileGrid(
                   children: [
@@ -198,45 +234,6 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    l10n.matchupPickerCancelButtonLabel,
-                    style: const TextStyle(fontSize: 32),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                ElevatedButton(
-                  onPressed: league == null || team1 == null || team2 == null
-                      ? null
-                      : () => Navigator.pop(
-                          context,
-                          LeagueMatchup(
-                            league: league,
-                            team1: team1,
-                            team2: team2,
-                          ),
-                        ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 8,
-                    ),
-                    child: Text(
-                      l10n.matchupPickerDoneButtonLabel,
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -244,14 +241,27 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
   }
 }
 
+/// One button in a [_TileGrid].
+class _Tile {
+  const _Tile({required this.label, required this.onTap, this.color});
+
+  final String label;
+  final VoidCallback onTap;
+
+  /// The rock color this tile has been picked for, if any.
+  final RockColor? color;
+}
+
 /// Lays tiles out to fill the space they are given without scrolling, so
 /// every team is on screen at once and as large as it can be.
 class _TileGrid extends StatelessWidget {
   const _TileGrid({required this.children});
 
-  final List<Widget> children;
+  final List<_Tile> children;
 
   static const _spacing = 12.0;
+  static const _padding = 12.0;
+  static const _maxFontSize = 56.0;
 
   @override
   Widget build(BuildContext context) {
@@ -268,40 +278,68 @@ class _TileGrid extends StatelessWidget {
             (constraints.maxWidth - _spacing * (columns - 1)) / columns;
         final height = (constraints.maxHeight - _spacing * (rows - 1)) / rows;
 
+        final style = TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: _fontSize(context, width, height),
+        );
+
         return GridView.count(
           crossAxisCount: columns,
           mainAxisSpacing: _spacing,
           crossAxisSpacing: _spacing,
           childAspectRatio: width / height,
           physics: const NeverScrollableScrollPhysics(),
-          children: children,
+          children: [
+            for (final tile in children)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: tile.color?.color,
+                  foregroundColor: tile.color?.textColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(_padding),
+                ),
+                onPressed: tile.onTap,
+                // The size is worked out to fit; this only catches what the
+                // measurement could not foresee, such as a fallback font.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(tile.label, style: style),
+                ),
+              ),
+          ],
         );
       },
     );
   }
-}
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.label, required this.onTap, this.color});
+  /// One size for every tile: the largest at which the longest name still
+  /// fits. Sizing each name by itself made short names shout over long ones.
+  double _fontSize(BuildContext context, double width, double height) {
+    const probe = 100.0;
+    final base = DefaultTextStyle.of(
+      context,
+    ).style.copyWith(fontWeight: FontWeight.bold, fontSize: probe);
+    final scaler = MediaQuery.textScalerOf(context);
 
-  final String label;
-  final VoidCallback onTap;
+    var widest = 0.0;
+    for (final tile in children) {
+      final painter = TextPainter(
+        text: TextSpan(text: tile.label, style: base),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      if (painter.width > widest) widest = painter.width;
+      painter.dispose();
+    }
+    if (widest == 0) return _maxFontSize;
 
-  /// The rock color this tile has been picked for, if any.
-  final RockColor? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color?.color,
-        foregroundColor: color?.textColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: const EdgeInsets.all(12),
-      ),
-      onPressed: onTap,
-      child: _FittedLabel(label),
-    );
+    final byWidth = probe * (width - _padding * 2) / widest;
+    // Leave the button some air above and below the name.
+    final byHeight = (height - _padding * 2) * 0.6;
+    return [_maxFontSize, byWidth, byHeight].reduce((a, b) => a < b ? a : b);
   }
 }
 
@@ -327,14 +365,15 @@ class _Slot extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: DefaultTextStyle.merge(
             style: TextStyle(color: color.textColor),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                Text(color.name, style: const TextStyle(fontSize: 20)),
+                Text(color.name, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 16),
                 Expanded(
                   child: _FittedLabel(
                     team?.name ?? context.l10n.matchupPickerEmptySlotLabel,
                     bold: team != null,
+                    fontSize: 36,
                   ),
                 ),
               ],
@@ -348,10 +387,13 @@ class _Slot extends StatelessWidget {
 
 /// A name at a large size, shrunk only as far as it must be to fit.
 class _FittedLabel extends StatelessWidget {
-  const _FittedLabel(this.label, {this.bold = true});
+  const _FittedLabel(this.label, {required this.fontSize, this.bold = true});
 
   final String label;
   final bool bold;
+
+  /// The size to aim for.
+  final double fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +403,7 @@ class _FittedLabel extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 36,
+            fontSize: fontSize,
             fontWeight: bold ? FontWeight.bold : FontWeight.normal,
           ),
         ),

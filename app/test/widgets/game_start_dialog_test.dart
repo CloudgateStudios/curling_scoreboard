@@ -84,9 +84,9 @@ void main() {
   Future<void> tapAndSettle(WidgetTester tester, String text) async {
     await tester.tap(find.text(text));
     await tester.pumpAndSettle();
-    // Leaving the team picker holds Start Game back for a moment.
+    // Leaving the team picker holds the setup screen back for a moment.
     if (text == 'Done' || text == 'Cancel') {
-      await tester.pump(GameStartDialog.startGuardDuration);
+      await tester.pump(GameStartDialog.pickerGuardDuration);
     }
   }
 
@@ -208,8 +208,8 @@ void main() {
     await tapTeam(tester, 'Team Smith');
     await tapTeam(tester, 'Team Jones');
 
-    // Done and Start Game are in the same corner. The second tap of a
-    // double tap lands on Start Game as the picker closes.
+    // The second tap of a double tap on Done lands on the setup screen
+    // as the picker closes, and must not start the game.
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start Game'), warnIfMissed: false);
@@ -217,7 +217,7 @@ void main() {
     expect(started(), isNull);
     expect(find.byType(GameStartDialog), findsOneWidget);
 
-    await tester.pump(GameStartDialog.startGuardDuration);
+    await tester.pump(GameStartDialog.pickerGuardDuration);
     await tapAndSettle(tester, 'Start Game');
     expect(started()!.team1.name, 'Team Smith');
   });

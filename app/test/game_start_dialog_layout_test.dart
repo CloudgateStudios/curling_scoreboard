@@ -118,7 +118,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await tap('Done');
-        await tester.pump(GameStartDialog.startGuardDuration);
+        await tester.pump(GameStartDialog.pickerGuardDuration);
 
         // Both names are on the setup screen and the game can be started.
         expect(find.text('Team 13 of the Sweeping Beauties'), findsNWidgets(2));
