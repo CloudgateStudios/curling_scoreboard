@@ -88,6 +88,18 @@ export interface Game {
   team1: GameTeam;
   team2: GameTeam;
   ends: GameEnd[];
+  /** How posting the game to the club's webhook went. Absent when it was not
+   *  posted: no webhook was set, or the game was filtered out. */
+  webhook?: GameWebhook;
+}
+
+export interface GameWebhook {
+  attemptedAt: Timestamp;
+  /** Absent if the post never finished. */
+  ok?: boolean;
+  /** The receiver's HTTP status, when it answered at all. */
+  status?: number;
+  error?: string;
 }
 
 export interface GameTeam {
@@ -138,4 +150,17 @@ export interface AuthUser {
   email: string | null;
   role: UserRole;
   clubId: string | null;
+}
+
+/** Which completed games a club's webhook is sent. */
+export type WebhookGames = 'all' | 'league';
+
+/** How the last post to a club's webhook went, as the functions record it. */
+export interface WebhookStatus {
+  at: Date;
+  kind: 'game' | 'test';
+  ok: boolean;
+  // The receiver's HTTP status, when it answered at all.
+  status?: number;
+  error?: string;
 }

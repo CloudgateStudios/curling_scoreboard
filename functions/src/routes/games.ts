@@ -30,19 +30,7 @@ gamesRouter.get('/games', async (req: Request, res: Response) => {
       .limit(limit)
       .get();
 
-    const games = gamesSnap.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        id: doc.id,
-        startedAt: (d['startedAt'] as Timestamp).toDate().toISOString(),
-        finishedAt: (d['finishedAt'] as Timestamp).toDate().toISOString(),
-        numberOfEnds: d['numberOfEnds'] as number,
-        league: d['league'] ?? null,
-        team1: d['team1'],
-        team2: d['team2'],
-        ends: d['ends'],
-      };
-    });
+    const games = gamesSnap.docs.map((doc) => buildGameResponse(doc.id, doc.data()));
 
     res.json({ games, limit });
   } catch (err) {
@@ -50,3 +38,18 @@ gamesRouter.get('/games', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Built field by field, so anything else kept on the game document stays out
+// of the API and the completed game webhook, which sends the same shape.
+export function buildGameResponse(id: string, d: FirebaseFirestore.DocumentData): object {
+  return {
+    id,
+    startedAt: (d['startedAt'] as Timestamp).toDate().toISOString(),
+    finishedAt: (d['finishedAt'] as Timestamp).toDate().toISOString(),
+    numberOfEnds: d['numberOfEnds'] as number,
+    league: d['league'] ?? null,
+    team1: d['team1'],
+    team2: d['team2'],
+    ends: d['ends'],
+  };
+}

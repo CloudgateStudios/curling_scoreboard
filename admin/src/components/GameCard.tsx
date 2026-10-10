@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import type { Game } from '../types';
 import { endScoredBy, endScoreLabel } from '../lib/gameEnds';
 import { formatDuration } from '../lib/format';
+import { webhookFailed, webhookSummary } from '../lib/gameWebhook';
+import own from './GameCard.module.css';
 
 interface Props {
   game: Game;
@@ -33,6 +35,7 @@ export function GameCard({ game, meta, expanded, onToggle, styles }: Props) {
         </div>
         <div className={styles.gameMeta}>
           {meta}
+          {webhookFailed(game.webhook) && <span className={own.webhookFailedChip}>Webhook failed</span>}
           {lastEnd && <span>{formatDuration(lastEnd.gameTimeInSeconds)}</span>}
           <span>{game.numberOfEnds} ends</span>
           <span className={styles.expandIcon}>{expanded ? '▲' : '▼'}</span>
@@ -63,6 +66,11 @@ export function GameCard({ game, meta, expanded, onToggle, styles }: Props) {
               ))}
             </tbody>
           </table>
+          {game.webhook && (
+            <p className={webhookFailed(game.webhook) ? own.webhookFailed : own.webhook}>
+              {webhookSummary(game.webhook)}
+            </p>
+          )}
         </div>
       )}
     </div>

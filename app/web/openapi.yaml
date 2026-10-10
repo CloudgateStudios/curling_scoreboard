@@ -31,6 +31,9 @@ tags:
     description: A club's leagues and the teams in them.
   - name: Games
     description: Historical completed game records for a specific sheet.
+  - name: Webhooks
+    description: >-
+      Requests this service sends to a URL the club sets in the admin portal.
 
 components:
   securitySchemes:
@@ -356,6 +359,76 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/End'
+
+    GameCompletedEvent:
+      type: object
+      required: [event, text, content, club, sheet, game]
+      properties:
+        event:
+          type: string
+          enum: [game.completed]
+        text:
+          type: string
+          description: The result on one line. Slack shows this as the message.
+          example: 'Monday Night, Sheet 1: Team Smith 7, Team Jones 4'
+        content:
+          type: string
+          description: The same line as `text`. Discord shows this as the message.
+          example: 'Monday Night, Sheet 1: Team Smith 7, Team Jones 4'
+        club:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+              example: windy-city-curling
+            name:
+              type: string
+              example: Windy City Curling
+        sheet:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+              example: sheet-1
+            name:
+              type: string
+              example: Sheet 1
+        game:
+          $ref: '#/components/schemas/Game'
+
+webhooks:
+  gameCompleted:
+    post:
+      summary: A game was completed
+      description: |
+        Sent to the club's webhook URL when Finish Game is tapped on one of its
+        scoreboards. The club chooses in the admin portal whether every game is
+        sent or only league games, where a league team was picked for at least
+        one side.
+
+        The URL must be `https` and publicly reachable. Any 2xx answer counts as
+        delivered. No answer within 8 seconds, a 5xx or a 429 is tried twice
+        more over a few seconds; anything else, including a redirect, is not
+        tried again. A game is posted once, when the scoreboard's write arrives,
+        so a scoreboard that was offline posts its games when it reconnects:
+        use `game.finishedAt` for when the game ended.
+
+        The admin portal's Send Test button posts `event: test` with `text`,
+        `content` and `club` only.
+      operationId: gameCompleted
+      tags: [Webhooks]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameCompletedEvent'
+      responses:
+        '2XX':
+          description: The result was received.
 
 paths:
   /clubs/{clubId}:

@@ -302,6 +302,45 @@ await check('club admin: unpair own sheet', 'allow', () =>
 await check('attack: unpaired scoreboard keeps pushing its live game', 'deny', () =>
   updateDoc(doc(board2, 'clubs/club-a/sheets/sheet-to-unpair'), { liveGame: { currentEnd: 1 } }));
 
+// --- completed game webhook ---
+const webhook = { url: 'https://hooks.example.com/services/abc', games: 'league' };
+
+await check('webhook: club admin sets their club\'s webhook', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), webhook));
+
+await check('webhook: club admin reads their club\'s webhook', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/webhook')));
+
+await check('webhook: club admin reads the last delivery', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/webhookStatus')));
+
+await check('attack: club admin sets another club\'s webhook', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/private/webhook'), webhook));
+
+await check('attack: webhook URL that is not https', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, url: 'http://hooks.example.com/abc' }));
+
+await check('attack: webhook with an unknown games setting', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, games: 'some' }));
+
+await check('attack: webhook with extra fields', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, secret: 'x' }));
+
+await check('attack: webhook without a games setting', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { url: webhook.url }));
+
+await check('attack: club admin forges the last delivery', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhookStatus'), { ok: true }));
+
+await check('attack: paired scoreboard reads the club webhook', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/webhook')));
+
+await check('attack: paired scoreboard sets the club webhook', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/private/webhook'), webhook));
+
+await check('webhook: club admin turns their club\'s webhook off', 'allow', () =>
+  deleteDoc(doc(adminA, 'clubs/club-a/private/webhook')));
+
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>
   getDoc(doc(unauthed, 'appConfig/scoreboard')));

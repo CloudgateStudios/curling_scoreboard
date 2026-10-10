@@ -35,6 +35,17 @@ clubs/{clubId}
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
 
+clubs/{clubId}/private/webhook       // absent means no webhook
+  url: string                // https, where completed games are posted
+  games: 'all' | 'league'    // every game, or only ones with a league team
+
+clubs/{clubId}/private/webhookStatus // the last post, written by the functions
+  at: timestamp
+  kind: 'game' | 'test'
+  ok: bool
+  status?: int               // the receiver's HTTP status, if it answered
+  error?: string
+
 clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
   rockColors?: {             // absent means red and yellow
     team1: { name: string, hex: string }   // hex is '#RRGGBB'
@@ -107,6 +118,12 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
     score: int
     gameTimeInSeconds: int           // -1 on ends recorded before the game clock
   }]
+  webhook?: {                        // set once the game is posted to the club's webhook
+    attemptedAt: timestamp
+    ok?: bool                        // absent if the post never finished
+    status?: int                     // the receiver's HTTP status, if it answered
+    error?: string
+  }
 ```
 
 Club IDs are readable slugs (`windy-city-curling`) when the super admin picks
@@ -123,7 +140,7 @@ admin scripts.
 | Role                 | Claims                                  | Signs in with           | Can                                                                                   |
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
-| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, manage leagues and teams, read game history |
+| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors and the completed game webhook, manage leagues and teams, read game history |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` and `leagues` |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
@@ -358,6 +375,46 @@ with the `X-API-Key` header, never with credentials, and lets browsers cache
 the preflight for a day. A key used in browser code is visible to anyone who
 views the page; an integration that needs to keep its key private should call
 the API from a server.
+
+## Completed game webhook
+
+A club can have each finished game posted to a URL, usually a Slack or
+Discord incoming webhook. A club admin or super admin sets it under Settings
+in the admin portal, along with whether to post every game or only league
+games. A league game here is one where either team has a `teamId`.
+
+`sendCompletedGameWebhook` is a Firestore trigger on new `games` documents, so
+it fires on the Finish Game write and nothing in the scoreboard app knows
+about it. A game nobody finishes is never posted, and a scoreboard that was
+offline posts its games when it reconnects.
+
+The body is JSON: `text` and `content` both hold the result on one line
+("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"), because Slack reads the
+first and Discord the second, followed by `event`, `club`, `sheet` and the
+`game` exactly as the REST API returns it. It is described under Webhooks in
+`app/web/openapi.yaml`.
+
+- **Once per game.** Triggers can be delivered more than once, so the function
+  sets `webhook.attemptedAt` on the game in a transaction before posting and
+  skips a game that already has it. A post that fails is not sent again later.
+- **Retries.** No answer within 8 seconds, a 5xx or a 429 is tried twice more
+  within the same run. Other answers are final.
+- **Where it may post.** The URL comes from a club admin and the request is
+  made from inside Google Cloud, so it must be `https`, must resolve to a
+  public address, and redirects are not followed. The functions emulator
+  skips these checks so the tests can post to a local server.
+- **Status.** The outcome of each post (`ok`, the HTTP `status`, any `error`)
+  is written to the game's `webhook` field, which the portal shows when a
+  game is expanded, and marks on the game's row when it failed. The last
+  post, game or test, is also written to `private/webhookStatus` for the
+  Settings tab. That is a separate document so the rule on `private/webhook`
+  can allow club admins exactly `url` and `games`. The REST API leaves the
+  game's `webhook` field out.
+
+The portal's Send Test button calls `sendTestWebhook`, which posts a sample
+message to the saved URL and returns how it went. The URL is treated like a
+password: it lives under `private`, which scoreboards cannot read, and the
+portal shows it masked once saved.
 
 ## Reloading scoreboards after a web deploy
 
