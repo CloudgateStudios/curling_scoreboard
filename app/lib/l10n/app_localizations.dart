@@ -331,41 +331,59 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get settingsDialogButtonLabelClose;
 
-  /// Title for the club connection section in the settings dialog.
+  /// Button on the game setup screen of a scoreboard that is not connected to a club. Opens the connect to club dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get connectionButtonLabel;
+
+  /// Shown on the game setup screen of a scoreboard connected to a club. Pressing and holding it opens the club connection dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected as {clubName} – {sheetName}'**
+  String connectionConnectedAs(String clubName, String sheetName);
+
+  /// Shown under the connection on the game setup screen when the club's sheet has stopped accepting this scoreboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Scores are not syncing. Press and hold to fix.'**
+  String get connectionNotSyncing;
+
+  /// Title of the dialog showing the club and sheet the scoreboard is connected to.
   ///
   /// In en, this message translates to:
   /// **'Club Connection'**
-  String get settingsDialogConnectionSectionTitle;
-
-  /// Button label to open the connect to club dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to Club'**
-  String get settingsDialogConnectButtonLabel;
+  String get connectionDialogTitle;
 
   /// Shows the club the scoreboard is connected to.
   ///
   /// In en, this message translates to:
   /// **'Club: {clubName}'**
-  String settingsDialogConnectedClub(String clubName);
+  String connectionDialogClub(String clubName);
 
   /// Shows the sheet the scoreboard is connected to.
   ///
   /// In en, this message translates to:
   /// **'Sheet: {sheetName}'**
-  String settingsDialogConnectedSheet(String sheetName);
+  String connectionDialogSheet(String sheetName);
 
-  /// Warning shown in settings when the club's sheet has stopped accepting this scoreboard, for example because another device was paired with it.
+  /// Warning shown in the club connection dialog when the club's sheet has stopped accepting this scoreboard, for example because another device was paired with it.
   ///
   /// In en, this message translates to:
   /// **'Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.'**
-  String get settingsDialogPairingLost;
+  String get connectionDialogPairingLost;
 
-  /// Button label to disconnect the scoreboard from its club.
+  /// Button in the club connection dialog that asks for the club's admin PIN to disconnect the scoreboard.
   ///
   /// In en, this message translates to:
   /// **'Disconnect'**
-  String get settingsDialogDisconnectButtonLabel;
+  String get connectionDialogDisconnectButton;
+
+  /// Button that closes the club connection dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get connectionDialogCloseButton;
 
   /// Title of the connect to club dialog.
   ///
@@ -409,23 +427,53 @@ abstract class AppLocalizations {
   /// **'Connection failed. Please try again.'**
   String get connectToClubDialogErrorGeneric;
 
-  /// Title of the disconnect confirmation dialog.
+  /// Title of the dialog asking for the club's admin PIN before disconnecting.
   ///
   /// In en, this message translates to:
   /// **'Disconnect Sheet'**
-  String get disconnectConfirmationTitle;
+  String get disconnectDialogTitle;
 
-  /// Body text of the disconnect confirmation dialog.
+  /// Body text of the dialog asking for the club's admin PIN before disconnecting.
   ///
   /// In en, this message translates to:
-  /// **'This will stop syncing scores to {clubName}. Local scoring will continue.'**
-  String disconnectConfirmationContent(String clubName);
+  /// **'This will stop syncing scores to {clubName}. Enter the club\'s admin PIN to disconnect.'**
+  String disconnectDialogContent(String clubName);
 
-  /// Button label to confirm disconnecting from the club.
+  /// Label for the club admin PIN field.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin PIN'**
+  String get disconnectDialogPinLabel;
+
+  /// Error shown when the admin PIN entered to disconnect is wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect PIN. Please try again.'**
+  String get disconnectDialogErrorIncorrectPin;
+
+  /// Error shown when disconnecting from a club that has not set an admin PIN.
+  ///
+  /// In en, this message translates to:
+  /// **'{clubName} has no admin PIN yet. A club admin can set one in the admin portal.'**
+  String disconnectDialogErrorNoPin(String clubName);
+
+  /// Generic error shown when disconnecting fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not disconnect. Check the internet connection and try again.'**
+  String get disconnectDialogErrorGeneric;
+
+  /// Button that closes the disconnect dialog without disconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get disconnectDialogCancelButton;
+
+  /// Button that checks the admin PIN and disconnects the scoreboard.
   ///
   /// In en, this message translates to:
   /// **'Disconnect'**
-  String get disconnectConfirmationButton;
+  String get disconnectDialogDisconnectButton;
 
   /// Shown over game setup while the scoreboard counts down to reloading onto a newly deployed version.
   ///

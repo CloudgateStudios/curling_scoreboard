@@ -137,27 +137,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDialogButtonLabelClose => 'Close';
 
   @override
-  String get settingsDialogConnectionSectionTitle => 'Club Connection';
+  String get connectionButtonLabel => 'Connection';
 
   @override
-  String get settingsDialogConnectButtonLabel => 'Connect to Club';
+  String connectionConnectedAs(String clubName, String sheetName) {
+    return 'Connected as $clubName – $sheetName';
+  }
 
   @override
-  String settingsDialogConnectedClub(String clubName) {
+  String get connectionNotSyncing =>
+      'Scores are not syncing. Press and hold to fix.';
+
+  @override
+  String get connectionDialogTitle => 'Club Connection';
+
+  @override
+  String connectionDialogClub(String clubName) {
     return 'Club: $clubName';
   }
 
   @override
-  String settingsDialogConnectedSheet(String sheetName) {
+  String connectionDialogSheet(String sheetName) {
     return 'Sheet: $sheetName';
   }
 
   @override
-  String get settingsDialogPairingLost =>
+  String get connectionDialogPairingLost =>
       'Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.';
 
   @override
-  String get settingsDialogDisconnectButtonLabel => 'Disconnect';
+  String get connectionDialogDisconnectButton => 'Disconnect';
+
+  @override
+  String get connectionDialogCloseButton => 'Close';
 
   @override
   String get connectToClubDialogTitle => 'Connect to Club';
@@ -184,15 +196,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connection failed. Please try again.';
 
   @override
-  String get disconnectConfirmationTitle => 'Disconnect Sheet';
+  String get disconnectDialogTitle => 'Disconnect Sheet';
 
   @override
-  String disconnectConfirmationContent(String clubName) {
-    return 'This will stop syncing scores to $clubName. Local scoring will continue.';
+  String disconnectDialogContent(String clubName) {
+    return 'This will stop syncing scores to $clubName. Enter the club\'s admin PIN to disconnect.';
   }
 
   @override
-  String get disconnectConfirmationButton => 'Disconnect';
+  String get disconnectDialogPinLabel => 'Admin PIN';
+
+  @override
+  String get disconnectDialogErrorIncorrectPin =>
+      'Incorrect PIN. Please try again.';
+
+  @override
+  String disconnectDialogErrorNoPin(String clubName) {
+    return '$clubName has no admin PIN yet. A club admin can set one in the admin portal.';
+  }
+
+  @override
+  String get disconnectDialogErrorGeneric =>
+      'Could not disconnect. Check the internet connection and try again.';
+
+  @override
+  String get disconnectDialogCancelButton => 'Cancel';
+
+  @override
+  String get disconnectDialogDisconnectButton => 'Disconnect';
 
   @override
   String updateCountdownMessage(int seconds) {

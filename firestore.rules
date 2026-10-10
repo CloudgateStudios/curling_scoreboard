@@ -73,6 +73,16 @@ service cloud.firestore {
         allow read: if isClubAdmin(clubId);
       }
 
+      // The PIN that has to be entered on a scoreboard to disconnect it.
+      // Club admins choose it. Scoreboards never read it: the unpairSheet
+      // function checks what was typed.
+      match /private/scoreboardPin {
+        allow create, update: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['pin'])
+            && request.resource.data.pin is string
+            && request.resource.data.pin.matches('^[0-9]{4,8}$');
+      }
+
       match /admins/{uid} {
         allow read: if isClubAdmin(clubId);
       }
@@ -114,17 +124,16 @@ service cloud.firestore {
         allow read: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid;
 
-        // The registered scoreboard can update liveGame, report its own
-        // device status, or clear its UID on disconnect. It cannot hand the
-        // sheet to a different device. The device status is whatever the
-        // scoreboard says about itself, so it is only held to being a map of
-        // a sensible size.
+        // The registered scoreboard can update liveGame and report its own
+        // device status. Disconnecting goes through the unpairSheet function,
+        // which asks for the club's admin PIN, so the scoreboard cannot let go
+        // of the sheet or hand it to another device. The device status is
+        // whatever the scoreboard says about itself, so it is only held to
+        // being a map of a sensible size.
         allow update: if request.auth != null
             && request.auth.uid == resource.data.scoreboardUid
             && request.resource.data.diff(resource.data)
-                .affectedKeys().hasOnly(['liveGame', 'scoreboardUid', 'device'])
-            && (!('scoreboardUid' in request.resource.data)
-                || request.resource.data.scoreboardUid == request.auth.uid)
+                .affectedKeys().hasOnly(['liveGame', 'device'])
             && (!('device' in request.resource.data)
                 || (request.resource.data.device is map
                     && request.resource.data.device.size() <= 20));

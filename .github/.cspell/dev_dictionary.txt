@@ -12,6 +12,8 @@ RRGGBB
 subcollection
 subshell
 superadmin
+unpair
+unpairs
 xcassets
 xcode
 xcworkspace

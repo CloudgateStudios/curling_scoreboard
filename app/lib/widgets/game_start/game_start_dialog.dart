@@ -14,6 +14,7 @@ class GameStartDialog extends StatefulWidget {
   const GameStartDialog({
     this.rockColors,
     this.leagues = const [],
+    this.connection,
     this.now = DateTime.now,
     super.key,
   });
@@ -24,6 +25,9 @@ class GameStartDialog extends StatefulWidget {
   /// The paired club's active leagues. League games are only offered when
   /// there are some.
   final List<League> leagues;
+
+  /// The scoreboard's club connection, shown in the bottom corner.
+  final Widget? connection;
 
   /// The scoreboard's local time, which decides the league suggested for a
   /// league game.
@@ -254,10 +258,21 @@ class _GameStartDialogState extends State<GameStartDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text(
-                      'v$packageVersion',
-                      style: TextStyle(color: Colors.grey),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 8,
+                        children: [
+                          ?widget.connection,
+                          const Text(
+                            'v$packageVersion',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 16),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomRight,

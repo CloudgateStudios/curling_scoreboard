@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import { clubsRouter } from './routes/clubs';
 export { provisionClub, setSuperAdminClaim, addClubAdmin } from './admin';
-export { pairSheet } from './pairing';
+export { pairSheet, unpairSheet } from './pairing';
 
 initializeApp();
 

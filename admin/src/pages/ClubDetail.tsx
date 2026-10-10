@@ -7,6 +7,7 @@ import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
+import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import styles from './ClubDetail.module.css';
@@ -83,6 +84,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
       {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
       <LeaguesSection clubId={resolvedClubId} onOpenLeague={handleOpenLeague} />
       <RockColorsSection clubId={resolvedClubId} />
+      <ScoreboardPinSection clubId={resolvedClubId} />
       <SheetsSection
         clubId={resolvedClubId}
         sheets={sheets}

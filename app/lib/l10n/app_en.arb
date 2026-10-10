@@ -178,41 +178,59 @@
   "@settingsDialogButtonLabelClose": {
     "description": "Button label to close the settings dialog."
   },
-  "settingsDialogConnectionSectionTitle": "Club Connection",
-  "@settingsDialogConnectionSectionTitle": {
-    "description": "Title for the club connection section in the settings dialog."
+  "connectionButtonLabel": "Connection",
+  "@connectionButtonLabel": {
+    "description": "Button on the game setup screen of a scoreboard that is not connected to a club. Opens the connect to club dialog."
   },
-  "settingsDialogConnectButtonLabel": "Connect to Club",
-  "@settingsDialogConnectButtonLabel": {
-    "description": "Button label to open the connect to club dialog."
+  "connectionConnectedAs": "Connected as {clubName} – {sheetName}",
+  "@connectionConnectedAs": {
+    "description": "Shown on the game setup screen of a scoreboard connected to a club. Pressing and holding it opens the club connection dialog.",
+    "placeholders": {
+      "clubName": {
+        "type": "String"
+      },
+      "sheetName": {
+        "type": "String"
+      }
+    }
   },
-  "settingsDialogConnectedClub": "Club: {clubName}",
-  "@settingsDialogConnectedClub": {
+  "connectionNotSyncing": "Scores are not syncing. Press and hold to fix.",
+  "@connectionNotSyncing": {
+    "description": "Shown under the connection on the game setup screen when the club's sheet has stopped accepting this scoreboard."
+  },
+  "connectionDialogTitle": "Club Connection",
+  "@connectionDialogTitle": {
+    "description": "Title of the dialog showing the club and sheet the scoreboard is connected to."
+  },
+  "connectionDialogClub": "Club: {clubName}",
+  "@connectionDialogClub": {
     "description": "Shows the club the scoreboard is connected to.",
     "placeholders": {
       "clubName": {
-        "type": "String",
-        "example": "Windy City CC"
+        "type": "String"
       }
     }
   },
-  "settingsDialogConnectedSheet": "Sheet: {sheetName}",
-  "@settingsDialogConnectedSheet": {
+  "connectionDialogSheet": "Sheet: {sheetName}",
+  "@connectionDialogSheet": {
     "description": "Shows the sheet the scoreboard is connected to.",
     "placeholders": {
       "sheetName": {
-        "type": "String",
-        "example": "Sheet 3"
+        "type": "String"
       }
     }
   },
-  "settingsDialogPairingLost": "Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.",
-  "@settingsDialogPairingLost": {
-    "description": "Warning shown in settings when the club's sheet has stopped accepting this scoreboard, for example because another device was paired with it."
+  "connectionDialogPairingLost": "Disconnected. This scoreboard is no longer paired with this sheet, so scores are not being sent. Disconnect, then connect again with a new pairing code.",
+  "@connectionDialogPairingLost": {
+    "description": "Warning shown in the club connection dialog when the club's sheet has stopped accepting this scoreboard, for example because another device was paired with it."
   },
-  "settingsDialogDisconnectButtonLabel": "Disconnect",
-  "@settingsDialogDisconnectButtonLabel": {
-    "description": "Button label to disconnect the scoreboard from its club."
+  "connectionDialogDisconnectButton": "Disconnect",
+  "@connectionDialogDisconnectButton": {
+    "description": "Button in the club connection dialog that asks for the club's admin PIN to disconnect the scoreboard."
+  },
+  "connectionDialogCloseButton": "Close",
+  "@connectionDialogCloseButton": {
+    "description": "Button that closes the club connection dialog."
   },
   "connectToClubDialogTitle": "Connect to Club",
   "@connectToClubDialogTitle": {
@@ -242,23 +260,47 @@
   "@connectToClubDialogErrorGeneric": {
     "description": "Generic error shown when the connection attempt fails."
   },
-  "disconnectConfirmationTitle": "Disconnect Sheet",
-  "@disconnectConfirmationTitle": {
-    "description": "Title of the disconnect confirmation dialog."
+  "disconnectDialogTitle": "Disconnect Sheet",
+  "@disconnectDialogTitle": {
+    "description": "Title of the dialog asking for the club's admin PIN before disconnecting."
   },
-  "disconnectConfirmationContent": "This will stop syncing scores to {clubName}. Local scoring will continue.",
-  "@disconnectConfirmationContent": {
-    "description": "Body text of the disconnect confirmation dialog.",
+  "disconnectDialogContent": "This will stop syncing scores to {clubName}. Enter the club's admin PIN to disconnect.",
+  "@disconnectDialogContent": {
+    "description": "Body text of the dialog asking for the club's admin PIN before disconnecting.",
     "placeholders": {
       "clubName": {
-        "type": "String",
-        "example": "Windy City CC"
+        "type": "String"
       }
     }
   },
-  "disconnectConfirmationButton": "Disconnect",
-  "@disconnectConfirmationButton": {
-    "description": "Button label to confirm disconnecting from the club."
+  "disconnectDialogPinLabel": "Admin PIN",
+  "@disconnectDialogPinLabel": {
+    "description": "Label for the club admin PIN field."
+  },
+  "disconnectDialogErrorIncorrectPin": "Incorrect PIN. Please try again.",
+  "@disconnectDialogErrorIncorrectPin": {
+    "description": "Error shown when the admin PIN entered to disconnect is wrong."
+  },
+  "disconnectDialogErrorNoPin": "{clubName} has no admin PIN yet. A club admin can set one in the admin portal.",
+  "@disconnectDialogErrorNoPin": {
+    "description": "Error shown when disconnecting from a club that has not set an admin PIN.",
+    "placeholders": {
+      "clubName": {
+        "type": "String"
+      }
+    }
+  },
+  "disconnectDialogErrorGeneric": "Could not disconnect. Check the internet connection and try again.",
+  "@disconnectDialogErrorGeneric": {
+    "description": "Generic error shown when disconnecting fails."
+  },
+  "disconnectDialogCancelButton": "Cancel",
+  "@disconnectDialogCancelButton": {
+    "description": "Button that closes the disconnect dialog without disconnecting."
+  },
+  "disconnectDialogDisconnectButton": "Disconnect",
+  "@disconnectDialogDisconnectButton": {
+    "description": "Button that checks the admin PIN and disconnects the scoreboard."
   },
   "updateCountdownMessage": "Updating to the latest version in {seconds} seconds. Tap anywhere to wait.",
   "@updateCountdownMessage": {

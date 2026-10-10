@@ -172,6 +172,97 @@ describe('pairSheet', () => {
   });
 });
 
+describe('unpairSheet', () => {
+  // Pairs a fresh scoreboard with a new sheet in club-pin, the club whose
+  // admin PIN is 4821.
+  async function pairedScoreboard(sheetId) {
+    await db.doc(`clubs/club-pin/sheets/${sheetId}`).set({ name: sheetId, pairingCode: `${sheetId}-CODE`.toUpperCase() });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: `${sheetId}-CODE` });
+    return client;
+  }
+
+  before(async () => {
+    await db.doc('clubs/club-pin').set({ name: 'Club Pin' });
+    await db.doc('clubs/club-pin/private/scoreboardPin').set({ pin: '4821' });
+    await db.doc('clubs/club-no-pin').set({ name: 'Club No Pin' });
+  });
+
+  test('rejects callers who are not signed in', async () => {
+    const client = await clientFor();
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'any', pin: '4821' }),
+      'functions/unauthenticated',
+    );
+  });
+
+  test('rejects a missing or malformed sheet', async () => {
+    const client = await anonymous();
+    await rejectsWith(client.call('unpairSheet', { pin: '4821' }), 'functions/invalid-argument');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin/sheets', sheetId: 'x', pin: '4821' }),
+      'functions/invalid-argument',
+    );
+  });
+
+  test('keeps the sheet paired when the PIN is wrong', async () => {
+    const client = await pairedScoreboard('pin-wrong');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-wrong', pin: '1111' }),
+      'functions/permission-denied',
+    );
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-wrong' }),
+      'functions/permission-denied',
+    );
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-wrong').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+  });
+
+  test('unpairs the sheet and takes the claims away with the right PIN', async () => {
+    const client = await pairedScoreboard('pin-right');
+    const result = await client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-right', pin: ' 4821 ' });
+    assert.deepEqual(result.data, { unpaired: true });
+
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-right').get();
+    assert.equal(sheet.get('scoreboardUid'), undefined);
+    assert.equal((await adminAuth.getUser(client.auth.currentUser.uid)).customClaims?.role, undefined);
+  });
+
+  test('will not unpair at a club that has no PIN set', async () => {
+    await db.doc('clubs/club-no-pin/sheets/no-pin').set({ name: 'No Pin', pairingCode: 'NPN234' });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: 'NPN234' });
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-no-pin', sheetId: 'no-pin', pin: '' }),
+      'functions/failed-precondition',
+    );
+    const sheet = await db.doc('clubs/club-no-pin/sheets/no-pin').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+  });
+
+  test('lets a scoreboard whose sheet was paired elsewhere go without the PIN', async () => {
+    const replaced = await pairedScoreboard('pin-replaced');
+    await db.doc('clubs/club-pin/sheets/pin-replaced').update({ pairingCode: 'REPLACED2' });
+    const replacement = await anonymous();
+    await replacement.call('pairSheet', { pairingCode: 'REPLACED2' });
+
+    const result = await replaced.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-replaced' });
+    assert.deepEqual(result.data, { unpaired: false });
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-replaced').get();
+    assert.equal(sheet.get('scoreboardUid'), replacement.auth.currentUser.uid, 'leaves the new pairing alone');
+  });
+
+  test('cannot unpair a sheet some other scoreboard holds, even with the PIN', async () => {
+    const owner = await pairedScoreboard('pin-owned');
+    const stranger = await anonymous();
+    const result = await stranger.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-owned', pin: '4821' });
+    assert.deepEqual(result.data, { unpaired: false });
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-owned').get();
+    assert.equal(sheet.get('scoreboardUid'), owner.auth.currentUser.uid);
+  });
+});
+
 describe('REST API key check', () => {
   test('requires a key', async () => {
     const res = await fetch(`${API_URL}/clubs/club-a`);
