@@ -3,6 +3,7 @@ import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
+import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
 import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId } from '../lib/leagues';
 import type { AuthUser, League, LeagueDraw, LeagueTeam } from '../types';
 import common from '../styles/common.module.css';
@@ -33,6 +34,7 @@ export function LeagueDetail({ user }: Props) {
   }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useUnsavedChanges(dirty);
 
   // Back to the club's Leagues tab, which is where the league was opened from.
   const backTo = `${routeClubId ? `/clubs/${routeClubId}` : '/'}?tab=leagues`;
@@ -100,7 +102,7 @@ export function LeagueDetail({ user }: Props) {
   return (
     <div>
       <div className={common.breadcrumb}>
-        <button className={common.backButton} onClick={() => navigate(backTo)}>← Back</button>
+        <button className={common.backButton} onClick={() => confirmLeave() && navigate(backTo)}>← Back</button>
       </div>
 
       <div className={common.header}>

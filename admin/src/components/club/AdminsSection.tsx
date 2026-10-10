@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../lib/firebase';
+import { errorMessage } from '../../lib/format';
 import common from '../../styles/common.module.css';
 import styles from './AdminsSection.module.css';
 
@@ -26,6 +27,8 @@ export function AdminsSection({ clubId, clubName }: Props) {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [removingUid, setRemovingUid] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState('');
 
   useEffect(() => {
     return onSnapshot(collection(db, 'clubs', clubId, 'admins'), (snap) => {
@@ -59,6 +62,19 @@ export function AdminsSection({ clubId, clubName }: Props) {
     }
   }
 
+  async function handleRemove(admin: ClubAdmin) {
+    if (!confirm(`Remove ${admin.email} from ${clubName}? Their account is deleted and they are signed out within the hour.`)) return;
+    setRemovingUid(admin.uid);
+    setRemoveError('');
+    try {
+      await httpsCallable(functions, 'removeClubAdmin')({ clubId, uid: admin.uid });
+    } catch (err) {
+      setRemoveError(errorMessage(err, `Could not remove ${admin.email}.`));
+    } finally {
+      setRemovingUid(null);
+    }
+  }
+
   return (
     <div className={common.section}>
       <div className={common.sectionHeader}>
@@ -73,10 +89,18 @@ export function AdminsSection({ clubId, clubName }: Props) {
           <div key={a.uid} className={styles.adminRow}>
             {a.displayName && <span className={styles.adminName}>{a.displayName}</span>}
             <span className={styles.adminEmail}>{a.email}</span>
+            <button
+              className={`${common.linkButton} ${styles.removeButton}`}
+              onClick={() => handleRemove(a)}
+              disabled={removingUid !== null}
+            >
+              {removingUid === a.uid ? 'Removing…' : 'Remove'}
+            </button>
           </div>
         ))}
         {admins.length === 0 && <p className={common.empty}>No admins yet.</p>}
       </div>
+      {removeError && <p className={common.error}>{removeError}</p>}
 
       {showForm && (
         <div className={common.modal}>

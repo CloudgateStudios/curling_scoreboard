@@ -25,3 +25,8 @@
   font-size: 0.85rem;
   color: #666;
 }
+
+.adminRow .removeButton {
+  margin-left: auto;
+  color: #c5221f;
+}

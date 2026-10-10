@@ -552,3 +552,88 @@ describe('addClubAdmin', () => {
     }), 'functions/invalid-argument');
   });
 });
+
+describe('removeClubAdmin', () => {
+  test('is limited to super admins', async () => {
+    const clubAdmin = await userWithClaims('remover@club-a.example', { role: 'clubadmin', clubId: 'club-a' });
+    await rejectsWith(clubAdmin.call('removeClubAdmin', { clubId: 'club-a', uid: 'anyone' }),
+      'functions/permission-denied');
+  });
+
+  test('rejects an admin who is not on the club', async () => {
+    const caller = await superAdmin('super-remove-missing@example.com');
+    await rejectsWith(caller.call('removeClubAdmin', { clubId: 'club-a', uid: 'nobody' }),
+      'functions/not-found');
+  });
+
+  test('deletes the account and the listing, freeing the email', async () => {
+    const caller = await superAdmin('super-remove@example.com');
+    const { data } = await caller.call('addClubAdmin', {
+      clubId: 'club-a', adminEmail: 'leaving@club-a.example', adminPassword: 'password123',
+    });
+
+    await caller.call('removeClubAdmin', { clubId: 'club-a', uid: data.uid });
+
+    await assert.rejects(adminAuth.getUser(data.uid), (err) => err.code === 'auth/user-not-found');
+    assert.equal((await db.doc(`clubs/club-a/admins/${data.uid}`).get()).exists, false);
+    await caller.call('addClubAdmin', {
+      clubId: 'club-a', adminEmail: 'leaving@club-a.example', adminPassword: 'password123',
+    });
+  });
+
+  test('keeps an account that is not this club\'s admin', async () => {
+    const caller = await superAdmin('super-remove-other@example.com');
+    const other = await adminAuth.createUser({ email: 'listed@club-b.example', password: 'password123' });
+    await adminAuth.setCustomUserClaims(other.uid, { role: 'clubadmin', clubId: 'club-b' });
+    await db.doc(`clubs/club-a/admins/${other.uid}`).set({ email: 'listed@club-b.example' });
+
+    await caller.call('removeClubAdmin', { clubId: 'club-a', uid: other.uid });
+
+    assert.equal((await adminAuth.getUser(other.uid)).customClaims.clubId, 'club-b');
+    assert.equal((await db.doc(`clubs/club-a/admins/${other.uid}`).get()).exists, false);
+  });
+
+  test('removes the listing of an account that no longer exists', async () => {
+    const caller = await superAdmin('super-remove-gone@example.com');
+    await db.doc('clubs/club-a/admins/deleted-user').set({ email: 'gone@club-a.example' });
+
+    await caller.call('removeClubAdmin', { clubId: 'club-a', uid: 'deleted-user' });
+
+    assert.equal((await db.doc('clubs/club-a/admins/deleted-user').get()).exists, false);
+  });
+});
+
+describe('deleteSheet', () => {
+  // A club of its own, so the API tests' sheet lists for club-a are untouched.
+  before(async () => {
+    await db.doc('clubs/club-sheets').set({ name: 'Club Sheets' });
+  });
+
+  test('is limited to super admins', async () => {
+    await db.doc('clubs/club-sheets/sheets/kept').set({ name: 'Kept' });
+    const clubAdmin = await userWithClaims('sheet-admin@club-sheets.example', { role: 'clubadmin', clubId: 'club-sheets' });
+    await rejectsWith(clubAdmin.call('deleteSheet', { clubId: 'club-sheets', sheetId: 'kept' }),
+      'functions/permission-denied');
+    assert.equal((await db.doc('clubs/club-sheets/sheets/kept').get()).exists, true);
+  });
+
+  test('rejects an unknown sheet', async () => {
+    const caller = await superAdmin('super-delete-missing@example.com');
+    await rejectsWith(caller.call('deleteSheet', { clubId: 'club-sheets', sheetId: 'no-such-sheet' }),
+      'functions/not-found');
+  });
+
+  test('deletes the sheet and its games, and the scoreboard\'s claims', async () => {
+    const board = await adminAuth.createUser({});
+    await adminAuth.setCustomUserClaims(board.uid, { role: 'scoreboard', clubId: 'club-sheets', sheetId: 'gone' });
+    await db.doc('clubs/club-sheets/sheets/gone').set({ name: 'Gone', scoreboardUid: board.uid });
+    await db.doc('clubs/club-sheets/sheets/gone/games/g1').set({ numberOfEnds: 8 });
+    const caller = await superAdmin('super-delete@example.com');
+
+    await caller.call('deleteSheet', { clubId: 'club-sheets', sheetId: 'gone' });
+
+    assert.equal((await db.doc('clubs/club-sheets/sheets/gone').get()).exists, false);
+    assert.equal((await db.doc('clubs/club-sheets/sheets/gone/games/g1').get()).exists, false);
+    assert.equal((await adminAuth.getUser(board.uid)).customClaims?.role, undefined);
+  });
+});

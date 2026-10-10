@@ -142,3 +142,9 @@
   font-weight: 700;
   border-left: 1px solid #efefef;
 }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}

@@ -8,11 +8,11 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Overview
 
-| Piece        | Runs on                                                       | Talks to                                                    |
-| ------------ | ------------------------------------------------------------- | ----------------------------------------------------------- |
-| `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet` function                |
-| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin` functions |
-| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                        |
+| Piece        | Runs on                                                       | Talks to                                                                                            |
+| ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet` function                                                        |
+| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet` functions |
+| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                                                                |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
 `curling-scoreboard-prod`, with the same layout. Access control lives in
@@ -136,7 +136,14 @@ straight away, whatever its claims say.
 The first super admin of a project is created with
 `scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
 others. Club admins are created from the admin portal through
-`provisionClub` (a new club with its first admin) and `addClubAdmin`.
+`provisionClub` (a new club with its first admin) and `addClubAdmin`, and
+taken off again with `removeClubAdmin`, which deletes the account. A token
+issued before then keeps its club admin claim until it expires, at most an
+hour later.
+
+Sheets are renamed and unpaired by writing the sheet directly. Deleting one
+goes through `deleteSheet` (super admins only), which also deletes its
+`games`, since a client delete would leave them behind.
 
 ## Pairing a scoreboard
 

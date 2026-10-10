@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { deleteField, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
+import { useUnsavedChanges } from '../../lib/unsavedChanges';
 import {
   DEFAULT_ROCK_COLORS, MAX_ROCK_COLOR_NAME_LENGTH, ROCK_COLOR_PRESETS, isDefaultRockColors,
   rockColorPreset, rockColorsFrom, rockColorsTooSimilar, rockTextColor, sameRockColor,
@@ -49,6 +50,8 @@ export function RockColorsSection({ clubId }: Props) {
   const tooSimilar = !sameColor && rockColorsTooSimilar(draft);
   const missingName = SLOTS.some((slot) => !draft[slot].name.trim());
   const changed = !sameRockColor(draft.team1, saved.team1) || !sameRockColor(draft.team2, saved.team2);
+
+  useUnsavedChanges(changed);
 
   function choosePreset(slot: TeamSlot, color: RockColor) {
     setDraft((current) => ({ ...current, [slot]: color }));

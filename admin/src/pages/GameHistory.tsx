@@ -2,9 +2,14 @@ import { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot, orderBy, query, limit, getDoc } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
+import { downloadCsv, gamesCsv, gamesCsvFilename } from '../lib/gamesCsv';
 import type { Game } from '../types';
 import { GameCard } from '../components/GameCard';
+import common from '../styles/common.module.css';
 import styles from './GameHistory.module.css';
+
+/** Games loaded at first, and added each time more are asked for. */
+const PAGE_SIZE = 50;
 
 export function GameHistory() {
   // Super admin route: /clubs/:clubId/sheets/:sheetId/games
@@ -18,6 +23,9 @@ export function GameHistory() {
   const [sheetName, setSheetName] = useState('');
   const [games, setGames] = useState<Game[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [gameLimit, setGameLimit] = useState(PAGE_SIZE);
+  // A full page means there may be more; anything short of it is everything.
+  const mayHaveMore = games.length >= gameLimit;
 
   // For club admin routes the clubId isn't in the URL — resolve it via the sheet doc
   useEffect(() => {
@@ -48,7 +56,7 @@ export function GameHistory() {
     const q = query(
       collection(db, 'clubs', clubId, 'sheets', sheetId!, 'games'),
       orderBy('finishedAt', 'desc'),
-      limit(50)
+      limit(gameLimit)
     );
     return onSnapshot(q, (snap) => {
       setGames(
@@ -63,7 +71,15 @@ export function GameHistory() {
         })
       );
     });
-  }, [clubId, sheetId]);
+  }, [clubId, sheetId, gameLimit]);
+
+  function handleExport() {
+    // Newest first here, so the last game is the oldest.
+    const filename = gamesCsvFilename(
+      `${clubName} ${sheetName}`, games[games.length - 1].startedAt, games[0].startedAt,
+    );
+    downloadCsv(filename, gamesCsv(games.map((game) => ({ ...game, sheetName }))));
+  }
 
   return (
     <div>
@@ -76,8 +92,15 @@ export function GameHistory() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>{sheetName || '…'}</h1>
-          <p className={styles.subtitle}>{games.length} completed game{games.length !== 1 ? 's' : ''}</p>
+          <p className={styles.subtitle}>
+            {mayHaveMore ? `Latest ${games.length}` : games.length} completed game{games.length !== 1 ? 's' : ''}
+          </p>
         </div>
+        {games.length > 0 && (
+          <button className={common.ghostButton} onClick={handleExport}>
+            Export CSV
+          </button>
+        )}
       </div>
 
       <div className={styles.gameList}>
@@ -93,6 +116,11 @@ export function GameHistory() {
         ))}
         {games.length === 0 && <p className={styles.empty}>No completed games for this sheet yet.</p>}
       </div>
+      {mayHaveMore && (
+        <button className={`${common.ghostButton} ${styles.loadMore}`} onClick={() => setGameLimit(gameLimit + PAGE_SIZE)}>
+          Load {PAGE_SIZE} more
+        </button>
+      )}
     </div>
   );
 }

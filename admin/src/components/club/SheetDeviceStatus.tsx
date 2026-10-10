@@ -1,18 +1,13 @@
 import type { Timestamp } from 'firebase/firestore';
+import { deviceHealth } from '../../lib/deviceHealth';
 import { formatAgo } from '../../lib/format';
 import type { Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './SheetDeviceStatus.module.css';
 
-// Scoreboards report every 30 minutes (Constants.deviceStatusHeartbeat in the
-// app). Two missed reports, plus some slack, is treated as offline.
-const OFFLINE_AFTER_MS = 65 * 60_000;
-
 // A device clock this far from the server's is worth pointing out, since game
 // times are stamped by the device.
 const CLOCK_SKEW_WARNING_MS = 2 * 60_000;
-
-const RECENT_SYNC_ERROR_MS = 24 * 60 * 60_000;
 
 interface Props {
   sheet: Sheet;
@@ -47,8 +42,9 @@ function clockSkew(device: NonNullable<Sheet['device']>): string | null {
 /** The app version, check-in state and device details of a paired sheet's scoreboard. */
 export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
   const device = sheet.device;
+  const health = deviceHealth(sheet, deployedBuildId, now.getTime());
 
-  if (!device) {
+  if (!device || !health) {
     return (
       <div className={common.rowMeta}>
         <span
@@ -62,12 +58,8 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
   }
 
   const lastSeen = device.lastSeenAt?.toDate();
-  const online = lastSeen !== undefined && now.getTime() - lastSeen.getTime() < OFFLINE_AFTER_MS;
-  const updatePending =
-    deployedBuildId !== null && device.buildId !== undefined && device.buildId !== deployedBuildId;
+  const { online, updatePending, recentSyncError } = health;
   const syncError = device.lastSyncError;
-  const syncErrorIsRecent =
-    syncError !== undefined && now.getTime() - syncError.at.toMillis() < RECENT_SYNC_ERROR_MS;
   const skew = clockSkew(device);
 
   const details: [string, string | null | undefined][] = [
@@ -98,7 +90,7 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
             v{device.appVersion}
           </span>
         )}
-        {online ? (
+        {online && lastSeen ? (
           <span className={common.onlineChip}>Online · seen {formatAgo(lastSeen, now)}</span>
         ) : (
           <span className={common.warningChip}>
@@ -113,7 +105,7 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
             Update pending
           </span>
         )}
-        {syncErrorIsRecent && (
+        {recentSyncError && syncError && (
           <span className={common.errorChip} title={`${syncError.operation}: ${syncError.message}`}>
             Sync error {formatAgo(syncError.at.toDate(), now)}
           </span>

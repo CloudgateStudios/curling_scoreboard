@@ -16,6 +16,10 @@
 }
 
 .header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
@@ -144,4 +148,9 @@
   color: #999;
   padding: 2rem 0;
   font-size: 0.9rem;
+}
+
+.loadMore {
+  display: block;
+  margin: 1rem auto 0;
 }

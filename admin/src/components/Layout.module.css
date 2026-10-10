@@ -68,3 +68,35 @@
   padding: 2rem 1.5rem;
   width: 100%;
 }
+
+.email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+}
+
+/* Phones: drop what the nav can live without so it stays on one line. */
+@media (max-width: 640px) {
+  .nav {
+    padding: 0 1rem;
+  }
+
+  .brand {
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  .brandSuffix,
+  .email {
+    display: none;
+  }
+
+  .navRight {
+    gap: 0.6rem;
+  }
+
+  .main {
+    padding: 1.25rem 1rem;
+  }
+}

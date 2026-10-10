@@ -1,23 +1,24 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteField, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { generatePairingCode } from '../../lib/credentials';
+import { sheetsHealth } from '../../lib/deviceHealth';
 import { errorMessage } from '../../lib/format';
-import { activeLiveGame } from '../../lib/liveGame';
 import type { Sheet } from '../../types';
-import { SheetDeviceStatus } from './SheetDeviceStatus';
+import { SheetRow } from './SheetRow';
 import common from '../../styles/common.module.css';
 import styles from './SheetsSection.module.css';
 
 interface Props {
   clubId: string;
   sheets: Sheet[];
-  canAddSheets: boolean;
+  /** Super admins add and delete sheets; club admins rename and unpair them. */
+  canManageSheets: boolean;
   onViewGames: (sheetId: string) => void;
 }
 
-/** Each sheet's live game, pairing state, scoreboard status and pairing code. */
-export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Props) {
+/** How the club's scoreboards are doing, then each sheet's live game,
+ *  pairing state, scoreboard status and pairing code. */
+export function SheetsSection({ clubId, sheets, canManageSheets, onViewGames }: Props) {
   const [adding, setAdding] = useState(false);
   const [newSheetName, setNewSheetName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -38,26 +39,6 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
-
-  async function handleGeneratePairingCode(sheetId: string) {
-    try {
-      await updateDoc(doc(db, 'clubs', clubId, 'sheets', sheetId), {
-        pairingCode: generatePairingCode(),
-      });
-    } catch (err) {
-      setError(errorMessage(err, 'Could not generate a pairing code.'));
-    }
-  }
-
-  async function handleClearPairingCode(sheetId: string) {
-    try {
-      await updateDoc(doc(db, 'clubs', clubId, 'sheets', sheetId), {
-        pairingCode: deleteField(),
-      });
-    } catch (err) {
-      setError(errorMessage(err, 'Could not clear the pairing code.'));
-    }
-  }
 
   async function handleAddSheet(e: React.FormEvent) {
     e.preventDefault();
@@ -80,12 +61,14 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
     <div className={common.section}>
       <div className={common.sectionHeader}>
         <h2 className={common.sectionTitle}>Sheets ({sheets.length})</h2>
-        {canAddSheets && (
+        {canManageSheets && (
           <button className={common.primaryButton} onClick={() => setAdding(true)}>
             + Add Sheet
           </button>
         )}
       </div>
+
+      {sheets.length > 0 && <HealthSummary sheets={sheets} deployedBuildId={deployedBuildId} now={now} />}
 
       {adding && (
         <form onSubmit={handleAddSheet} className={common.inlineForm}>
@@ -109,54 +92,46 @@ export function SheetsSection({ clubId, sheets, canAddSheets, onViewGames }: Pro
       {error && <p className={common.error}>{error}</p>}
 
       <div className={common.list}>
-        {sheets.map((sheet) => {
-          // An abandoned game stays on the sheet, so it is aged out here.
-          const liveGame = activeLiveGame(sheet.liveGame, now.getTime());
-          return (
-          <div key={sheet.id} className={common.row}>
-            <div className={common.rowInfo}>
-              <span className={common.rowName}>{sheet.name}</span>
-              <div className={common.rowMeta}>
-                {liveGame ? (
-                  <span className={common.liveChip}>
-                    LIVE — End {liveGame.currentEnd} &nbsp;
-                    {liveGame.team1.name} {liveGame.team1.score}–{liveGame.team2.score} {liveGame.team2.name}
-                  </span>
-                ) : (
-                  <span className={common.idleChip}>Idle</span>
-                )}
-                {sheet.scoreboardUid ? (
-                  <span className={common.pairedChip}>Paired</span>
-                ) : (
-                  <span className={common.unpairedChip}>Unpaired</span>
-                )}
-              </div>
-              {sheet.scoreboardUid && (
-                <SheetDeviceStatus sheet={sheet} deployedBuildId={deployedBuildId} now={now} />
-              )}
-            </div>
-            <div className={common.rowActions}>
-              {sheet.pairingCode ? (
-                <div className={styles.pairingCodeRow}>
-                  <code className={styles.pairingCode}>{sheet.pairingCode}</code>
-                  <button className={common.ghostButton} onClick={() => handleClearPairingCode(sheet.id)}>
-                    Clear
-                  </button>
-                </div>
-              ) : (
-                <button className={common.ghostButton} onClick={() => handleGeneratePairingCode(sheet.id)}>
-                  Generate Pairing Code
-                </button>
-              )}
-              <button className={common.linkButton} onClick={() => onViewGames(sheet.id)}>
-                View Games →
-              </button>
-            </div>
-          </div>
-          );
-        })}
+        {sheets.map((sheet) => (
+          <SheetRow
+            key={sheet.id}
+            clubId={clubId}
+            sheet={sheet}
+            canDelete={canManageSheets}
+            deployedBuildId={deployedBuildId}
+            now={now}
+            onViewGames={onViewGames}
+          />
+        ))}
         {sheets.length === 0 && <p className={common.empty}>No sheets yet.</p>}
       </div>
+    </div>
+  );
+}
+
+/** One line that says whether anything needs looking at before a draw. */
+function HealthSummary({ sheets, deployedBuildId, now }: { sheets: Sheet[]; deployedBuildId: string | null; now: Date }) {
+  const health = sheetsHealth(sheets, deployedBuildId, now.getTime());
+  const paired = sheets.length - health.unpaired;
+  const problems = health.offline + health.updatePending + health.syncErrors;
+  const plural = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`;
+
+  return (
+    <div className={paired > 0 && problems === 0 ? styles.healthGood : styles.healthAttention}>
+      {paired > 0 && problems === 0 && (
+        <span>{paired === 1 ? 'The scoreboard is' : `All ${paired} scoreboards are`} online and up to date.</span>
+      )}
+      {health.online > 0 && problems > 0 && <span className={common.onlineChip}>{health.online} online</span>}
+      {health.offline > 0 && <span className={common.warningChip}>{health.offline} offline</span>}
+      {health.updatePending > 0 && (
+        <span className={common.warningChip}>{plural(health.updatePending, 'update')} pending</span>
+      )}
+      {health.syncErrors > 0 && (
+        <span className={common.errorChip}>{plural(health.syncErrors, 'sync error')} today</span>
+      )}
+      {health.unpaired > 0 && (
+        <span className={common.unpairedChip}>{plural(health.unpaired, 'sheet')} without a scoreboard</span>
+      )}
     </div>
   );
 }

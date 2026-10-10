@@ -3,6 +3,7 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { leagueFrom } from '../lib/leagues';
+import { confirmLeave } from '../lib/unsavedChanges';
 import type { Club, League, Sheet } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
@@ -10,6 +11,7 @@ import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
+import { ClubHeader } from '../components/club/ClubHeader';
 import common from '../styles/common.module.css';
 import styles from './ClubDetail.module.css';
 
@@ -73,6 +75,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   }, [resolvedClubId]);
 
   function handleViewGames(sheetId: string) {
+    if (!confirmLeave()) return;
     // Club admins don't have /clubs/:clubId in their routes
     if (clubProp) {
       navigate(`/sheets/${sheetId}/games`);
@@ -82,6 +85,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   }
 
   function handleOpenLeague(leagueId: string) {
+    if (!confirmLeave()) return;
     navigate(clubProp ? `/leagues/${leagueId}` : `/clubs/${resolvedClubId}/leagues/${leagueId}`);
   }
 
@@ -97,16 +101,11 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
     <div>
       <div className={common.breadcrumb}>
         {!clubProp && (
-          <button className={common.backButton} onClick={() => navigate('/')}>← All Clubs</button>
+          <button className={common.backButton} onClick={() => confirmLeave() && navigate('/')}>← All Clubs</button>
         )}
       </div>
 
-      <div className={common.header}>
-        <div>
-          <h1 className={common.title}>{club.name}</h1>
-          <p className={common.subtitle}>ID: {club.id}</p>
-        </div>
-      </div>
+      <ClubHeader club={club} canRename={!isClubAdmin} />
 
       <div className={styles.tabs} role="tablist">
         {TABS.map((t) => (
@@ -131,10 +130,10 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         <SheetsSection
           clubId={resolvedClubId}
           sheets={sheets}
-          canAddSheets={!isClubAdmin}
+          canManageSheets={!isClubAdmin}
           onViewGames={handleViewGames}
         />
-        <RecentGames clubId={resolvedClubId} sheets={sheets} />
+        <RecentGames clubId={resolvedClubId} clubName={club.name} sheets={sheets} />
       </div>
 
       <div role="tabpanel" hidden={tab !== 'leagues'}>

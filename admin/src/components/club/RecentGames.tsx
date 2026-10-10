@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { downloadCsv, gamesCsv, gamesCsvFilename } from '../../lib/gamesCsv';
 import type { Game, Sheet } from '../../types';
 import { GameCard } from '../GameCard';
 import common from '../../styles/common.module.css';
@@ -30,11 +31,12 @@ function groupByDay(games: RecentGame[]): { label: string; games: RecentGame[] }
 
 interface Props {
   clubId: string;
+  clubName: string;
   sheets: Sheet[];
 }
 
 /** Completed games from every sheet in the club over the last seven days. */
-export function RecentGames({ clubId, sheets }: Props) {
+export function RecentGames({ clubId, clubName, sheets }: Props) {
   // Sheets update on every live score. Key the fetch on sheet ids and names
   // only, so a score change doesn't refetch every sheet's games.
   const sheetKey = JSON.stringify(sheets.map(({ id, name }) => ({ id, name })));
@@ -90,9 +92,22 @@ export function RecentGames({ clubId, sheets }: Props) {
     <div className={common.section}>
       <div className={common.sectionHeader}>
         <h2 className={common.sectionTitle}>Recent Games — Last 7 Days</h2>
-        <span className={styles.gameCount}>
-          {loading ? '…' : `${games.length} game${games.length !== 1 ? 's' : ''}`}
-        </span>
+        <div className={styles.headerActions}>
+          <span className={styles.gameCount}>
+            {loading ? '…' : `${games.length} game${games.length !== 1 ? 's' : ''}`}
+          </span>
+          {!loading && games.length > 0 && (
+            <button
+              className={common.ghostButton}
+              onClick={() => downloadCsv(
+                gamesCsvFilename(clubName, new Date(Date.now() - WINDOW_MS), new Date()),
+                gamesCsv(games),
+              )}
+            >
+              Export CSV
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && <p className={common.empty}>Loading…</p>}
