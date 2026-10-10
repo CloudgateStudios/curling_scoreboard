@@ -54,10 +54,10 @@ Access the app depends on:
 
 - a paired scoreboard pushing `liveGame` and writing a completed game
 - a paired scoreboard reporting its device status
-- a paired scoreboard clearing its own uid on disconnect
 - a club admin reading their own club and its API key
 - a paired scoreboard and a club admin reading the club's `config`
 - a club admin setting and clearing their club's rock colors
+- a club admin setting, changing and reading their club's scoreboard PIN
 - a club admin creating, updating, listing and deleting leagues
 - a paired scoreboard reading and listing its club's leagues
 - anyone reading `appConfig/scoreboard` to pick up new builds
@@ -69,6 +69,7 @@ Access that must stay denied:
 - claiming a sheet directly, for yourself or another uid
 - reading another club's paired sheet directly
 - reassigning a paired sheet to another device
+- a scoreboard clearing its own uid, which would skip the admin PIN
 - a scoreboard changing anything else on its sheet, writing a device status
   that is not a map or is oversized, or reporting for a sheet it is not
   paired with
@@ -77,8 +78,10 @@ Access that must stay denied:
   changing their own key
 - reading a club's `config` as a scoreboard from another club, one without
   claims, or one whose claims name a sheet it is no longer paired with
-- a scoreboard writing its club's `config`, or reading its club document or
-  API key
+- a scoreboard writing its club's `config`, or reading its club document,
+  API key or scoreboard PIN
+- a club admin setting another club's scoreboard PIN, one that is not 4 to
+  8 digits, or other fields beside it
 - reading or listing leagues as a scoreboard from another club, one without
   claims, or one that has been replaced; a scoreboard changing a league
 - a club admin creating a league in another club, or one that is malformed
@@ -96,6 +99,11 @@ Access that must stay denied:
   status; and does not accept a code twice. It gives the scoreboard claims
   naming its sheet, takes them away from the scoreboard it replaces, and
   refuses admin accounts.
+- `unpairSheet` turns away callers who are not signed in and malformed
+  sheets; keeps the sheet paired on a wrong or missing PIN and at a club with
+  no PIN; with the right PIN unpairs the sheet and takes the claims away; lets
+  a scoreboard whose sheet was paired elsewhere go without the PIN, leaving the
+  new pairing alone; and never unpairs a sheet another scoreboard holds.
 - The REST API requires a key, rejects a wrong one, accepts the club's key,
   returns 404 for an unknown club, ignores a key left on the club
   document from before the API key migration, and leaves the scoreboard's
@@ -103,5 +111,7 @@ Access that must stay denied:
   returns one, only with the club's own key and only the documented fields,
   and reports the league and teams on live and completed games.
 - `provisionClub` is limited to super admins, and creates the club without a
-  key on its document, a 32 character key under `private/apiKey`, and a club
-  admin with the right claims.
+  key on its document, a 32 character key under `private/apiKey`, the
+  scoreboard PIN it was given under `private/scoreboardPin`, and a club admin
+  with the right claims. It refuses a missing or malformed PIN before creating
+  anything, and removes the PIN with the club when creating the admin fails.

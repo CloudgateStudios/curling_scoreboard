@@ -143,6 +143,12 @@
   color: #444;
 }
 
+.hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #777;
+}
+
 .input {
   padding: 0.65rem 0.85rem;
   border: 1px solid #ddd;

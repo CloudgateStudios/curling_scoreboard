@@ -173,6 +173,97 @@ describe('pairSheet', () => {
   });
 });
 
+describe('unpairSheet', () => {
+  // Pairs a fresh scoreboard with a new sheet in club-pin, the club whose
+  // admin PIN is 4821.
+  async function pairedScoreboard(sheetId) {
+    await db.doc(`clubs/club-pin/sheets/${sheetId}`).set({ name: sheetId, pairingCode: `${sheetId}-CODE`.toUpperCase() });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: `${sheetId}-CODE` });
+    return client;
+  }
+
+  before(async () => {
+    await db.doc('clubs/club-pin').set({ name: 'Club Pin' });
+    await db.doc('clubs/club-pin/private/scoreboardPin').set({ pin: '4821' });
+    await db.doc('clubs/club-no-pin').set({ name: 'Club No Pin' });
+  });
+
+  test('rejects callers who are not signed in', async () => {
+    const client = await clientFor();
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'any', pin: '4821' }),
+      'functions/unauthenticated',
+    );
+  });
+
+  test('rejects a missing or malformed sheet', async () => {
+    const client = await anonymous();
+    await rejectsWith(client.call('unpairSheet', { pin: '4821' }), 'functions/invalid-argument');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin/sheets', sheetId: 'x', pin: '4821' }),
+      'functions/invalid-argument',
+    );
+  });
+
+  test('keeps the sheet paired when the PIN is wrong', async () => {
+    const client = await pairedScoreboard('pin-wrong');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-wrong', pin: '1111' }),
+      'functions/permission-denied',
+    );
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-wrong' }),
+      'functions/permission-denied',
+    );
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-wrong').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+  });
+
+  test('unpairs the sheet and takes the claims away with the right PIN', async () => {
+    const client = await pairedScoreboard('pin-right');
+    const result = await client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-right', pin: ' 4821 ' });
+    assert.deepEqual(result.data, { unpaired: true });
+
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-right').get();
+    assert.equal(sheet.get('scoreboardUid'), undefined);
+    assert.equal((await adminAuth.getUser(client.auth.currentUser.uid)).customClaims?.role, undefined);
+  });
+
+  test('will not unpair at a club that has no PIN set', async () => {
+    await db.doc('clubs/club-no-pin/sheets/no-pin').set({ name: 'No Pin', pairingCode: 'NPN234' });
+    const client = await anonymous();
+    await client.call('pairSheet', { pairingCode: 'NPN234' });
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-no-pin', sheetId: 'no-pin', pin: '' }),
+      'functions/failed-precondition',
+    );
+    const sheet = await db.doc('clubs/club-no-pin/sheets/no-pin').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+  });
+
+  test('lets a scoreboard whose sheet was paired elsewhere go without the PIN', async () => {
+    const replaced = await pairedScoreboard('pin-replaced');
+    await db.doc('clubs/club-pin/sheets/pin-replaced').update({ pairingCode: 'REPLACED2' });
+    const replacement = await anonymous();
+    await replacement.call('pairSheet', { pairingCode: 'REPLACED2' });
+
+    const result = await replaced.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-replaced' });
+    assert.deepEqual(result.data, { unpaired: false });
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-replaced').get();
+    assert.equal(sheet.get('scoreboardUid'), replacement.auth.currentUser.uid, 'leaves the new pairing alone');
+  });
+
+  test('cannot unpair a sheet some other scoreboard holds, even with the PIN', async () => {
+    const owner = await pairedScoreboard('pin-owned');
+    const stranger = await anonymous();
+    const result = await stranger.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-owned', pin: '4821' });
+    assert.deepEqual(result.data, { unpaired: false });
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-owned').get();
+    assert.equal(sheet.get('scoreboardUid'), owner.auth.currentUser.uid);
+  });
+});
+
 describe('REST API key check', () => {
   test('requires a key', async () => {
     const res = await fetch(`${API_URL}/clubs/club-a`);
@@ -426,6 +517,7 @@ describe('provisionClub', () => {
     clubId: 'new-club',
     adminEmail: 'admin@new-club.example',
     adminPassword: 'password123',
+    scoreboardPin: '2468',
   };
 
   test('is limited to super admins', async () => {
@@ -433,7 +525,7 @@ describe('provisionClub', () => {
     await rejectsWith(clubAdmin.call('provisionClub', request), 'functions/permission-denied');
   });
 
-  test('creates the club, its private API key and its first admin', async () => {
+  test('creates the club, its private API key and PIN, and its first admin', async () => {
     const superAdmin = await userWithClaims('super@example.com', { role: 'superadmin', clubId: null });
     const result = await superAdmin.call('provisionClub', request);
     assert.equal(result.data.clubId, 'new-club');
@@ -441,6 +533,7 @@ describe('provisionClub', () => {
     assert.deepEqual((await db.doc('clubs/new-club').get()).data(), { name: 'New Club' });
     const key = (await db.doc('clubs/new-club/private/apiKey').get()).get('key');
     assert.match(key, /^[0-9a-f]{32}$/);
+    assert.deepEqual((await db.doc('clubs/new-club/private/scoreboardPin').get()).data(), { pin: '2468' });
 
     const admin = await adminAuth.getUserByEmail(request.adminEmail);
     assert.deepEqual(admin.customClaims, { role: 'clubadmin', clubId: 'new-club' });
@@ -455,10 +548,12 @@ describe('provisionClub', () => {
       clubId: 'taken-club',
       adminEmail: 'taken@provision.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/already-exists');
 
     assert.equal((await db.doc('clubs/taken-club').get()).exists, false);
     assert.equal((await db.doc('clubs/taken-club/private/apiKey').get()).exists, false);
+    assert.equal((await db.doc('clubs/taken-club/private/scoreboardPin').get()).exists, false);
   });
 
   test('reports a malformed email as invalid-argument and rolls back the club', async () => {
@@ -468,10 +563,12 @@ describe('provisionClub', () => {
       clubId: 'bad-email-club',
       adminEmail: 'not-an-email',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     assert.equal((await db.doc('clubs/bad-email-club').get()).exists, false);
     assert.equal((await db.doc('clubs/bad-email-club/private/apiKey').get()).exists, false);
+    assert.equal((await db.doc('clubs/bad-email-club/private/scoreboardPin').get()).exists, false);
   });
 
   test('rejects a short password before creating anything', async () => {
@@ -481,6 +578,7 @@ describe('provisionClub', () => {
       clubId: 'short-pw-club',
       adminEmail: 'admin@short-pw.example',
       adminPassword: 'short',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     assert.equal((await db.doc('clubs/short-pw-club').get()).exists, false);
@@ -494,9 +592,26 @@ describe('provisionClub', () => {
       clubId: 'Bad Id/Club',
       adminEmail: 'admin@bad-id.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     await rejectsWith(adminAuth.getUserByEmail('admin@bad-id.example'), 'auth/user-not-found');
+  });
+
+  test('rejects a missing or malformed scoreboard PIN before creating anything', async () => {
+    const caller = await superAdmin('super-bad-pin@example.com');
+    for (const scoreboardPin of [undefined, '', '123', '12a4', '123456789']) {
+      await rejectsWith(caller.call('provisionClub', {
+        clubName: 'Bad Pin Club',
+        clubId: 'bad-pin-club',
+        adminEmail: 'admin@bad-pin.example',
+        adminPassword: 'password123',
+        scoreboardPin,
+      }), 'functions/invalid-argument');
+    }
+
+    assert.equal((await db.doc('clubs/bad-pin-club').get()).exists, false);
+    await rejectsWith(adminAuth.getUserByEmail('admin@bad-pin.example'), 'auth/user-not-found');
   });
 });
 
@@ -541,6 +656,7 @@ describe('addClubAdmin', () => {
       clubId: 'club-a',
       adminEmail: 'taken@add-admin.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/already-exists');
   });
 

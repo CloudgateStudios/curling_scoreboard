@@ -206,6 +206,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
             builder: (context, _) => GameStartDialog(
               rockColors: rockColors?.clubColors.value,
               leagues: leagues?.leagues.value ?? const [],
+              connection: ConnectionStatus(
+                registrationService: widget.registrationService,
+                onChanged: _onConnectionChanged,
+              ),
             ),
           ),
         );
@@ -221,6 +225,16 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     }
 
     _gameController.startGame(newGame);
+  }
+
+  /// The scoreboard connected to a club or disconnected from one, so its
+  /// colors and leagues are now some other club's, or the defaults.
+  void _onConnectionChanged() {
+    // Let the admin portal see a newly paired scoreboard without waiting for
+    // a heartbeat. Does nothing once disconnected.
+    _deviceStatus.reportNow();
+    widget.rockColorsService?.start();
+    widget.leagueService?.start();
   }
 
   Future<void> enterScore(CurlingEnd curlingEnd) async {
@@ -442,7 +456,6 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             final l10n = context.l10n;
-            final reg = widget.registrationService;
 
             return AlertDialog(
               title: Text(l10n.settingsDialogTitle),
@@ -479,94 +492,6 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
                         ],
                       ),
                     ),
-                    const Divider(),
-                    Text(
-                      l10n.settingsDialogConnectionSectionTitle,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    if (reg.isRegistered) ...[
-                      Text(
-                        l10n.settingsDialogConnectedClub(reg.clubName ?? ''),
-                      ),
-                      Text(
-                        l10n.settingsDialogConnectedSheet(reg.sheetName ?? ''),
-                      ),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: reg.pairingLost,
-                        builder: (context, pairingLost, _) {
-                          if (!pairingLost) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              l10n.settingsDialogPairingLost,
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(l10n.disconnectConfirmationTitle),
-                              content: Text(
-                                l10n.disconnectConfirmationContent(
-                                  reg.clubName ?? '',
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: Text(l10n.buttonLabelNo),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: Text(
-                                    l10n.disconnectConfirmationButton,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed ?? false) {
-                            await reg.disconnect();
-                            widget.rockColorsService?.start();
-                            widget.leagueService?.start();
-                            if (context.mounted) {
-                              setStateDialog(() {});
-                              setState(() {});
-                            }
-                          }
-                        },
-                        child: Text(l10n.settingsDialogDisconnectButtonLabel),
-                      ),
-                    ] else
-                      TextButton(
-                        onPressed: () async {
-                          final connected = await showDialog<bool>(
-                            context: context,
-                            builder: (_) =>
-                                ConnectToClubDialog(registrationService: reg),
-                          );
-                          if (connected ?? false) {
-                            // Let the admin portal see the newly paired
-                            // scoreboard without waiting for a heartbeat.
-                            _deviceStatus.reportNow();
-                            widget.rockColorsService?.start();
-                            widget.leagueService?.start();
-                            if (context.mounted) {
-                              setStateDialog(() {});
-                              setState(() {});
-                            }
-                          }
-                        },
-                        child: Text(l10n.settingsDialogConnectButtonLabel),
-                      ),
                   ],
                 ),
               ),

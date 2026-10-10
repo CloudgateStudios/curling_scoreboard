@@ -36,6 +36,7 @@ const CLUBS = [
     id: 'windy-city-curling',
     name: 'Windy City Curling',
     apiKey: 'dev-wcc-key-a1b2c3d4e5f6',
+    scoreboardPin: '1234',
     sheets: [
       { id: 'sheet-1', name: 'Sheet 1' },
       { id: 'sheet-2', name: 'Sheet 2' },
@@ -46,6 +47,7 @@ const CLUBS = [
     id: 'milwaukee-curling',
     name: 'Milwaukee Curling Club',
     apiKey: 'dev-mcc-key-g7h8i9j0k1l2',
+    scoreboardPin: '5678',
     sheets: [
       { id: 'sheet-1', name: 'Sheet 1' },
       { id: 'sheet-2', name: 'Sheet 2' },
@@ -204,7 +206,8 @@ async function seed() {
     const clubRef = db.collection('clubs').doc(club.id);
     await clubRef.set({ name: club.name }, { merge: true });
     await clubRef.collection('private').doc('apiKey').set({ key: club.apiKey });
-    console.log(`Club: ${club.name} (API key: ${club.apiKey})`);
+    await clubRef.collection('private').doc('scoreboardPin').set({ pin: club.scoreboardPin });
+    console.log(`Club: ${club.name} (API key: ${club.apiKey}, scoreboard PIN: ${club.scoreboardPin})`);
 
     for (const { id, ...league } of LEAGUES) {
       await clubRef.collection('leagues').doc(id).set(league, { merge: true });

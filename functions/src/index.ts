@@ -6,7 +6,7 @@ import { clubsRouter } from './routes/clubs';
 export {
   provisionClub, setSuperAdminClaim, addClubAdmin, removeClubAdmin, deleteSheet,
 } from './admin';
-export { pairSheet } from './pairing';
+export { pairSheet, unpairSheet } from './pairing';
 export { sendCompletedGameWebhook, sendTestWebhook } from './webhook';
 
 initializeApp();

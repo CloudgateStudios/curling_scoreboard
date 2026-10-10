@@ -102,6 +102,31 @@ await check('club admin: read own club', 'allow', () =>
 await check('club admin: read own API key', 'allow', () =>
   getDoc(doc(adminA, 'clubs/club-a/private/apiKey')));
 
+// --- the admin PIN a scoreboard asks for before it disconnects ---
+await check('club admin: set the scoreboard PIN', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '4821' }));
+
+await check('club admin: change the scoreboard PIN', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '93017264' }));
+
+await check('club admin: read the scoreboard PIN', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin')));
+
+await check('attack: club admin sets a PIN that is not 4 to 8 digits', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '12a4' }));
+
+await check('attack: club admin sets a PIN too short to mean anything', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '123' }));
+
+await check('attack: club admin stores other fields beside the PIN', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '4821', note: 'x' }));
+
+await check('attack: club admin sets another club PIN', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/private/scoreboardPin'), { pin: '4821' }));
+
+await check('attack: scoreboard reads its club PIN', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/scoreboardPin')));
+
 // --- sheets ---
 await check('attack: read another club paired sheet directly', 'deny', () =>
   getDoc(doc(anon, 'clubs/club-b/sheets/sheet-secret')));
@@ -278,8 +303,14 @@ await check('attack: scoreboard reads its club API key', 'deny', () =>
 await check('scoreboard: push liveGame with claims', 'allow', () =>
   updateDoc(doc(claimedBoard, 'clubs/club-a/sheets/sheet-paired'), { liveGame: { currentEnd: 1 } }));
 
-await check('scoreboard: disconnect by clearing its uid', 'allow', () =>
+// Disconnecting asks for the club's admin PIN, which the unpairSheet
+// function checks, so the scoreboard cannot let go of the sheet by itself.
+await check('attack: scoreboard disconnects itself without the PIN', 'deny', () =>
   updateDoc(doc(board, 'clubs/club-a/sheets/sheet-paired'),
+    { scoreboardUid: deleteField() }));
+
+await env.withSecurityRulesDisabled((ctx) =>
+  updateDoc(doc(ctx.firestore(), 'clubs/club-a/sheets/sheet-paired'),
     { scoreboardUid: deleteField() }));
 
 await check('attack: disconnected scoreboard reads club config with its old claims', 'deny', () =>

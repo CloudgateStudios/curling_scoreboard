@@ -9,6 +9,7 @@ import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
+import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
 import { WebhookSection } from '../components/club/WebhookSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
@@ -143,6 +144,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         <RockColorsSection clubId={resolvedClubId} />
         <div>
           <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
+          <ScoreboardPinSection clubId={resolvedClubId} />
           <WebhookSection clubId={resolvedClubId} />
           {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
         </div>

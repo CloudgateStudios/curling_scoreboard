@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +5,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PairingCodeNotFoundException implements Exception {
   const PairingCodeNotFoundException();
+}
+
+/// The admin PIN entered to disconnect is not the club's.
+class IncorrectAdminPinException implements Exception {
+  const IncorrectAdminPinException();
+}
+
+/// The club has not set the admin PIN that disconnecting asks for.
+class AdminPinNotSetException implements Exception {
+  const AdminPinNotSetException();
 }
 
 class RegistrationService {
@@ -68,24 +77,40 @@ class RegistrationService {
     pairingLost.value = false;
   }
 
-  Future<void> disconnect() async {
-    // Best-effort: clear scoreboardUid before signing out so the sheet can be
-    // re-paired. If this fails we still sign out locally.
-    try {
-      final cId = clubId;
-      final sId = sheetId;
-      if (cId != null && sId != null) {
-        await FirebaseFirestore.instance
-            .collection('clubs')
-            .doc(cId)
-            .collection('sheets')
-            .doc(sId)
-            .update({'scoreboardUid': FieldValue.delete()});
+  /// Disconnects this scoreboard from its sheet, which takes the club's
+  /// admin [pin].
+  ///
+  /// The `unpairSheet` Cloud Function checks the PIN and lets go of the
+  /// sheet, because the security rules do not let the scoreboard do either.
+  /// It asks for no PIN when the sheet is no longer this scoreboard's, so a
+  /// scoreboard whose pairing was lost can always be cleared. Throws
+  /// [IncorrectAdminPinException] or [AdminPinNotSetException] and stays
+  /// connected when the PIN is not accepted.
+  Future<void> disconnect({required String pin}) async {
+    final cId = clubId;
+    final sId = sheetId;
+    // Without a signed in user this scoreboard holds no sheet, and there is
+    // nothing to check before forgetting the saved registration.
+    if (FirebaseAuth.instance.currentUser != null &&
+        cId != null &&
+        sId != null) {
+      try {
+        await FirebaseFunctions.instance
+            .httpsCallable('unpairSheet')
+            .call<Map<String, dynamic>>({
+              'clubId': cId,
+              'sheetId': sId,
+              'pin': pin,
+            });
+      } on FirebaseFunctionsException catch (e) {
+        if (e.code == 'permission-denied') {
+          throw const IncorrectAdminPinException();
+        }
+        if (e.code == 'failed-precondition') {
+          throw const AdminPinNotSetException();
+        }
+        rethrow;
       }
-    } on Exception catch (e) {
-      debugPrint(
-        'RegistrationService.disconnect scoreboardUid clear error: $e',
-      );
     }
 
     await FirebaseAuth.instance.signOut();

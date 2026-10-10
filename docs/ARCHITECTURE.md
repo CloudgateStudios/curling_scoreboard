@@ -10,7 +10,7 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 
 | Piece        | Runs on                                                       | Talks to                                                                                            |
 | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet` function                                                        |
+| `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
 | `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet` functions |
 | `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                                                                |
 
@@ -34,6 +34,9 @@ clubs/{clubId}
 
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
+
+clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
+  pin: string                // 4 to 8 digits
 
 clubs/{clubId}/private/webhook       // absent means no webhook
   url: string                // https, where completed games are posted
@@ -140,8 +143,8 @@ admin scripts.
 | Role                 | Claims                                  | Signs in with           | Can                                                                                   |
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
-| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors and the completed game webhook, manage leagues and teams, read game history |
-| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games, disconnect itself. Its club: read `config` and `leagues` |
+| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
+| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
@@ -153,7 +156,7 @@ straight away, whatever its claims say.
 The first super admin of a project is created with
 `scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
 others. Club admins are created from the admin portal through
-`provisionClub` (a new club with its first admin) and `addClubAdmin`, and
+`provisionClub` (a new club with its first admin and scoreboard PIN) and `addClubAdmin`, and
 taken off again with `removeClubAdmin`, which deletes the account. A token
 issued before then keeps its club admin claim until it expires, at most an
 hour later.
@@ -166,7 +169,8 @@ goes through `deleteSheet` (super admins only), which also deletes its
 
 1. A club admin generates a six character code for a sheet in the admin
    portal. It is stored as `pairingCode` on the sheet.
-2. On the scoreboard, Settings → Connect to Club, the code is entered.
+2. On the scoreboard's game setup screen, Connection opens the dialog the
+   code is entered in.
 3. The app signs in anonymously and calls the `pairSheet` callable function.
 4. `pairSheet` finds the sheet holding the code with a collection group query
    and sets the caller's scoreboard claims. Then in a transaction it sets
@@ -185,15 +189,38 @@ rules used to allow that, which let any signed in client list every unpaired
 sheet's code and read every club's API key; moving the lookup into
 `pairSheet` closed it.
 
-Disconnecting removes `scoreboardUid` from the sheet (best effort), signs out
-and clears the saved values. Scoring carries on locally either way.
+## Disconnecting a scoreboard
+
+Disconnecting is kept out of the way, because scoreboards sit where anyone can
+tap at them. A connected scoreboard's setup screen only says "Connected as
+club – sheet". Pressing and holding that for four seconds, with a ring filling
+in meanwhile, opens a dialog showing the connection with a Disconnect button,
+and that asks for the club's admin PIN. Settings has nothing about the
+connection.
+
+Each club has one PIN. A super admin sets it when creating the club, and the
+club's admins can change it in the admin portal. It is kept in `clubs/{clubId}/private/scoreboardPin`, which scoreboards cannot read.
+The app sends what was typed to the `unpairSheet` callable function, which
+checks it, removes `scoreboardUid` from the sheet and clears the scoreboard's
+claims. The rules do not let a scoreboard remove its own `scoreboardUid`, so
+the PIN cannot be skipped. A club with no PIN set, which only clubs created
+before PINs can be, cannot disconnect its scoreboards until an admin sets one
+or `scripts/backfill-scoreboard-pins.js` gives it one.
+
+`unpairSheet` asks for no PIN when the sheet is not the caller's, which is
+the case for a scoreboard whose pairing was lost: there is nothing left to
+protect, and it lets that scoreboard be cleared and paired again. Nothing
+changes on the sheet.
+
+Once the function succeeds the app signs out and clears the saved values.
+Scoring carries on locally either way.
 
 A sheet can be taken away from a scoreboard without it being told: pairing
 another device replaces `scoreboardUid`, and the first one still has its saved
 values. It finds out when the rules refuse one of its writes, usually the
 status report it sends on startup. `SyncService` then sets
-`RegistrationService.pairingLost`, and Settings shows the scoreboard as
-disconnected with a prompt to pair again. A later write that succeeds clears
+`RegistrationService.pairingLost`, and the setup screen says scores are not
+syncing, and the connection dialog prompts to disconnect and pair again. A later write that succeeds clears
 it.
 
 ## Syncing scores
