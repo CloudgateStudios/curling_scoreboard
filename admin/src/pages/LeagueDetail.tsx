@@ -3,9 +3,11 @@ import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
+import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
 import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId } from '../lib/leagues';
 import type { AuthUser, League, LeagueDraw, LeagueTeam } from '../types';
-import styles from './ClubDetail.module.css';
+import common from '../styles/common.module.css';
+import styles from './LeagueDetail.module.css';
 
 interface Props {
   user: AuthUser;
@@ -32,8 +34,10 @@ export function LeagueDetail({ user }: Props) {
   }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useUnsavedChanges(dirty);
 
-  const backTo = routeClubId ? `/clubs/${routeClubId}` : '/';
+  // Back to the club's Leagues tab, which is where the league was opened from.
+  const backTo = `${routeClubId ? `/clubs/${routeClubId}` : '/'}?tab=leagues`;
 
   useEffect(() => {
     if (!clubId || !leagueId) return;
@@ -88,8 +92,8 @@ export function LeagueDetail({ user }: Props) {
   if (missing) {
     return (
       <div>
-        <button className={styles.backButton} onClick={() => navigate(backTo)}>← Back</button>
-        <p className={styles.empty}>This league no longer exists.</p>
+        <button className={common.backButton} onClick={() => navigate(backTo)}>← Back</button>
+        <p className={common.empty}>This league no longer exists.</p>
       </div>
     );
   }
@@ -97,166 +101,171 @@ export function LeagueDetail({ user }: Props) {
 
   return (
     <div>
-      <div className={styles.breadcrumb}>
-        <button className={styles.backButton} onClick={() => navigate(backTo)}>← Back</button>
+      <div className={common.breadcrumb}>
+        <button className={common.backButton} onClick={() => confirmLeave() && navigate(backTo)}>← Back</button>
       </div>
 
-      <div className={styles.header}>
+      <div className={common.header}>
         <div>
-          <h1 className={styles.title}>{league.name || 'League'}</h1>
-          <p className={styles.clubId}>
+          <h1 className={common.title}>{league.name || 'League'}</h1>
+          <p className={common.subtitle}>
             {league.teams.length} team{league.teams.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className={styles.sheetActions}>
-          <button className={styles.ghostButton} onClick={handleDelete}>Delete League</button>
-          <button className={styles.primaryButton} onClick={handleSave} disabled={saving || !dirty}>
+        <div className={common.rowActions}>
+          <button className={common.ghostButton} onClick={handleDelete}>Delete League</button>
+          <button className={common.primaryButton} onClick={handleSave} disabled={saving || !dirty}>
             {saving ? 'Saving…' : dirty ? 'Save Changes' : 'Saved'}
           </button>
         </div>
       </div>
 
-      {error && <p className={styles.error}>{error}</p>}
+      {error && <p className={common.error}>{error}</p>}
 
-      <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>Details</h2>
-        <div className={styles.form}>
-          <label className={styles.label}>
-            Name
-            <input
-              className={styles.input}
-              value={league.name}
-              maxLength={80}
-              onChange={(e) => edit({ name: e.target.value })}
-            />
-          </label>
-          <label className={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={league.active}
-              onChange={(e) => edit({ active: e.target.checked })}
-            />
-            Active: offered on scoreboards when starting a league game
-          </label>
-          <div className={styles.leagueFieldRow}>
-            <label className={styles.label}>
-              Season starts
-              <input
-                type="date"
-                className={styles.input}
-                value={league.seasonStart ?? ''}
-                onChange={(e) => edit({ seasonStart: e.target.value || undefined })}
-              />
-            </label>
-            <label className={styles.label}>
-              Season ends
-              <input
-                type="date"
-                className={styles.input}
-                value={league.seasonEnd ?? ''}
-                onChange={(e) => edit({ seasonEnd: e.target.value || undefined })}
-              />
-            </label>
+      {/* Details and schedule beside the teams, so wide windows don't stretch every field. */}
+      <div className={styles.columns}>
+        <div className={styles.column}>
+          <div className={common.section}>
+            <h2 className={common.sectionTitle}>Details</h2>
+            <div className={common.form}>
+              <label className={common.label}>
+                Name
+                <input
+                  className={common.input}
+                  value={league.name}
+                  maxLength={80}
+                  onChange={(e) => edit({ name: e.target.value })}
+                />
+              </label>
+              <label className={common.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={league.active}
+                  onChange={(e) => edit({ active: e.target.checked })}
+                />
+                Active: offered on scoreboards when starting a league game
+              </label>
+              <div className={styles.leagueFieldRow}>
+                <label className={common.label}>
+                  Season starts
+                  <input
+                    type="date"
+                    className={common.input}
+                    value={league.seasonStart ?? ''}
+                    onChange={(e) => edit({ seasonStart: e.target.value || undefined })}
+                  />
+                </label>
+                <label className={common.label}>
+                  Season ends
+                  <input
+                    type="date"
+                    className={common.input}
+                    value={league.seasonEnd ?? ''}
+                    onChange={(e) => edit({ seasonEnd: e.target.value || undefined })}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className={common.section}>
+            <div className={common.sectionHeader}>
+              <h2 className={common.sectionTitle}>Schedule</h2>
+              <button
+                className={common.ghostButton}
+                onClick={() => edit({ draws: [...league.draws, { day: 1, start: '18:30', end: '20:30' }] })}
+              >
+                + Add Draw
+              </button>
+            </div>
+            <p className={common.blurb}>
+              When this league plays each week. A scoreboard suggests the league when a game is started
+              during one of its draws, using the scoreboard's own clock.
+            </p>
+            {league.draws.map((draw, index) => (
+              // Draws have no identity of their own, and the list only changes
+              // through this form, so the position is a stable enough key.
+              <div key={index} className={styles.leagueFieldRow}>
+                <select
+                  className={common.input}
+                  aria-label="Day"
+                  value={draw.day}
+                  onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
+                >
+                  {DAY_NAMES.map((name, i) => (
+                    <option key={name} value={i + 1}>{name}</option>
+                  ))}
+                </select>
+                <input
+                  type="time"
+                  className={common.input}
+                  aria-label="Start"
+                  value={draw.start}
+                  onChange={(e) => editDraw(index, { start: e.target.value })}
+                />
+                <input
+                  type="time"
+                  className={common.input}
+                  aria-label="End"
+                  value={draw.end}
+                  onChange={(e) => editDraw(index, { end: e.target.value })}
+                />
+                <button
+                  className={common.ghostButton}
+                  onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {league.draws.length === 0 && (
+              <p className={common.empty}>
+                No schedule. The league can still be picked by hand on a scoreboard.
+              </p>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Schedule</h2>
-          <button
-            className={styles.ghostButton}
-            onClick={() => edit({ draws: [...league.draws, { day: 1, start: '18:30', end: '20:30' }] })}
-          >
-            + Add Draw
-          </button>
-        </div>
-        <p className={styles.apiDocsBlurb}>
-          When this league plays each week. A scoreboard suggests the league when a game is started
-          during one of its draws, using the scoreboard's own clock.
-        </p>
-        {league.draws.map((draw, index) => (
-          // Draws have no identity of their own, and the list only changes
-          // through this form, so the position is a stable enough key.
-          <div key={index} className={styles.leagueFieldRow}>
-            <select
-              className={styles.input}
-              aria-label="Day"
-              value={draw.day}
-              onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
-            >
-              {DAY_NAMES.map((name, i) => (
-                <option key={name} value={i + 1}>{name}</option>
-              ))}
-            </select>
-            <input
-              type="time"
-              className={styles.input}
-              aria-label="Start"
-              value={draw.start}
-              onChange={(e) => editDraw(index, { start: e.target.value })}
-            />
-            <input
-              type="time"
-              className={styles.input}
-              aria-label="End"
-              value={draw.end}
-              onChange={(e) => editDraw(index, { end: e.target.value })}
-            />
+        <div className={common.section}>
+          <div className={common.sectionHeader}>
+            <h2 className={common.sectionTitle}>Teams ({league.teams.length})</h2>
             <button
-              className={styles.ghostButton}
-              onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
+              className={common.ghostButton}
+              onClick={() => edit({ teams: [...league.teams, { id: newTeamId(), name: '' }] })}
             >
-              Remove
+              + Add Team
             </button>
           </div>
-        ))}
-        {league.draws.length === 0 && (
-          <p className={styles.empty}>
-            No schedule. The league can still be picked by hand on a scoreboard.
-          </p>
-        )}
-      </div>
-
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Teams ({league.teams.length})</h2>
-          <button
-            className={styles.ghostButton}
-            onClick={() => edit({ teams: [...league.teams, { id: newTeamId(), name: '' }] })}
-          >
-            + Add Team
-          </button>
+          {league.teams.map((team) => (
+            <div key={team.id} className={styles.leagueFieldRow}>
+              <input
+                className={common.input}
+                aria-label="Team name"
+                placeholder="Team name"
+                value={team.name}
+                maxLength={60}
+                onChange={(e) => editTeam(team.id, { name: e.target.value })}
+              />
+              <input
+                className={`${common.input} ${styles.externalIdInput}`}
+                aria-label="External ID"
+                placeholder="External ID (optional)"
+                value={team.externalId ?? ''}
+                maxLength={60}
+                onChange={(e) => editTeam(team.id, { externalId: e.target.value.trim() || undefined })}
+              />
+              <button
+                className={common.ghostButton}
+                onClick={() => edit({ teams: league.teams.filter((t) => t.id !== team.id) })}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          {league.teams.length === 0 && (
+            <p className={common.empty}>No teams yet. Add them here, or import them from the club page.</p>
+          )}
         </div>
-        {league.teams.map((team) => (
-          <div key={team.id} className={styles.leagueFieldRow}>
-            <input
-              className={styles.input}
-              aria-label="Team name"
-              placeholder="Team name"
-              value={team.name}
-              maxLength={60}
-              onChange={(e) => editTeam(team.id, { name: e.target.value })}
-            />
-            <input
-              className={`${styles.input} ${styles.externalIdInput}`}
-              aria-label="External ID"
-              placeholder="External ID (optional)"
-              value={team.externalId ?? ''}
-              maxLength={60}
-              onChange={(e) => editTeam(team.id, { externalId: e.target.value.trim() || undefined })}
-            />
-            <button
-              className={styles.ghostButton}
-              onClick={() => edit({ teams: league.teams.filter((t) => t.id !== team.id) })}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        {league.teams.length === 0 && (
-          <p className={styles.empty}>No teams yet. Add them here, or import them from the club page.</p>
-        )}
       </div>
     </div>
   );

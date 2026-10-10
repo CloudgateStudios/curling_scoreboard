@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './ScoreboardPinSection.module.css';
 
 interface Props {
   clubId: string;
@@ -48,20 +49,20 @@ export function ScoreboardPinSection({ clubId }: Props) {
   }
 
   return (
-    <div className={styles.section}>
-      <h2 className={styles.sectionTitle}>Scoreboard Admin PIN</h2>
-      <p className={styles.apiDocsBlurb}>
+    <div className={common.section}>
+      <h2 className={common.sectionTitle}>Scoreboard Admin PIN</h2>
+      <p className={common.blurb}>
         Entered on a scoreboard to disconnect it from its sheet, so nobody can do it by accident.
         The same PIN works on every scoreboard at the club.
         {!pin && ' Until one is set, scoreboards cannot be disconnected.'}
       </p>
 
-      <div className={styles.apiKeyRow}>
-        <code className={styles.apiKey}>
+      <div className={styles.pinRow}>
+        <code className={styles.pin}>
           {pin ? (revealed ? pin : '•'.repeat(pin.length)) : 'Not set'}
         </code>
         {pin && (
-          <button className={styles.ghostButton} onClick={() => setRevealed((r) => !r)}>
+          <button className={common.ghostButton} onClick={() => setRevealed((r) => !r)}>
             {revealed ? 'Hide' : 'Show'}
           </button>
         )}
@@ -69,7 +70,7 @@ export function ScoreboardPinSection({ clubId }: Props) {
 
       <form className={styles.pinForm} onSubmit={handleSave}>
         <input
-          className={styles.input}
+          className={common.input}
           inputMode="numeric"
           autoComplete="off"
           maxLength={8}
@@ -78,12 +79,12 @@ export function ScoreboardPinSection({ clubId }: Props) {
           value={draft}
           onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
         />
-        <button type="submit" className={styles.primaryButton} disabled={saving || !valid}>
+        <button type="submit" className={common.primaryButton} disabled={saving || !valid}>
           {saving ? 'Saving…' : pin ? 'Change PIN' : 'Set PIN'}
         </button>
       </form>
-      {error && <p className={styles.error}>{error}</p>}
-      {success && <p className={styles.success}>{success}</p>}
+      {error && <p className={common.error}>{error}</p>}
+      {success && <p className={common.success}>{success}</p>}
     </div>
   );
 }

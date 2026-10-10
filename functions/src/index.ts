@@ -3,8 +3,11 @@ import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
 import cors from 'cors';
 import { clubsRouter } from './routes/clubs';
-export { provisionClub, setSuperAdminClaim, addClubAdmin } from './admin';
+export {
+  provisionClub, setSuperAdminClaim, addClubAdmin, removeClubAdmin, deleteSheet,
+} from './admin';
 export { pairSheet, unpairSheet } from './pairing';
+export { sendCompletedGameWebhook, sendTestWebhook } from './webhook';
 
 initializeApp();
 

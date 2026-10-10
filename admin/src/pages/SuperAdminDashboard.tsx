@@ -27,14 +27,22 @@ export function SuperAdminDashboard() {
   const [scoreboardPin, setScoreboardPin] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     return onSnapshot(collection(db, 'clubs'), (snap) => {
       setClubs(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Club, 'id'>) }))
+        snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Club, 'id'>) }))
+          .sort((a, b) => a.name.localeCompare(b.name))
       );
     });
   }, []);
+
+  const term = search.trim().toLowerCase();
+  const shownClubs = term
+    ? clubs.filter((club) => club.name.toLowerCase().includes(term) || club.id.includes(term))
+    : clubs;
 
   function handleClubNameChange(name: string) {
     setNewClubName(name);
@@ -164,8 +172,19 @@ export function SuperAdminDashboard() {
         </div>
       )}
 
+      {clubs.length > 0 && (
+        <input
+          type="search"
+          className={`${styles.input} ${styles.search}`}
+          placeholder="Search clubs by name or ID"
+          aria-label="Search clubs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      )}
+
       <div className={styles.clubGrid}>
-        {clubs.map((club) => (
+        {shownClubs.map((club) => (
           <button
             key={club.id}
             className={styles.clubCard}
@@ -178,6 +197,9 @@ export function SuperAdminDashboard() {
         ))}
         {clubs.length === 0 && (
           <p className={styles.empty}>No clubs yet. Create one to get started.</p>
+        )}
+        {clubs.length > 0 && shownClubs.length === 0 && (
+          <p className={styles.empty}>No clubs match “{search.trim()}”.</p>
         )}
       </div>
     </div>

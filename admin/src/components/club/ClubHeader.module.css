@@ -1,0 +1,23 @@
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.renameForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 40rem;
+}
+
+.renameForm .nameInput {
+  font-size: 1.25rem;
+  font-weight: 600;
+}

@@ -1,0 +1,76 @@
+.pairingCodeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pairingCode {
+  background: #f4f6f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.healthGood,
+.healthAttention {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.healthGood {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.healthAttention {
+  background: #f8f9fb;
+  border: 1px solid #ececec;
+}
+
+.renameForm {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.renameForm input {
+  min-width: 12rem;
+  flex: 1;
+}
+
+.dangerActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.dangerButton {
+  background: transparent;
+  color: #c5221f;
+  border: 1px solid #f1b8b4;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dangerButton:hover:not(:disabled) {
+  border-color: #c5221f;
+}
+
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

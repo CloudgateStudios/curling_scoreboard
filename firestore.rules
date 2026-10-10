@@ -83,6 +83,21 @@ service cloud.firestore {
             && request.resource.data.pin.matches('^[0-9]{4,8}$');
       }
 
+      // Where the club's completed games are posted. Club admins set it
+      // themselves, since the Slack or Discord channel it points at is
+      // theirs. It is kept here, out of reach of scoreboards, because
+      // whoever holds the URL can post to that channel.
+      match /private/webhook {
+        allow create, update: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasAll(['url', 'games'])
+            && request.resource.data.keys().hasOnly(['url', 'games'])
+            && request.resource.data.url is string
+            && request.resource.data.url.size() <= 500
+            && request.resource.data.url.matches('^https://.+')
+            && request.resource.data.games in ['all', 'league'];
+        allow delete: if isClubAdmin(clubId);
+      }
+
       match /admins/{uid} {
         allow read: if isClubAdmin(clubId);
       }

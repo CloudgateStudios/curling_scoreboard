@@ -6,13 +6,16 @@ firestore
 fvmrc
 ltrb
 notmain
+nums
 prefs
 pubspec
 RRGGBB
 subcollection
+subcollections
 subshell
 superadmin
 unpair
+unpairing
 unpairs
 xcassets
 xcode

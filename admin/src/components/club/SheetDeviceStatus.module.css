@@ -1,0 +1,25 @@
+.deviceDetails {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.deviceDetails summary {
+  cursor: pointer;
+  color: #1967d2;
+}
+
+.deviceDetailList {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.deviceDetailList dt {
+  color: #888;
+}
+
+.deviceDetailList dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

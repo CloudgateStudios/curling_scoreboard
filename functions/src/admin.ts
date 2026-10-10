@@ -3,6 +3,7 @@ import { getAuth, DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { apiKeyRef, generateApiKey } from './apiKeys';
 import { isValidScoreboardPin, scoreboardPinRef } from './scoreboardPin';
+import { clearScoreboardClaims } from './pairing';
 
 function requireSuperAdmin(auth: { token: DecodedIdToken } | undefined) {
   if (!auth || auth.token['role'] !== 'superadmin') {
@@ -170,6 +171,60 @@ export const addClubAdmin = onCall(async (request) => {
     .set({ email: adminEmail, displayName: userRecord.displayName ?? null });
 
   return { uid: userRecord.uid };
+});
+
+// Takes an admin off a club. Club admin accounts are made for one club by
+// provisionClub or addClubAdmin, so the account itself is deleted too: that
+// signs it out everywhere and frees the email to be added again. An account
+// that is not this club's admin (say a super admin listed by hand) only
+// loses the listing. A token issued before the delete still carries the
+// club admin claim until it expires, which takes at most an hour.
+export const removeClubAdmin = onCall(async (request) => {
+  requireSuperAdmin(request.auth);
+
+  const { clubId, uid } = (request.data ?? {}) as { clubId: string; uid: string };
+  requireNonEmptyStrings({ clubId, uid });
+
+  const adminRef = getFirestore().collection('clubs').doc(clubId).collection('admins').doc(uid);
+  if (!(await adminRef.get()).exists) {
+    throw new HttpsError('not-found', 'That admin is not on this club.');
+  }
+
+  let user: UserRecord | null = null;
+  try {
+    user = await getAuth().getUser(uid);
+  } catch (err) {
+    if ((err as { code?: unknown } | null)?.code !== 'auth/user-not-found') throw err;
+  }
+  const claims = (user?.customClaims ?? {}) as Record<string, unknown>;
+  if (user && claims['role'] === 'clubadmin' && claims['clubId'] === clubId) {
+    await getAuth().deleteUser(uid);
+  }
+
+  await adminRef.delete();
+  return { success: true };
+});
+
+// Deletes a sheet along with its game history, which a client cannot do
+// itself because Firestore leaves subcollections behind. The scoreboard
+// paired with it loses access straight away, as the rules look for the sheet.
+export const deleteSheet = onCall(async (request) => {
+  requireSuperAdmin(request.auth);
+
+  const { clubId, sheetId } = (request.data ?? {}) as { clubId: string; sheetId: string };
+  requireNonEmptyStrings({ clubId, sheetId });
+
+  const sheetRef = getFirestore().collection('clubs').doc(clubId).collection('sheets').doc(sheetId);
+  const sheetSnap = await sheetRef.get();
+  if (!sheetSnap.exists) {
+    throw new HttpsError('not-found', 'Sheet not found.');
+  }
+
+  await getFirestore().recursiveDelete(sheetRef);
+
+  const scoreboardUid = sheetSnap.get('scoreboardUid') as string | undefined;
+  if (scoreboardUid) await clearScoreboardClaims(scoreboardUid);
+  return { success: true };
 });
 
 // Promotes another user to super admin. Only an existing super admin can call
