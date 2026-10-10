@@ -1,34 +1,27 @@
-import { useEffect, useState } from 'react';
-import { addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { useState } from 'react';
+import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
-import { compareLeagues, formatDraws, leagueData, leagueFrom } from '../../lib/leagues';
+import { formatDraws, leagueData } from '../../lib/leagues';
 import type { League } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
 import { LeagueWeek } from './LeagueWeek';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
 
 interface Props {
   clubId: string;
+  /** In compareLeagues order: by first draw of the week, unscheduled leagues last. */
+  leagues: League[];
   onOpenLeague: (leagueId: string) => void;
 }
 
 /** The club's leagues, whose teams scoreboards offer for league games. */
-export function LeaguesSection({ clubId, onOpenLeague }: Props) {
-  const [leagues, setLeagues] = useState<League[]>([]);
+export function LeaguesSection({ clubId, leagues, onOpenLeague }: Props) {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    return onSnapshot(collection(db, 'clubs', clubId, 'leagues'), (snap) => {
-      setLeagues(
-        snap.docs.map((d) => leagueFrom(d.id, d.data())).sort(compareLeagues),
-      );
-    });
-  }, [clubId]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -51,23 +44,23 @@ export function LeaguesSection({ clubId, onOpenLeague }: Props) {
   }
 
   return (
-    <div className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Leagues ({leagues.length})</h2>
-        <div className={styles.sheetActions}>
-          <button className={styles.ghostButton} onClick={() => setImporting(true)}>
+    <div className={common.section}>
+      <div className={common.sectionHeader}>
+        <h2 className={common.sectionTitle}>Leagues ({leagues.length})</h2>
+        <div className={common.rowActions}>
+          <button className={common.ghostButton} onClick={() => setImporting(true)}>
             Import CSV
           </button>
-          <button className={styles.primaryButton} onClick={() => setAdding(true)}>
+          <button className={common.primaryButton} onClick={() => setAdding(true)}>
             + Add League
           </button>
         </div>
       </div>
 
       {adding && (
-        <form onSubmit={handleAdd} className={styles.addSheetForm}>
+        <form onSubmit={handleAdd} className={common.inlineForm}>
           <input
-            className={styles.input}
+            className={common.input}
             placeholder="League name (e.g. Monday Night)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -75,43 +68,43 @@ export function LeaguesSection({ clubId, onOpenLeague }: Props) {
             required
             autoFocus
           />
-          <button type="submit" className={styles.primaryButton} disabled={saving}>
+          <button type="submit" className={common.primaryButton} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button type="button" className={styles.ghostButton} onClick={() => setAdding(false)}>
+          <button type="button" className={common.ghostButton} onClick={() => setAdding(false)}>
             Cancel
           </button>
         </form>
       )}
 
-      {error && <p className={styles.error}>{error}</p>}
+      {error && <p className={common.error}>{error}</p>}
 
       <LeagueWeek leagues={leagues} onOpenLeague={onOpenLeague} />
 
-      <div className={styles.sheetList}>
+      <div className={common.list}>
         {leagues.map((league) => (
-          <div key={league.id} className={styles.sheetRow}>
-            <div className={styles.sheetInfo}>
-              <span className={styles.sheetName}>{league.name}</span>
-              <div className={styles.sheetMeta}>
-                <span className={league.active ? styles.pairedChip : styles.idleChip}>
+          <div key={league.id} className={common.row}>
+            <div className={common.rowInfo}>
+              <span className={common.rowName}>{league.name}</span>
+              <div className={common.rowMeta}>
+                <span className={league.active ? common.pairedChip : common.idleChip}>
                   {league.active ? 'Active' : 'Inactive'}
                 </span>
-                <span className={styles.versionChip}>
+                <span className={common.versionChip}>
                   {league.teams.length} team{league.teams.length !== 1 ? 's' : ''}
                 </span>
-                <span className={styles.rockColorName}>{formatDraws(league.draws)}</span>
+                <span className={common.muted}>{formatDraws(league.draws)}</span>
               </div>
             </div>
-            <div className={styles.sheetActions}>
-              <button className={styles.linkButton} onClick={() => onOpenLeague(league.id)}>
+            <div className={common.rowActions}>
+              <button className={common.linkButton} onClick={() => onOpenLeague(league.id)}>
                 Edit →
               </button>
             </div>
           </div>
         ))}
         {leagues.length === 0 && (
-          <p className={styles.empty}>
+          <p className={common.empty}>
             No leagues yet. Add one, or import your leagues and teams from a CSV file.
           </p>
         )}

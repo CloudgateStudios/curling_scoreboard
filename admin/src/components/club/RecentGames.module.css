@@ -1,50 +1,38 @@
-.breadcrumb {
-  margin-bottom: 1.5rem;
+.gameCount {
+  font-size: 0.85rem;
+  color: #888;
+  font-weight: 400;
 }
 
-.backButton {
-  background: none;
-  border: none;
-  color: #1a73e8;
-  font-size: 0.9rem;
-  cursor: pointer;
-  padding: 0;
+.dayGroup {
+  margin-bottom: 1.25rem;
 }
 
-.backButton:hover {
-  text-decoration: underline;
+.dayGroup:last-child {
+  margin-bottom: 0;
 }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.title {
-  font-size: 1.75rem;
+.dayLabel {
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #1a1a2e;
-}
-
-.subtitle {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .gameList {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .gameCard {
-  background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
+  background: #fafafa;
+  border: 1px solid #efefef;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -52,7 +40,7 @@
   width: 100%;
   background: none;
   border: none;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -63,14 +51,14 @@
 }
 
 .gameHeader:hover {
-  background: #f9f9f9;
+  background: #f2f2f2;
 }
 
 .gameScore {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 1rem;
+  gap: 0.6rem;
+  font-size: 0.95rem;
 }
 
 .winnerName {
@@ -83,44 +71,55 @@
 }
 
 .scoreDisplay {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #1a1a2e;
 }
 
 .gameMeta {
   display: flex;
-  gap: 1rem;
-  font-size: 0.85rem;
-  color: #888;
   align-items: center;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: #888;
+  flex-wrap: wrap;
+}
+
+.sheetChip {
+  background: #e8f0fe;
+  color: #1967d2;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .expandIcon {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
+  color: #aaa;
 }
 
 .endsTable {
   border-top: 1px solid #efefef;
   overflow-x: auto;
-  padding: 0.75rem 1.25rem 1rem;
+  padding: 0.75rem 1rem 0.9rem;
 }
 
 .endsTable table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .endsTable th,
 .endsTable td {
   text-align: center;
-  padding: 0.35rem 0.5rem;
-  min-width: 2rem;
+  padding: 0.3rem 0.4rem;
+  min-width: 1.8rem;
 }
 
 .endsTable th {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #999;
   font-weight: 600;
   border-bottom: 1px solid #efefef;
@@ -144,13 +143,8 @@
   border-left: 1px solid #efefef;
 }
 
-.empty {
-  color: #999;
-  padding: 2rem 0;
-  font-size: 0.9rem;
-}
-
-.loadMore {
-  display: block;
-  margin: 1rem auto 0;
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }

@@ -170,3 +170,10 @@
   gap: 0.75rem;
   margin-top: 0.5rem;
 }
+
+.search {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  margin-bottom: 1.25rem;
+}

@@ -82,9 +82,22 @@ export interface Game {
   startedAt: Date;
   finishedAt: Date;
   numberOfEnds: number;
-  team1: { name: string; totalScore: number; hadLastStoneFirstEnd: boolean };
-  team2: { name: string; totalScore: number; hadLastStoneFirstEnd: boolean };
+  /** Absent on games that were not league games, and on games saved before
+   *  league games existed. */
+  league?: { id: string; name: string } | null;
+  team1: GameTeam;
+  team2: GameTeam;
   ends: GameEnd[];
+}
+
+export interface GameTeam {
+  name: string;
+  totalScore: number;
+  hadLastStoneFirstEnd: boolean;
+  /** The rocks the team threw. Absent on games saved before rock colors. */
+  color?: RockColor;
+  /** The team's ID in the club's league software, for league games. */
+  externalId?: string;
 }
 
 /** One regular time a league plays, in the club's local time. */

@@ -3,7 +3,8 @@ import {
 } from '../../lib/leagues';
 import type { ScheduledDraw } from '../../lib/leagues';
 import type { League } from '../../types';
-import styles from '../../pages/ClubDetail.module.css';
+import common from '../../styles/common.module.css';
+import styles from './LeagueWeek.module.css';
 
 interface Props {
   leagues: League[];
@@ -60,7 +61,7 @@ export function LeagueWeek({ leagues, onOpenLeague }: Props) {
   return (
     <div className={styles.week}>
       {conflicts.length > 0 ? (
-        <div className={styles.error}>
+        <div className={common.error}>
           <strong>
             {conflicts.length} overlap{conflicts.length !== 1 ? 's' : ''} in the schedule
           </strong>
@@ -71,7 +72,7 @@ export function LeagueWeek({ leagues, onOpenLeague }: Props) {
           </ul>
         </div>
       ) : (
-        <p className={styles.success}>No draws overlap.</p>
+        <p className={common.success}>No draws overlap.</p>
       )}
 
       <div className={styles.weekScroll}>

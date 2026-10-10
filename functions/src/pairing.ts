@@ -11,7 +11,7 @@ export function scoreboardClaims(clubId: string, sheetId: string): Record<string
 
 // Best effort: the claims are already useless once the sheet belongs to
 // another device, and an anonymous user may well have been deleted since.
-async function clearScoreboardClaims(uid: string): Promise<void> {
+export async function clearScoreboardClaims(uid: string): Promise<void> {
   try {
     const auth = getAuth();
     const user = await auth.getUser(uid);

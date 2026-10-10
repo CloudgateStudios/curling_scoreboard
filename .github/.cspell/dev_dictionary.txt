@@ -11,8 +11,12 @@ prefs
 pubspec
 RRGGBB
 subcollection
+subcollections
 subshell
 superadmin
+unpair
+unpairing
+unpairs
 xcassets
 xcode
 xcworkspace

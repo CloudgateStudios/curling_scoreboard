@@ -30,6 +30,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/sheets/sheet-paired'), {
     name: 'Sheet Paired', scoreboardUid: 'scoreboard-1',
   });
+  await setDoc(doc(db, 'clubs/club-a/sheets/sheet-to-unpair'), {
+    name: 'Sheet To Unpair', scoreboardUid: 'scoreboard-2', device: { appVersion: '0.0.49' },
+  });
   await setDoc(doc(db, 'clubs/club-a/config/scoreboard'), {});
   await setDoc(doc(db, 'clubs/club-b/config/scoreboard'), {});
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
@@ -281,6 +284,23 @@ await check('scoreboard: disconnect by clearing its uid', 'allow', () =>
 
 await check('attack: disconnected scoreboard reads club config with its old claims', 'deny', () =>
   getDoc(doc(claimedBoard, 'clubs/club-a/config/scoreboard')));
+
+// --- club admins rename and unpair sheets from the admin portal ---
+const board2 = env.authenticatedContext('scoreboard-2').firestore();
+
+await check('club admin: rename own sheet', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/sheets/sheet-open'), { name: 'Sheet 1' }));
+
+await check('attack: club admin unpairs another club sheet', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-b/sheets/sheet-secret'), { scoreboardUid: deleteField() }));
+
+await check('club admin: unpair own sheet', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/sheets/sheet-to-unpair'), {
+    scoreboardUid: deleteField(), pairedAt: deleteField(), device: deleteField(), liveGame: deleteField(),
+  }));
+
+await check('attack: unpaired scoreboard keeps pushing its live game', 'deny', () =>
+  updateDoc(doc(board2, 'clubs/club-a/sheets/sheet-to-unpair'), { liveGame: { currentEnd: 1 } }));
 
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>
