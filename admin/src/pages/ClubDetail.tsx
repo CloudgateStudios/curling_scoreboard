@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
-import { leagueFrom } from '../lib/leagues';
+import { compareLeagues, leagueFrom } from '../lib/leagues';
 import { confirmLeave } from '../lib/unsavedChanges';
 import type { Club, League, Sheet } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
@@ -67,9 +67,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   useEffect(() => {
     return onSnapshot(collection(db, 'clubs', resolvedClubId, 'leagues'), (snap) => {
       setLeagues(
-        snap.docs
-          .map((d) => leagueFrom(d.id, d.data()))
-          .sort((a, b) => a.name.localeCompare(b.name)),
+        snap.docs.map((d) => leagueFrom(d.id, d.data())).sort(compareLeagues),
       );
     });
   }, [resolvedClubId]);

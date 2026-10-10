@@ -5,11 +5,12 @@ import { errorMessage } from '../../lib/format';
 import { formatDraws, leagueData } from '../../lib/leagues';
 import type { League } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
+import { LeagueWeek } from './LeagueWeek';
 import common from '../../styles/common.module.css';
 
 interface Props {
   clubId: string;
-  /** Sorted by name. */
+  /** In compareLeagues order: by first draw of the week, unscheduled leagues last. */
   leagues: League[];
   onOpenLeague: (leagueId: string) => void;
 }
@@ -77,6 +78,8 @@ export function LeaguesSection({ clubId, leagues, onOpenLeague }: Props) {
       )}
 
       {error && <p className={common.error}>{error}</p>}
+
+      <LeagueWeek leagues={leagues} onOpenLeague={onOpenLeague} />
 
       <div className={common.list}>
         {leagues.map((league) => (
