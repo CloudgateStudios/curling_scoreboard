@@ -3,6 +3,7 @@
 // functions first and starts the emulators around this file.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -635,5 +636,211 @@ describe('deleteSheet', () => {
     assert.equal((await db.doc('clubs/club-sheets/sheets/gone').get()).exists, false);
     assert.equal((await db.doc('clubs/club-sheets/sheets/gone/games/g1').get()).exists, false);
     assert.equal((await adminAuth.getUser(board.uid)).customClaims?.role, undefined);
+  });
+});
+
+describe('completed game webhook', () => {
+  // Stands in for a club's Slack or Discord webhook. The functions emulator
+  // allows posting to this machine; deployed functions refuse to.
+  let receiver;
+  let received = [];
+  let answerWith = 200;
+  let hookUrl;
+
+  before(async () => {
+    receiver = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        received.push({ path: req.url, body: JSON.parse(body) });
+        res.writeHead(answerWith).end();
+      });
+    });
+    await new Promise((resolve) => receiver.listen(0, '127.0.0.1', resolve));
+    hookUrl = `http://127.0.0.1:${receiver.address().port}`;
+
+    for (const club of ['hook-all', 'hook-league', 'hook-off', 'hook-failing']) {
+      await db.doc(`clubs/${club}`).set({ name: `Club ${club}` });
+      await db.doc(`clubs/${club}/sheets/s1`).set({ name: 'Sheet 1' });
+    }
+    await db.doc('clubs/hook-all/private/webhook').set({ url: `${hookUrl}/all`, games: 'all' });
+    await db.doc('clubs/hook-league/private/webhook').set({ url: `${hookUrl}/league`, games: 'league' });
+    await db.doc('clubs/hook-failing/private/webhook').set({ url: `${hookUrl}/failing`, games: 'all' });
+  });
+
+  after(() => new Promise((resolve) => receiver.close(resolve)));
+
+  const openGame = {
+    startedAt: Timestamp.fromDate(new Date('2026-10-08T18:30:00Z')),
+    finishedAt: Timestamp.fromDate(new Date('2026-10-08T20:25:00Z')),
+    numberOfEnds: 8,
+    team1: { name: 'Red', totalScore: 7, hadLastStoneFirstEnd: true },
+    team2: { name: 'Yellow', totalScore: 4, hadLastStoneFirstEnd: false },
+    ends: [{ endNumber: 1, scoringTeam: 'Red', scoringTeamSlot: 'team1', score: 2, gameTimeInSeconds: 600 }],
+  };
+  const leagueGame = {
+    ...openGame,
+    league: { id: 'monday', name: 'Monday Night' },
+    team1: { ...openGame.team1, name: 'Team Smith', teamId: 't1', externalId: '1042' },
+    team2: { ...openGame.team2, name: 'Team Jones', teamId: 't2' },
+  };
+
+  // The trigger runs some time after the write, so wait for what it does.
+  async function waitFor(what, check) {
+    const deadline = Date.now() + 15_000;
+    for (;;) {
+      const value = await check();
+      if (value) return value;
+      if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  const postsTo = (path) => received.filter((r) => r.path === path);
+
+  test('posts a completed game with a message Slack and Discord both read', async () => {
+    await db.doc('clubs/hook-all/sheets/s1/games/open-1').set(openGame);
+
+    const [post] = await waitFor('the post', () => postsTo('/all').length && postsTo('/all'));
+    assert.equal(post.body.text, 'Sheet 1: Red 7, Yellow 4');
+    assert.equal(post.body.content, post.body.text);
+    assert.equal(post.body.event, 'game.completed');
+    assert.deepEqual(post.body.club, { id: 'hook-all', name: 'Club hook-all' });
+    assert.deepEqual(post.body.sheet, { id: 's1', name: 'Sheet 1' });
+    assert.deepEqual(Object.keys(post.body.game).sort(),
+      ['ends', 'finishedAt', 'id', 'league', 'numberOfEnds', 'startedAt', 'team1', 'team2']);
+    assert.equal(post.body.game.id, 'open-1');
+    assert.equal(post.body.game.finishedAt, '2026-10-08T20:25:00.000Z');
+    assert.equal(post.body.game.league, null);
+
+    const status = await waitFor('the delivery status',
+      async () => (await db.doc('clubs/hook-all/private/webhookStatus').get()).data());
+    assert.equal(status.ok, true);
+    assert.equal(status.status, 200);
+    assert.equal(status.kind, 'game');
+
+    const onGame = await waitFor('the result on the game', async () => {
+      const webhook = (await db.doc('clubs/hook-all/sheets/s1/games/open-1').get()).get('webhook');
+      return webhook?.ok !== undefined && webhook;
+    });
+    assert.ok(onGame.attemptedAt, 'records when the game was posted');
+    assert.equal(onGame.ok, true);
+    assert.equal(onGame.status, 200);
+    assert.equal(onGame.error, undefined);
+  });
+
+  test('names the league and teams of a league game', async () => {
+    await db.doc('clubs/hook-league/sheets/s1/games/league-1').set(leagueGame);
+
+    const [post] = await waitFor('the post', () => postsTo('/league').length && postsTo('/league'));
+    assert.equal(post.body.text, 'Monday Night, Sheet 1: Team Smith 7, Team Jones 4');
+    assert.deepEqual(post.body.game.league, { id: 'monday', name: 'Monday Night' });
+    assert.equal(post.body.game.team1.externalId, '1042');
+  });
+
+  test('set to league games, skips an open game and posts one with a single named team', async () => {
+    const before = postsTo('/league').length;
+    await db.doc('clubs/hook-league/sheets/s1/games/open-2').set(openGame);
+    await db.doc('clubs/hook-league/sheets/s1/games/league-2').set({
+      ...leagueGame, team2: openGame.team2,
+    });
+
+    await waitFor('the league game', () => postsTo('/league').length > before);
+    // Long enough for the open game to have been posted, had it been going to.
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const posted = postsTo('/league').slice(before).map((r) => r.body.game.id);
+    assert.deepEqual(posted, ['league-2']);
+    assert.equal(
+      (await db.doc('clubs/hook-league/sheets/s1/games/open-2').get()).get('webhook'),
+      undefined,
+    );
+  });
+
+  test('posts nothing for a club with no webhook', async () => {
+    const before = received.length;
+    await db.doc('clubs/hook-off/sheets/s1/games/open-1').set(openGame);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    assert.equal(received.length, before);
+  });
+
+  test('does not post a game that has already been attempted', async () => {
+    const before = postsTo('/all').length;
+    await db.doc('clubs/hook-all/sheets/s1/games/already').set({
+      ...openGame, webhook: { attemptedAt: Timestamp.now() },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    assert.equal(postsTo('/all').length, before);
+  });
+
+  test('records a refused delivery without trying it again', async () => {
+    answerWith = 404;
+    try {
+      await db.doc('clubs/hook-failing/sheets/s1/games/open-1').set(openGame);
+      const status = await waitFor('the delivery status',
+        async () => (await db.doc('clubs/hook-failing/private/webhookStatus').get()).data());
+      assert.equal(status.ok, false);
+      assert.equal(status.status, 404);
+      assert.equal(postsTo('/failing').length, 1);
+
+      const onGame = await waitFor('the result on the game', async () => {
+        const webhook = (await db.doc('clubs/hook-failing/sheets/s1/games/open-1').get()).get('webhook');
+        return webhook?.ok !== undefined && webhook;
+      });
+      assert.equal(onGame.ok, false);
+      assert.equal(onGame.status, 404);
+      assert.equal(onGame.error, 'The webhook answered 404.');
+    } finally {
+      answerWith = 200;
+    }
+  });
+
+  test('keeps the webhook result out of the games API', async () => {
+    await db.doc('clubs/hook-all/private/apiKey').set({ key: 'key-hook' });
+    await waitFor('the result', async () =>
+      (await db.doc('clubs/hook-all/sheets/s1/games/open-1').get()).get('webhook'));
+    const res = await fetch(`${API_URL}/clubs/hook-all/sheets/s1/games`, { headers: { 'X-API-Key': 'key-hook' } });
+    const { games } = await res.json();
+    assert.ok(games.length > 0);
+    for (const game of games) assert.equal(game.webhook, undefined);
+  });
+
+  describe('sendTestWebhook', () => {
+    test('is limited to the club\'s admins and super admins', async () => {
+      const anon = await anonymous();
+      await rejectsWith(anon.call('sendTestWebhook', { clubId: 'hook-all' }), 'functions/permission-denied');
+      const other = await userWithClaims('hook-other@example.com', { role: 'clubadmin', clubId: 'hook-league' });
+      await rejectsWith(other.call('sendTestWebhook', { clubId: 'hook-all' }), 'functions/permission-denied');
+    });
+
+    test('needs a saved webhook', async () => {
+      const caller = await superAdmin('super-hook-off@example.com');
+      await rejectsWith(caller.call('sendTestWebhook', { clubId: 'hook-off' }), 'functions/failed-precondition');
+    });
+
+    test('posts a test message for a club admin and reports how it went', async () => {
+      const before = postsTo('/all').length;
+      const caller = await userWithClaims('hook-admin@example.com', { role: 'clubadmin', clubId: 'hook-all' });
+
+      const result = await caller.call('sendTestWebhook', { clubId: 'hook-all' });
+
+      assert.deepEqual(result.data, { ok: true, status: 200 });
+      const post = postsTo('/all')[before];
+      assert.equal(post.body.event, 'test');
+      assert.equal(post.body.content, post.body.text);
+      assert.equal(post.body.game, undefined);
+      assert.equal((await db.doc('clubs/hook-all/private/webhookStatus').get()).get('kind'), 'test');
+    });
+
+    test('reports a webhook that refuses the message', async () => {
+      const caller = await superAdmin('super-hook-failing@example.com');
+      answerWith = 410;
+      try {
+        const result = await caller.call('sendTestWebhook', { clubId: 'hook-failing' });
+        assert.equal(result.data.ok, false);
+        assert.equal(result.data.status, 410);
+      } finally {
+        answerWith = 200;
+      }
+    });
   });
 });

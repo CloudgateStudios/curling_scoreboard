@@ -7,6 +7,7 @@ export {
   provisionClub, setSuperAdminClaim, addClubAdmin, removeClubAdmin, deleteSheet,
 } from './admin';
 export { pairSheet } from './pairing';
+export { sendCompletedGameWebhook, sendTestWebhook } from './webhook';
 
 initializeApp();
 

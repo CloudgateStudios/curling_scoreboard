@@ -1,0 +1,20 @@
+.webhook,
+.webhookFailed {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0.75rem 0 0;
+}
+
+.webhookFailed {
+  color: #d93025;
+}
+
+.webhookFailedChip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #d93025;
+  background: #fce8e6;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+}
