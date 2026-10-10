@@ -516,6 +516,7 @@ describe('provisionClub', () => {
     clubId: 'new-club',
     adminEmail: 'admin@new-club.example',
     adminPassword: 'password123',
+    scoreboardPin: '2468',
   };
 
   test('is limited to super admins', async () => {
@@ -523,7 +524,7 @@ describe('provisionClub', () => {
     await rejectsWith(clubAdmin.call('provisionClub', request), 'functions/permission-denied');
   });
 
-  test('creates the club, its private API key and its first admin', async () => {
+  test('creates the club, its private API key and PIN, and its first admin', async () => {
     const superAdmin = await userWithClaims('super@example.com', { role: 'superadmin', clubId: null });
     const result = await superAdmin.call('provisionClub', request);
     assert.equal(result.data.clubId, 'new-club');
@@ -531,6 +532,7 @@ describe('provisionClub', () => {
     assert.deepEqual((await db.doc('clubs/new-club').get()).data(), { name: 'New Club' });
     const key = (await db.doc('clubs/new-club/private/apiKey').get()).get('key');
     assert.match(key, /^[0-9a-f]{32}$/);
+    assert.deepEqual((await db.doc('clubs/new-club/private/scoreboardPin').get()).data(), { pin: '2468' });
 
     const admin = await adminAuth.getUserByEmail(request.adminEmail);
     assert.deepEqual(admin.customClaims, { role: 'clubadmin', clubId: 'new-club' });
@@ -545,10 +547,12 @@ describe('provisionClub', () => {
       clubId: 'taken-club',
       adminEmail: 'taken@provision.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/already-exists');
 
     assert.equal((await db.doc('clubs/taken-club').get()).exists, false);
     assert.equal((await db.doc('clubs/taken-club/private/apiKey').get()).exists, false);
+    assert.equal((await db.doc('clubs/taken-club/private/scoreboardPin').get()).exists, false);
   });
 
   test('reports a malformed email as invalid-argument and rolls back the club', async () => {
@@ -558,10 +562,12 @@ describe('provisionClub', () => {
       clubId: 'bad-email-club',
       adminEmail: 'not-an-email',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     assert.equal((await db.doc('clubs/bad-email-club').get()).exists, false);
     assert.equal((await db.doc('clubs/bad-email-club/private/apiKey').get()).exists, false);
+    assert.equal((await db.doc('clubs/bad-email-club/private/scoreboardPin').get()).exists, false);
   });
 
   test('rejects a short password before creating anything', async () => {
@@ -571,6 +577,7 @@ describe('provisionClub', () => {
       clubId: 'short-pw-club',
       adminEmail: 'admin@short-pw.example',
       adminPassword: 'short',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     assert.equal((await db.doc('clubs/short-pw-club').get()).exists, false);
@@ -584,9 +591,26 @@ describe('provisionClub', () => {
       clubId: 'Bad Id/Club',
       adminEmail: 'admin@bad-id.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/invalid-argument');
 
     await rejectsWith(adminAuth.getUserByEmail('admin@bad-id.example'), 'auth/user-not-found');
+  });
+
+  test('rejects a missing or malformed scoreboard PIN before creating anything', async () => {
+    const caller = await superAdmin('super-bad-pin@example.com');
+    for (const scoreboardPin of [undefined, '', '123', '12a4', '123456789']) {
+      await rejectsWith(caller.call('provisionClub', {
+        clubName: 'Bad Pin Club',
+        clubId: 'bad-pin-club',
+        adminEmail: 'admin@bad-pin.example',
+        adminPassword: 'password123',
+        scoreboardPin,
+      }), 'functions/invalid-argument');
+    }
+
+    assert.equal((await db.doc('clubs/bad-pin-club').get()).exists, false);
+    await rejectsWith(adminAuth.getUserByEmail('admin@bad-pin.example'), 'auth/user-not-found');
   });
 });
 
@@ -631,6 +655,7 @@ describe('addClubAdmin', () => {
       clubId: 'club-a',
       adminEmail: 'taken@add-admin.example',
       adminPassword: 'password123',
+      scoreboardPin: '2468',
     }), 'functions/already-exists');
   });
 

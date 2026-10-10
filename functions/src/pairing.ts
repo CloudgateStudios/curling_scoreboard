@@ -1,6 +1,7 @@
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { scoreboardPinRef } from './scoreboardPin';
 
 // Custom claims that tell the security rules which sheet a scoreboard says it
 // is paired with. The rules still check the sheet's scoreboardUid, so a claim
@@ -93,13 +94,6 @@ export const pairSheet = onCall(async (request) => {
   return result;
 });
 
-// Where a club keeps the PIN that has to be entered on a scoreboard to
-// disconnect it. Club admins set it in the admin portal; scoreboards never
-// read it, they send what was typed here to be checked.
-function scoreboardPinPath(clubId: string): string {
-  return `clubs/${clubId}/private/scoreboardPin`;
-}
-
 // Disconnects the calling scoreboard from its sheet, once the club's admin
 // PIN has been entered on it. The PIN is checked here so it never has to be
 // sent to the scoreboards, and so the rules can stop a scoreboard letting go
@@ -130,7 +124,7 @@ export const unpairSheet = onCall(async (request) => {
     return { unpaired: false };
   }
 
-  const expected = (await db.doc(scoreboardPinPath(clubId)).get()).get('pin') as string | undefined;
+  const expected = (await scoreboardPinRef(clubId).get()).get('pin') as string | undefined;
   if (!expected) {
     throw new HttpsError('failed-precondition', 'This club has no admin PIN set.');
   }

@@ -111,5 +111,7 @@ Access that must stay denied:
   returns one, only with the club's own key and only the documented fields,
   and reports the league and teams on live and completed games.
 - `provisionClub` is limited to super admins, and creates the club without a
-  key on its document, a 32 character key under `private/apiKey`, and a club
-  admin with the right claims.
+  key on its document, a 32 character key under `private/apiKey`, the
+  scoreboard PIN it was given under `private/scoreboardPin`, and a club admin
+  with the right claims. It refuses a missing or malformed PIN before creating
+  anything, and removes the PIN with the club when creating the admin fails.

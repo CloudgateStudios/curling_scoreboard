@@ -2,6 +2,7 @@ import { getFirestore, DocumentReference } from 'firebase-admin/firestore';
 import { getAuth, DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { apiKeyRef, generateApiKey } from './apiKeys';
+import { isValidScoreboardPin, scoreboardPinRef } from './scoreboardPin';
 
 function requireSuperAdmin(auth: { token: DecodedIdToken } | undefined) {
   if (!auth || auth.token['role'] !== 'superadmin') {
@@ -55,15 +56,21 @@ function createUserError(err: unknown): HttpsError {
 export const provisionClub = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubName, clubId, adminEmail, adminPassword } = (request.data ?? {}) as {
+  const { clubName, clubId, adminEmail, adminPassword, scoreboardPin } = (request.data ?? {}) as {
     clubName: string;
     clubId?: string;
     adminEmail: string;
     adminPassword: string;
+    scoreboardPin: string;
   };
 
   requireNonEmptyStrings({ clubName, adminEmail, adminPassword });
   requireValidPassword(adminPassword);
+  // Every club starts with the PIN its scoreboards ask for to disconnect, so
+  // none of them is ever stuck paired.
+  if (!isValidScoreboardPin(scoreboardPin)) {
+    throw new HttpsError('invalid-argument', 'The scoreboard admin PIN must be 4 to 8 digits.');
+  }
   // An empty clubId means "generate one", so only check it when given.
   if (clubId !== undefined && clubId !== null && clubId !== '') {
     if (typeof clubId !== 'string' || !CLUB_ID_PATTERN.test(clubId)) {
@@ -86,7 +93,10 @@ export const provisionClub = onCall(async (request) => {
     clubRef = await getFirestore().collection('clubs').add({ name: clubName });
   }
 
-  await apiKeyRef(clubRef.id).set({ key: generateApiKey() });
+  await Promise.all([
+    apiKeyRef(clubRef.id).set({ key: generateApiKey() }),
+    scoreboardPinRef(clubRef.id).set({ pin: scoreboardPin }),
+  ]);
 
   // Create the Firebase Auth user
   let userRecord: UserRecord;
@@ -98,7 +108,11 @@ export const provisionClub = onCall(async (request) => {
     });
   } catch (err) {
     // Roll back the club doc if user creation fails, whatever the reason
-    await Promise.all([clubRef.delete(), apiKeyRef(clubRef.id).delete()]);
+    await Promise.all([
+      clubRef.delete(),
+      apiKeyRef(clubRef.id).delete(),
+      scoreboardPinRef(clubRef.id).delete(),
+    ]);
     throw createUserError(err);
   }
 

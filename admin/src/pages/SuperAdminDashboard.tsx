@@ -24,6 +24,7 @@ export function SuperAdminDashboard() {
   const [clubIdEdited, setClubIdEdited] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [scoreboardPin, setScoreboardPin] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -53,12 +54,19 @@ export function SuperAdminDashboard() {
     setCreateError('');
     try {
       const provisionClub = httpsCallable(functions, 'provisionClub');
-      await provisionClub({ clubName: newClubName, clubId: clubId || undefined, adminEmail, adminPassword });
+      await provisionClub({
+        clubName: newClubName,
+        clubId: clubId || undefined,
+        adminEmail,
+        adminPassword,
+        scoreboardPin,
+      });
       setNewClubName('');
       setClubId('');
       setClubIdEdited(false);
       setAdminEmail('');
       setAdminPassword('');
+      setScoreboardPin('');
       setShowCreateClub(false);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create club.');
@@ -124,6 +132,23 @@ export function SuperAdminDashboard() {
                   required
                   minLength={8}
                 />
+              </label>
+              <label className={styles.label}>
+                Scoreboard Admin PIN
+                <input
+                  className={styles.input}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={scoreboardPin}
+                  onChange={(e) => setScoreboardPin(e.target.value.replace(/\D/g, ''))}
+                  pattern="[0-9]{4,8}"
+                  maxLength={8}
+                  title="4 to 8 digits"
+                  required
+                />
+                <span className={styles.hint}>
+                  Entered on a scoreboard to disconnect it. The club's admins can change it later.
+                </span>
               </label>
               {createError && <p className={styles.error}>{createError}</p>}
               <div className={styles.modalActions}>

@@ -139,7 +139,7 @@ straight away, whatever its claims say.
 The first super admin of a project is created with
 `scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
 others. Club admins are created from the admin portal through
-`provisionClub` (a new club with its first admin) and `addClubAdmin`.
+`provisionClub` (a new club with its first admin and scoreboard PIN) and `addClubAdmin`.
 
 ## Pairing a scoreboard
 
@@ -174,13 +174,14 @@ in meanwhile, opens a dialog showing the connection with a Disconnect button,
 and that asks for the club's admin PIN. Settings has nothing about the
 connection.
 
-Club admins choose the PIN in the admin portal, one for the whole club. It is
-kept in `clubs/{clubId}/private/scoreboardPin`, which scoreboards cannot read.
+Each club has one PIN. A super admin sets it when creating the club, and the
+club's admins can change it in the admin portal. It is kept in `clubs/{clubId}/private/scoreboardPin`, which scoreboards cannot read.
 The app sends what was typed to the `unpairSheet` callable function, which
 checks it, removes `scoreboardUid` from the sheet and clears the scoreboard's
 claims. The rules do not let a scoreboard remove its own `scoreboardUid`, so
-the PIN cannot be skipped. A club with no PIN set cannot disconnect its
-scoreboards until an admin sets one.
+the PIN cannot be skipped. A club with no PIN set, which only clubs created
+before PINs can be, cannot disconnect its scoreboards until an admin sets one
+or `scripts/backfill-scoreboard-pins.js` gives it one.
 
 `unpairSheet` asks for no PIN when the sheet is not the caller's, which is
 the case for a scoreboard whose pairing was lost: there is nothing left to

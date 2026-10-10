@@ -142,6 +142,19 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-claims.js  
 
 Each scoreboard picks its claims up within the hour, the next time its sign in token refreshes.
 
+### Backfilling scoreboard PINs
+
+A scoreboard asks for its club's admin PIN before it disconnects, and a club without one cannot disconnect its scoreboards at all. New clubs are given a PIN when they are created. After deploying the functions and rules that use the PIN, run the one-off backfill once per project to give every older club a random four digit PIN:
+
+```bash
+cd scripts
+npm install
+node backfill-scoreboard-pins.js                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-pins.js  # prod
+```
+
+It prints each new PIN. Clubs that already have one keep it, so it is safe to re-run. Club admins can see and change their PIN in the admin portal.
+
 ---
 
 ## Admin accounts
