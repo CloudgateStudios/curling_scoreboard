@@ -360,6 +360,20 @@ await check('attack: webhook with extra fields', 'deny', () =>
 await check('attack: webhook without a games setting', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { url: webhook.url }));
 
+await check('webhook: club admin sets a message template and time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), {
+    ...webhook, template: '{result} on {date}', timeZone: 'America/Chicago',
+  }));
+
+await check('attack: webhook template that is too long', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, template: 'x'.repeat(1001) }));
+
+await check('attack: webhook template that is not text', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, template: { text: 'x' } }));
+
+await check('attack: webhook time zone that is not text', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, timeZone: -5 }));
+
 await check('attack: club admin forges the last delivery', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/private/webhookStatus'), { ok: true }));
 

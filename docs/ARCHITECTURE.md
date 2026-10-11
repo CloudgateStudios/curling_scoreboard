@@ -41,6 +41,8 @@ clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
 clubs/{clubId}/private/webhook       // absent means no webhook
   url: string                // https, where completed games are posted
   games: 'all' | 'league'    // every game, or only ones with a league team
+  template?: string          // the club's message, up to 1000 characters; absent for the default
+  timeZone?: string          // IANA zone for dates in the message; absent means UTC
 
 clubs/{clubId}/private/webhookStatus // the last post, written by the functions
   at: timestamp
@@ -415,12 +417,22 @@ it fires on the Finish Game write and nothing in the scoreboard app knows
 about it. A game nobody finishes is never posted, and a scoreboard that was
 offline posts its games when it reconnects.
 
-The body is JSON: `text` and `content` both hold the result on one line
-("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"), because Slack reads the
-first and Discord the second, followed by `event`, `club`, `sheet` and the
+The body is JSON: `text` and `content` both hold the message, because Slack
+reads the first and Discord the second, followed by `event`, `club`, `sheet` and the
 `game` exactly as the REST API returns it. It is described under Webhooks in
 `app/web/openapi.yaml`.
 
+- **Message.** The club can write its own message in the portal, with
+  variables in braces such as `{team1}`, `{league}` or `{date}`, filled in by
+  `functions/src/webhookMessage.ts`. Without one it is the result on one line
+  ("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"). Dates and times are
+  written in the time zone saved with the template, which the portal
+  defaults to the admin's own. `{date}`, `{shortDate}` and `{weekday}` are
+  the day the game started, so a late draw that runs past midnight keeps
+  the night it was played; `{finishDate}` is the day it ended. A name in braces that is not a variable is
+  posted as written, and the portal warns about it. The portal lists the
+  variables with sample values for its preview in
+  `admin/src/lib/webhookMessage.ts`, so a new variable goes in both.
 - **Once per game.** Triggers can be delivered more than once, so the function
   sets `webhook.attemptedAt` on the game in a transaction before posting and
   skips a game that already has it. A post that fails is not sent again later.
@@ -435,11 +447,12 @@ first and Discord the second, followed by `event`, `club`, `sheet` and the
   game is expanded, and marks on the game's row when it failed. The last
   post, game or test, is also written to `private/webhookStatus` for the
   Settings tab. That is a separate document so the rule on `private/webhook`
-  can allow club admins exactly `url` and `games`. The REST API leaves the
+  can allow club admins exactly the settings they choose. The REST API leaves the
   game's `webhook` field out.
 
 The portal's Send Test button calls `sendTestWebhook`, which posts a sample
-message to the saved URL and returns how it went. The URL is treated like a
+message to the saved URL, with the club's template filled in for a made up
+game, and returns how it went. The URL is treated like a
 password: it lives under `private`, which scoreboards cannot read, and the
 portal shows it masked once saved.
 
