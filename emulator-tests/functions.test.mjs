@@ -873,6 +873,19 @@ describe('completed game webhook', () => {
     assert.equal(post.body.game.id, 'league-1');
   });
 
+  test('dates a game that runs past midnight by the night it started', async () => {
+    await db.doc('clubs/hook-template/sheets/s1/games/late-1').set({
+      ...leagueGame,
+      // 9:30 PM to 12:15 AM in Chicago.
+      startedAt: Timestamp.fromDate(new Date('2026-10-13T02:30:00Z')),
+      finishedAt: Timestamp.fromDate(new Date('2026-10-13T05:15:00Z')),
+    });
+
+    const post = await waitFor('the post', () =>
+      postsTo('/template').find((r) => r.body.game?.id === 'late-1'));
+    assert.match(post.body.text, / on Monday, October 12, 2026 at 12:15 AM \(2h 45m,/);
+  });
+
   test('set to league games, skips an open game and posts one with a single named team', async () => {
     const before = postsTo('/league').length;
     await db.doc('clubs/hook-league/sheets/s1/games/open-2').set(openGame);

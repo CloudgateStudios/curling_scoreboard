@@ -85,9 +85,12 @@ export function messageVariables({ clubName, sheetName, game, timeZone }: Messag
       : `${winner.name} beat ${loser.name} ${winner.score}-${loser.score}`,
     endsPlayed: String(ends),
     scheduledEnds: String(game['numberOfEnds'] ?? ''),
-    date: formatDate(finished, timeZone, { year: 'numeric', month: 'long', day: 'numeric' }),
-    shortDate: formatDate(finished, timeZone, { year: 'numeric', month: 'numeric', day: 'numeric' }),
-    weekday: formatDate(finished, timeZone, { weekday: 'long' }),
+    // The day the game started, so a late draw that runs past midnight is
+    // still posted under the night it was played.
+    date: formatDate(started, timeZone, { year: 'numeric', month: 'long', day: 'numeric' }),
+    shortDate: formatDate(started, timeZone, { year: 'numeric', month: 'numeric', day: 'numeric' }),
+    weekday: formatDate(started, timeZone, { weekday: 'long' }),
+    finishDate: formatDate(finished, timeZone, { year: 'numeric', month: 'long', day: 'numeric' }),
     startTime: formatDate(started, timeZone, { hour: 'numeric', minute: '2-digit' }),
     finishTime: formatDate(finished, timeZone, { hour: 'numeric', minute: '2-digit' }),
     duration: formatDuration(started, finished),

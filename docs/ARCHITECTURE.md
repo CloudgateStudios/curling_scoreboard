@@ -427,7 +427,9 @@ reads the first and Discord the second, followed by `event`, `club`, `sheet` and
   `functions/src/webhookMessage.ts`. Without one it is the result on one line
   ("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"). Dates and times are
   written in the time zone saved with the template, which the portal
-  defaults to the admin's own. A name in braces that is not a variable is
+  defaults to the admin's own. `{date}`, `{shortDate}` and `{weekday}` are
+  the day the game started, so a late draw that runs past midnight keeps
+  the night it was played; `{finishDate}` is the day it ended. A name in braces that is not a variable is
   posted as written, and the portal warns about it. The portal lists the
   variables with sample values for its preview in
   `admin/src/lib/webhookMessage.ts`, so a new variable goes in both.

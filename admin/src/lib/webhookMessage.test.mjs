@@ -13,6 +13,10 @@ test('fills in game, league and date variables', () => {
   );
 });
 
+test('offers the finish date as well as the start date', () => {
+  assert.equal(previewTemplate('{date} to {finishDate}'), 'October 8, 2026 to October 8, 2026');
+});
+
 test('leaves names that are not variables as written', () => {
   assert.equal(previewTemplate('{team1} {teem2}'), 'Team Smith {teem2}');
 });

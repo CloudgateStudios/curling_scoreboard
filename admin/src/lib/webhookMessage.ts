@@ -48,9 +48,10 @@ export const MESSAGE_VARIABLES: MessageVariableGroup[] = [
   {
     title: 'Date and time',
     variables: [
-      { name: 'date', description: 'Day the game finished', sample: 'October 8, 2026' },
-      { name: 'shortDate', description: 'Day the game finished, in numbers', sample: '10/8/2026' },
-      { name: 'weekday', description: 'Day of the week', sample: 'Thursday' },
+      { name: 'date', description: 'Day the game started, even if it ran past midnight', sample: 'October 8, 2026' },
+      { name: 'shortDate', description: 'Day the game started, in numbers', sample: '10/8/2026' },
+      { name: 'weekday', description: 'Day of the week the game started', sample: 'Thursday' },
+      { name: 'finishDate', description: 'Day the game finished', sample: 'October 8, 2026' },
       { name: 'startTime', description: 'When the game started', sample: '6:30 PM' },
       { name: 'finishTime', description: 'When the game finished', sample: '8:25 PM' },
       { name: 'duration', description: 'How long the game took', sample: '1h 55m' },
