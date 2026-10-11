@@ -775,13 +775,19 @@ describe('completed game webhook', () => {
     await new Promise((resolve) => receiver.listen(0, '127.0.0.1', resolve));
     hookUrl = `http://127.0.0.1:${receiver.address().port}`;
 
-    for (const club of ['hook-all', 'hook-league', 'hook-off', 'hook-failing']) {
+    for (const club of ['hook-all', 'hook-league', 'hook-off', 'hook-failing', 'hook-template']) {
       await db.doc(`clubs/${club}`).set({ name: `Club ${club}` });
       await db.doc(`clubs/${club}/sheets/s1`).set({ name: 'Sheet 1' });
     }
     await db.doc('clubs/hook-all/private/webhook').set({ url: `${hookUrl}/all`, games: 'all' });
     await db.doc('clubs/hook-league/private/webhook').set({ url: `${hookUrl}/league`, games: 'league' });
     await db.doc('clubs/hook-failing/private/webhook').set({ url: `${hookUrl}/failing`, games: 'all' });
+    await db.doc('clubs/hook-template/private/webhook').set({
+      url: `${hookUrl}/template`,
+      games: 'all',
+      template: '{club} {league}: {result} on {weekday}, {date} at {finishTime} ({duration}, {endsPlayed} of {scheduledEnds} ends) {unknown}',
+      timeZone: 'America/Chicago',
+    });
   });
 
   after(() => new Promise((resolve) => receiver.close(resolve)));
@@ -852,6 +858,19 @@ describe('completed game webhook', () => {
     assert.equal(post.body.text, 'Monday Night, Sheet 1: Team Smith 7, Team Jones 4');
     assert.deepEqual(post.body.game.league, { id: 'monday', name: 'Monday Night' });
     assert.equal(post.body.game.team1.externalId, '1042');
+  });
+
+  test('fills in the club\'s own message template', async () => {
+    await db.doc('clubs/hook-template/sheets/s1/games/league-1').set(leagueGame);
+
+    const [post] = await waitFor('the post', () => postsTo('/template').length && postsTo('/template'));
+    assert.equal(
+      post.body.text,
+      'Club hook-template Monday Night: Team Smith beat Team Jones 7-4 on Thursday, '
+        + 'October 8, 2026 at 3:25 PM (1h 55m, 1 of 8 ends) {unknown}',
+    );
+    assert.equal(post.body.content, post.body.text);
+    assert.equal(post.body.game.id, 'league-1');
   });
 
   test('set to league games, skips an open game and posts one with a single named team', async () => {
@@ -945,6 +964,16 @@ describe('completed game webhook', () => {
       assert.equal(post.body.content, post.body.text);
       assert.equal(post.body.game, undefined);
       assert.equal((await db.doc('clubs/hook-all/private/webhookStatus').get()).get('kind'), 'test');
+    });
+
+    test('shows the club\'s message template with a sample game', async () => {
+      const before = postsTo('/template').length;
+      const caller = await superAdmin('super-hook-template@example.com');
+
+      await caller.call('sendTestWebhook', { clubId: 'hook-template' });
+
+      const post = postsTo('/template')[before];
+      assert.match(post.body.text, /\nClub hook-template Monday Night: Team Smith beat Team Jones 7-4 on /);
     });
 
     test('reports a webhook that refuses the message', async () => {

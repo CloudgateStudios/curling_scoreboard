@@ -86,15 +86,23 @@ service cloud.firestore {
       // Where the club's completed games are posted. Club admins set it
       // themselves, since the Slack or Discord channel it points at is
       // theirs. It is kept here, out of reach of scoreboards, because
-      // whoever holds the URL can post to that channel.
+      // whoever holds the URL can post to that channel. The message
+      // template and the time zone its dates are written in are optional:
+      // without them the default message is posted, with times in UTC.
       match /private/webhook {
         allow create, update: if isClubAdmin(clubId)
             && request.resource.data.keys().hasAll(['url', 'games'])
-            && request.resource.data.keys().hasOnly(['url', 'games'])
+            && request.resource.data.keys().hasOnly(['url', 'games', 'template', 'timeZone'])
             && request.resource.data.url is string
             && request.resource.data.url.size() <= 500
             && request.resource.data.url.matches('^https://.+')
-            && request.resource.data.games in ['all', 'league'];
+            && request.resource.data.games in ['all', 'league']
+            && (!('template' in request.resource.data)
+                || (request.resource.data.template is string
+                    && request.resource.data.template.size() <= 1000))
+            && (!('timeZone' in request.resource.data)
+                || (request.resource.data.timeZone is string
+                    && request.resource.data.timeZone.size() <= 64));
         allow delete: if isClubAdmin(clubId);
       }
 
