@@ -4,6 +4,7 @@ import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/fire
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { buildGameResponse } from './routes/games';
+import { gameMessage, validTimeZone } from './webhookMessage';
 
 // A club's completed game webhook: a URL the club gives us, usually a Slack
 // or Discord incoming webhook, that each finished game is posted to.
@@ -14,6 +15,10 @@ type WebhookGames = 'all' | 'league';
 interface WebhookSettings {
   url: string;
   games: WebhookGames;
+  /** The club's own message, absent for the default. */
+  template?: string;
+  /** Where the dates and times in the message are written for. */
+  timeZone: string;
 }
 
 interface DeliveryResult {
@@ -33,8 +38,8 @@ function settingsRef(clubId: string): DocumentReference {
   return getFirestore().collection('clubs').doc(clubId).collection('private').doc('webhook');
 }
 
-// Kept apart from the settings so the rule on those can stay "only url and
-// games", whatever is recorded here.
+// Kept apart from the settings so the rule on those can stay limited to what
+// club admins choose, whatever is recorded here.
 function statusRef(clubId: string): DocumentReference {
   return getFirestore().collection('clubs').doc(clubId).collection('private').doc('webhookStatus');
 }
@@ -43,7 +48,13 @@ async function readSettings(clubId: string): Promise<WebhookSettings | null> {
   const data = (await settingsRef(clubId).get()).data();
   const url = data?.['url'];
   if (typeof url !== 'string' || url === '') return null;
-  return { url, games: data?.['games'] === 'league' ? 'league' : 'all' };
+  const template = data?.['template'];
+  return {
+    url,
+    games: data?.['games'] === 'league' ? 'league' : 'all',
+    ...(typeof template === 'string' && template.trim() !== '' && { template }),
+    timeZone: validTimeZone(data?.['timeZone']),
+  };
 }
 
 // A league game is one where a league team was picked for either color. Open
@@ -54,19 +65,31 @@ export function isLeagueGame(game: FirebaseFirestore.DocumentData): boolean {
   );
 }
 
-/** The result on one line, e.g. "Monday Night, Sheet 2: Team Smith 7, Team Jones 4". */
-export function gameSummary(sheetName: string, game: FirebaseFirestore.DocumentData): string {
-  const league = game['league']?.['name'];
-  const where = typeof league === 'string' && league !== '' ? `${league}, ${sheetName}` : sheetName;
-  const side = (team: FirebaseFirestore.DocumentData | undefined) =>
-    `${team?.['name'] ?? 'Unknown'} ${team?.['totalScore'] ?? 0}`;
-  return `${where}: ${side(game['team1'])}, ${side(game['team2'])}`;
+// What the test message shows the club's template filled in with.
+function sampleGame(): FirebaseFirestore.DocumentData {
+  const finishedAt = new Date();
+  const startedAt = new Date(finishedAt.getTime() - 115 * 60000);
+  return {
+    startedAt,
+    finishedAt,
+    numberOfEnds: 8,
+    league: { id: 'sample', name: 'Monday Night' },
+    team1: { name: 'Team Smith', totalScore: 7 },
+    team2: { name: 'Team Jones', totalScore: 4 },
+    ends: Array.from({ length: 8 }, (_, i) => ({ endNumber: i + 1 })),
+  };
 }
 
+// Discord's SUPPRESS_NOTIFICATIONS message flag: the post shows in the channel
+// as usual, but nobody's phone buzzes for it, like an @silent message.
+const DISCORD_SILENT = 1 << 12;
+
 // Slack reads the message from `text` and Discord from `content`, so both
-// carry it and either kind of webhook URL works as is.
+// carry it and either kind of webhook URL works as is. Discord also gets told
+// to post quietly and to ignore any @everyone, role or user mention a club's
+// message template might contain. Slack and other receivers ignore those.
 function withMessage(text: string, rest: Record<string, unknown>): Record<string, unknown> {
-  return { text, content: text, ...rest };
+  return { text, content: text, flags: DISCORD_SILENT, allowed_mentions: { parse: [] }, ...rest };
 }
 
 const runningInEmulator = process.env['FUNCTIONS_EMULATOR'] === 'true';
@@ -203,10 +226,14 @@ export const sendCompletedGameWebhook = onDocumentCreated(
       clubRef.collection('sheets').doc(sheetId).get(),
     ]);
     const sheetName = (sheetSnap.get('name') as string | undefined) ?? sheetId;
+    const clubName = (clubSnap.get('name') as string | undefined) ?? clubId;
+    const text = gameMessage(settings.template, {
+      clubName, sheetName, game, timeZone: settings.timeZone,
+    });
 
-    const result = await deliver(settings.url, withMessage(gameSummary(sheetName, game), {
+    const result = await deliver(settings.url, withMessage(text, {
       event: 'game.completed',
-      club: { id: clubId, name: (clubSnap.get('name') as string | undefined) ?? clubId },
+      club: { id: clubId, name: clubName },
       sheet: { id: sheetId, name: sheetName },
       game: buildGameResponse(gameId, game),
     }));
@@ -227,7 +254,8 @@ export const sendCompletedGameWebhook = onDocumentCreated(
 );
 
 // Posts a sample message to the club's saved webhook, so an admin finds out
-// that the URL works when they set it and not after the next game.
+// that the URL works when they set it and not after the next game, and sees
+// how their message reads with a made up game filled in.
 export const sendTestWebhook = onCall(async (request) => {
   const { clubId } = (request.data ?? {}) as { clubId?: unknown };
   if (typeof clubId !== 'string' || clubId === '') {
@@ -247,8 +275,11 @@ export const sendTestWebhook = onCall(async (request) => {
 
   const clubSnap = await getFirestore().collection('clubs').doc(clubId).get();
   const clubName = (clubSnap.get('name') as string | undefined) ?? clubId;
+  const sample = gameMessage(settings.template, {
+    clubName, sheetName: 'Sheet 1', game: sampleGame(), timeZone: settings.timeZone,
+  });
   const result = await deliver(settings.url, withMessage(
-    `Test from Curling Scoreboard for ${clubName}. Completed games will be posted here.`,
+    `Test from Curling Scoreboard for ${clubName}. Completed games will be posted here, like this:\n${sample}`,
     { event: 'test', club: { id: clubId, name: clubName } },
   ));
   await recordStatus(clubId, 'test', result);
