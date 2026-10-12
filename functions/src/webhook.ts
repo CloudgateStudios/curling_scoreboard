@@ -80,10 +80,16 @@ function sampleGame(): FirebaseFirestore.DocumentData {
   };
 }
 
+// Discord's SUPPRESS_NOTIFICATIONS message flag: the post shows in the channel
+// as usual, but nobody's phone buzzes for it, like an @silent message.
+const DISCORD_SILENT = 1 << 12;
+
 // Slack reads the message from `text` and Discord from `content`, so both
-// carry it and either kind of webhook URL works as is.
+// carry it and either kind of webhook URL works as is. Discord also gets told
+// to post quietly and to ignore any @everyone, role or user mention a club's
+// message template might contain. Slack and other receivers ignore those.
 function withMessage(text: string, rest: Record<string, unknown>): Record<string, unknown> {
-  return { text, content: text, ...rest };
+  return { text, content: text, flags: DISCORD_SILENT, allowed_mentions: { parse: [] }, ...rest };
 }
 
 const runningInEmulator = process.env['FUNCTIONS_EMULATOR'] === 'true';

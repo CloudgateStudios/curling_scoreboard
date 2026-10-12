@@ -126,6 +126,7 @@ export function WebhookSection({ clubId }: Props) {
   // A new webhook needs its URL; a saved one keeps its own unless replaced.
   const canSave = changed && (saved !== null || trimmedUrl !== '') && !urlInvalid && busy === null;
   const misspelled = unknownVariables(template);
+  const hasMention = /@(everyone|here)\b|<@/.test(template);
 
   useUnsavedChanges(changed);
 
@@ -194,7 +195,8 @@ export function WebhookSection({ clubId }: Props) {
       <h2 className={common.sectionTitle}>Completed Game Webhook</h2>
       <p className={common.blurb}>
         Post each result to a Slack or Discord channel, or to your own server, as soon as Finish
-        Game is tapped on a scoreboard. Paste the channel's incoming webhook URL here.
+        Game is tapped on a scoreboard. Paste the channel's incoming webhook URL here. On Discord,
+        results are posted silently: they show in the channel without notifying anyone.
       </p>
 
       {enteringUrl ? (
@@ -246,7 +248,8 @@ export function WebhookSection({ clubId }: Props) {
       </label>
       <div className={styles.templateTools}>
         <span className={styles.hint}>
-          Click a variable to add it where the cursor is. The game's details are posted alongside
+          Click a variable to add it where the cursor is. Mentions such as @everyone or a role are
+          shown as plain text on Discord and ping nobody. The game's details are posted alongside
           the message for servers that read them.
         </span>
         {template !== DEFAULT_TEMPLATE && (
@@ -278,6 +281,11 @@ export function WebhookSection({ clubId }: Props) {
       {misspelled.length > 0 && (
         <p className={common.warning}>
           Not a variable, so it will be posted as written: {misspelled.map((name) => `{${name}}`).join(', ')}
+        </p>
+      )}
+      {hasMention && (
+        <p className={common.warning}>
+          Discord shows mentions in game results as plain text, so this won't notify anyone.
         </p>
       )}
       <div className={styles.preview}>
