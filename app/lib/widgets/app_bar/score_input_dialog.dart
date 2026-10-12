@@ -148,8 +148,8 @@ class ScoreInputDialog extends StatelessWidget {
               : MainAxisAlignment.spaceBetween,
           actions: [
             if (onDelete != null)
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(foregroundColor: Colors.red),
                 onPressed: () {
                   if (!confirmingDelete) {
                     setState(() => confirmingDelete = true);
@@ -163,7 +163,10 @@ class ScoreInputDialog extends StatelessWidget {
                   confirmingDelete
                       ? context.l10n.scoreInputConfirmDeleteButtonLabel
                       : context.l10n.scoreInputDeleteButtonLabel,
-                  style: const TextStyle(fontSize: 24),
+                  style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ElevatedButton(
