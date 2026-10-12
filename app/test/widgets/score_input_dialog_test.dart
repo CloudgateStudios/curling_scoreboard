@@ -277,4 +277,38 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('ScoreInputDialog has no delete button when entering an end', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithMaterialApp(const ScoreInputDialog(defaultScore: 0, end: 1)),
+    );
+
+    expect(find.text('Delete End'), findsNothing);
+  });
+
+  testWidgets('ScoreInputDialog deletes the end on the second tap', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 728);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    var deletes = 0;
+    await tester.pumpWidget(
+      wrapWithMaterialApp(
+        ScoreInputDialog(defaultScore: 0, end: 1, onDelete: () => deletes++),
+      ),
+    );
+
+    await tester.tap(find.text('Delete End'));
+    await tester.pumpAndSettle();
+    expect(deletes, 0);
+
+    await tester.tap(find.text('Tap again to delete'));
+    await tester.pumpAndSettle();
+    expect(deletes, 1);
+    expect(tester.takeException(), isNull);
+  });
 }

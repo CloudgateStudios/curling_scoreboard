@@ -140,6 +140,14 @@
   "@scoreInputEnterButtonLabel": {
     "description": "Button text for score input dialog to submit the score."
   },
+  "scoreInputDeleteButtonLabel": "Delete End",
+  "@scoreInputDeleteButtonLabel": {
+    "description": "Button text on the edit score dialog to delete an end entered by mistake."
+  },
+  "scoreInputConfirmDeleteButtonLabel": "Tap again to delete",
+  "@scoreInputConfirmDeleteButtonLabel": {
+    "description": "Button text on the edit score dialog once delete has been tapped, asking for a second tap to confirm."
+  },
   "addScoreGameCompleteMessage": "Game is complete. Finish the game to reset.",
   "@addScoreGameCompleteMessage": {
     "description": "Message shown to the user when they try and enter a score for a game that has been completed."

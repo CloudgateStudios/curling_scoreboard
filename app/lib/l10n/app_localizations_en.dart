@@ -110,6 +110,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scoreInputEnterButtonLabel => 'Enter';
 
   @override
+  String get scoreInputDeleteButtonLabel => 'Delete End';
+
+  @override
+  String get scoreInputConfirmDeleteButtonLabel => 'Tap again to delete';
+
+  @override
   String get addScoreGameCompleteMessage =>
       'Game is complete. Finish the game to reset.';
 

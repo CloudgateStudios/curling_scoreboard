@@ -148,6 +148,25 @@ class GameController extends ChangeNotifier {
     unawaited(_syncService.pushLiveGame(_game));
   }
 
+  /// Removes an end that was entered by mistake, such as one both teams
+  /// entered. [end] is the end number, starting at 1.
+  ///
+  /// The ends after it move down to fill the gap and play goes back an end.
+  void deleteEnd(int end) {
+    final remainingEnds = _game.ends.toList()..removeAt(end - 1);
+    for (var i = 0; i < remainingEnds.length; i++) {
+      remainingEnds[i].endNumber = i + 1;
+    }
+
+    _game
+      ..ends = remainingEnds
+      ..currentPlayingEnd = remainingEnds.length + 1
+      ..evaluateHammer();
+    notifyListeners();
+
+    unawaited(_syncService.pushLiveGame(_game));
+  }
+
   /// Stops the game clock and saves the game as completed.
   void finishGame() {
     _timer?.cancel();
