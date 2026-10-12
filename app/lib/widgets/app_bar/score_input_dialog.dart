@@ -11,6 +11,7 @@ class ScoreInputDialog extends StatelessWidget {
     this.rockColors,
     this.team1Name,
     this.team2Name,
+    this.onDelete,
     super.key,
   });
 
@@ -26,6 +27,10 @@ class ScoreInputDialog extends StatelessWidget {
   final ScoringTeam? defaultTeam;
   final int defaultScore;
 
+  /// Deletes the end being edited. The delete button is left out when null,
+  /// as it is when entering a new end.
+  final VoidCallback? onDelete;
+
   @override
   Widget build(BuildContext context) {
     var selectedTeam = defaultTeam;
@@ -37,6 +42,9 @@ class ScoreInputDialog extends StatelessWidget {
 
     var selectedScore = defaultScore;
     var currentScoreSelectedIndex = defaultScore;
+
+    // Deleting takes a second tap so a stray touch cannot drop an end.
+    var confirmingDelete = false;
 
     final colors = rockColors ?? RockColors.defaults(context.l10n);
 
@@ -135,7 +143,29 @@ class ScoreInputDialog extends StatelessWidget {
               ),
             ],
           ),
+          actionsAlignment: onDelete == null
+              ? null
+              : MainAxisAlignment.spaceBetween,
           actions: [
+            if (onDelete != null)
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () {
+                  if (!confirmingDelete) {
+                    setState(() => confirmingDelete = true);
+                    return;
+                  }
+
+                  Navigator.pop(context);
+                  onDelete!();
+                },
+                child: Text(
+                  confirmingDelete
+                      ? context.l10n.scoreInputConfirmDeleteButtonLabel
+                      : context.l10n.scoreInputDeleteButtonLabel,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
             ElevatedButton(
               onPressed: (selectedScore > 0 && selectedTeam == null)
                   ? null

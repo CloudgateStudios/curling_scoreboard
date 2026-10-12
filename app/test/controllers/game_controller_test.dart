@@ -333,6 +333,59 @@ void main() {
     });
   });
 
+  group('deleteEnd', () {
+    test('removes a duplicated end and steps play back an end', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game())
+          ..enterScore(_end(1, 2, ScoringTeam.team2))
+          ..enterScore(_end(2, 1, ScoringTeam.team1))
+          ..enterScore(_end(3, 1, ScoringTeam.team1));
+        sync.liveGamePushes.clear();
+        notifications = 0;
+
+        controller.deleteEnd(3);
+
+        expect(controller.game.ends, hasLength(2));
+        expect(controller.game.team1TotalScore, 1);
+        expect(controller.game.currentPlayingEnd, 3);
+        expect(controller.game.whichTeamHasHammer(), ScoringTeam.team2);
+        expect(notifications, 1);
+        expect(sync.liveGamePushes, hasLength(1));
+      });
+    });
+
+    test('renumbers the ends after a deleted earlier end', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game())
+          ..enterScore(_end(1, 2, ScoringTeam.team2))
+          ..enterScore(_end(2, 2, ScoringTeam.team2))
+          ..enterScore(_end(3, 1, ScoringTeam.team1))
+          ..deleteEnd(2);
+
+        expect(controller.game.ends.map((end) => end.endNumber), [1, 2]);
+        expect(controller.game.team1ScoresByEnd, [0, 1]);
+        expect(controller.game.team2ScoresByEnd, [2, 0]);
+        expect(controller.game.currentPlayingEnd, 3);
+        expect(controller.game.whichTeamHasHammer(), ScoringTeam.team2);
+      });
+    });
+
+    test('lets the extra end be played again once it is deleted', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game(numberOfEnds: 1))
+          ..enterScore(_end(1, 0))
+          ..enterScore(_end(2, 0))
+          ..deleteEnd(2);
+
+        expect(controller.game.currentPlayingEnd, 2);
+        expect(controller.enterScore(_end(2, 1, ScoringTeam.team1)), isTrue);
+      });
+    });
+  });
+
   group('finishGame', () {
     test('stops the clock and saves the completed game once', () {
       fakeAsync((async) {

@@ -316,6 +316,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           rockColors: _gameRockColors,
           team1Name: gameObject.team1.name,
           team2Name: gameObject.team2.name,
+          onDelete: () => _gameController.deleteEnd(end),
         );
       },
     );

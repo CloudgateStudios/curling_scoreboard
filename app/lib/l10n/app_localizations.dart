@@ -283,6 +283,18 @@ abstract class AppLocalizations {
   /// **'Enter'**
   String get scoreInputEnterButtonLabel;
 
+  /// Button text on the edit score dialog to delete an end entered by mistake.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete End'**
+  String get scoreInputDeleteButtonLabel;
+
+  /// Button text on the edit score dialog once delete has been tapped, asking for a second tap to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap again to delete'**
+  String get scoreInputConfirmDeleteButtonLabel;
+
   /// Message shown to the user when they try and enter a score for a game that has been completed.
   ///
   /// In en, this message translates to:
