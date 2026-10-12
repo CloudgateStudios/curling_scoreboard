@@ -826,6 +826,9 @@ describe('completed game webhook', () => {
     const [post] = await waitFor('the post', () => postsTo('/all').length && postsTo('/all'));
     assert.equal(post.body.text, 'Sheet 1: Red 7, Yellow 4');
     assert.equal(post.body.content, post.body.text);
+    // Discord posts it without a notification and without pinging anyone.
+    assert.equal(post.body.flags, 4096);
+    assert.deepEqual(post.body.allowed_mentions, { parse: [] });
     assert.equal(post.body.event, 'game.completed');
     assert.deepEqual(post.body.club, { id: 'hook-all', name: 'Club hook-all' });
     assert.deepEqual(post.body.sheet, { id: 's1', name: 'Sheet 1' });

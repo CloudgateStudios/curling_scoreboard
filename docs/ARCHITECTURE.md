@@ -422,6 +422,11 @@ reads the first and Discord the second, followed by `event`, `club`, `sheet` and
 `game` exactly as the REST API returns it. It is described under Webhooks in
 `app/web/openapi.yaml`.
 
+- **Quiet on Discord.** Every post carries `flags: 4096`, Discord's
+  `SUPPRESS_NOTIFICATIONS`, so results land in the channel without buzzing
+  anyone's phone, and `allowed_mentions: { parse: [] }`, so an `@everyone`
+  or role mention typed into a club's template pings nobody. Slack ignores
+  both.
 - **Message.** The club can write its own message in the portal, with
   variables in braces such as `{team1}`, `{league}` or `{date}`, filled in by
   `functions/src/webhookMessage.ts`. Without one it is the result on one line
