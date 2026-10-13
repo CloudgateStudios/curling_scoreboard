@@ -239,9 +239,16 @@ these points:
 | The app starts           | Remove `liveGame`                                         |
 | A game is started        | Overwrite `liveGame` on the sheet                         |
 | A score is entered or edited | Overwrite `liveGame` on the sheet                     |
-| Finish Game              | Add a `games` document and remove `liveGame`, in one batch |
+| The teams are changed    | Overwrite `liveGame` on the sheet                         |
+| The game report is dismissed | Add a `games` document and remove `liveGame`, in one batch |
 
 A game is live from the moment it starts, so the first end shows at 0-0.
+
+Finishing a game, by Finish Game or by the last end being entered, stops the
+clock and shows the game report. The game is only saved when the report is
+dismissed, so the teams can still be corrected on it; until then it stays
+live. A scoreboard reloaded on the report loses the game, as it would any
+game in progress.
 
 A game that is never finished would otherwise stay live forever. The app
 does not persist game state, so it removes `liveGame` on startup. For a
@@ -336,9 +343,24 @@ Done sits in the same corner as Start Game, so the setup screen ignores taps
 for a moment after the picker closes. Otherwise a double tap on Done would
 start the game.
 
+### Changing the teams during a game
+
+Teams forget to pick their names, or pick the wrong ones. While a club has
+leagues, a Teams button on the scoreboard, a tap on the team names under the
+scores, and Change Teams on the game report all open the same team picker.
+A league game picks from its own league, starting from the teams it has; an
+open game asks for the league first and becomes a league game. The rock
+colors stay as they are, so the swap button is how a matchup put on the wrong
+colors is fixed. Change Teams sits beside Dismiss, so the report ignores taps
+for a moment after the picker closes, as the setup screen does.
+
+Once a team has a name of its own, the scoreboard shows both names on their
+rock colors under the total scores, so the players can check them. An open
+game has none, as its names would only spell out the colors.
+
 The game carries the league and each team's `teamId` and `externalId`, which
 are written with `liveGame` and the completed game. The name and IDs are
-copied at the start of the game, so the record stands by itself whatever
+copied when the teams are picked, so the record stands by itself whatever
 happens to the league afterwards, and it is what a later score reporter needs
 to match a result to a team.
 
@@ -413,8 +435,8 @@ in the admin portal, along with whether to post every game or only league
 games. A league game here is one where either team has a `teamId`.
 
 `sendCompletedGameWebhook` is a Firestore trigger on new `games` documents, so
-it fires on the Finish Game write and nothing in the scoreboard app knows
-about it. A game nobody finishes is never posted, and a scoreboard that was
+it fires when the game report is dismissed and nothing in the scoreboard app
+knows about it. The post has the teams as they were corrected on the report. A game nobody finishes is never posted, and a scoreboard that was
 offline posts its games when it reconnects.
 
 The body is JSON: `text` and `content` both hold the message, because Slack

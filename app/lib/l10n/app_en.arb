@@ -126,6 +126,14 @@
   "@gameEndDialogButtonLabelDismiss": {
     "description": "Button label to dismiss the end game dialog"
   },
+  "gameEndDialogButtonLabelChangeTeams": "Change Teams",
+  "@gameEndDialogButtonLabelChangeTeams": {
+    "description": "Button on the game report for picking the game's teams again before it is saved."
+  },
+  "appBarTeamsButtonLabel": "Teams",
+  "@appBarTeamsButtonLabel": {
+    "description": "Button text for picking or correcting the teams of the game in progress."
+  },
   "scoreInputDialogTitle": "Score - End {endNumberName}",
   "@scoreInputDialogTitle": {
     "description": "Title text for the edit score dialog.",

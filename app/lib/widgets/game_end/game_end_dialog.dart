@@ -4,15 +4,51 @@ import 'package:flutter/material.dart';
 
 /// The report shown when a game finishes: the final score, then each end.
 /// It fills the display, like the game setup screen that follows it.
-class GameEndDialog extends StatelessWidget {
-  const GameEndDialog({required this.gameObject, super.key});
+///
+/// The game is saved when the report is dismissed, so until then the teams
+/// can still be corrected through [onChangeTeams].
+class GameEndDialog extends StatefulWidget {
+  const GameEndDialog({
+    required this.gameObject,
+    this.onChangeTeams,
+    super.key,
+  });
 
   final CurlingGame gameObject;
+
+  /// Lets the players pick the game's teams again. Completes once they are
+  /// done, having changed [gameObject] or not. No button when null.
+  final Future<void> Function()? onChangeTeams;
+
+  /// How long Dismiss ignores taps after the teams are changed.
+  @visibleForTesting
+  static const changeTeamsGuardDuration = Duration(milliseconds: 700);
+
+  @override
+  State<GameEndDialog> createState() => _GameEndDialogState();
+}
+
+class _GameEndDialogState extends State<GameEndDialog> {
+  // The team picker's Done sits where Dismiss does, so a double tap on it
+  // would otherwise save the game as the picker closes. The report sits out
+  // the moment after.
+  bool _guarded = false;
+
+  Future<void> _changeTeams(Future<void> Function() onChangeTeams) async {
+    setState(() => _guarded = true);
+    await onChangeTeams();
+    if (!mounted) return;
+    // The teams are changed on the game itself.
+    setState(() {});
+    await Future<void>.delayed(GameEndDialog.changeTeamsGuardDuration);
+    if (mounted) setState(() => _guarded = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final game = gameObject;
+    final game = widget.gameObject;
+    final onChangeTeams = widget.onChangeTeams;
 
     return Dialog.fullscreen(
       child: Padding(
@@ -50,23 +86,38 @@ class GameEndDialog extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(child: GameSummaryWidget(game: game)),
             const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 8,
-                  ),
-                  child: Text(
-                    l10n.gameEndDialogButtonLabelDismiss,
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
+            AbsorbPointer(
+              absorbing: _guarded,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (onChangeTeams != null) ...[
+                    TextButton(
+                      onPressed: () => _changeTeams(onChangeTeams),
+                      child: Text(
+                        l10n.gameEndDialogButtonLabelChangeTeams,
+                        style: const TextStyle(fontSize: 32),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                  ],
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        l10n.gameEndDialogButtonLabelDismiss,
+                        style: const TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],

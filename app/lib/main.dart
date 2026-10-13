@@ -12,6 +12,7 @@ import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/rock_colors_service.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
+import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/gestures.dart';
@@ -254,12 +255,59 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return GameEndDialog(gameObject: gameObject);
+        return GameEndDialog(
+          gameObject: gameObject,
+          onChangeTeams: _canChangeTeams ? _changeTeams : null,
+        );
       },
     ).then((value) async {
-      _gameController.resetForNextGame();
+      // Dismissing the report is what submits the game, so the teams can be
+      // corrected right up to then.
+      _gameController
+        ..saveCompletedGame()
+        ..resetForNextGame();
       await showGameStartDialog();
     });
+  }
+
+  /// Teams are league teams, so they can only be picked when the club has
+  /// leagues.
+  bool get _canChangeTeams =>
+      widget.leagueService?.leagues.value.isNotEmpty ?? false;
+
+  /// Picks the game's teams again: the same league's teams for a league
+  /// game, or a league and its teams for an open game. The rock colors stay
+  /// as they are; the picker decides which team throws which.
+  Future<void> _changeTeams() async {
+    final leagues = widget.leagueService?.leagues.value ?? const <League>[];
+    final gameLeague = gameObject.league;
+    final league =
+        leagues.where((league) => league.id == gameLeague?.id).firstOrNull ??
+        await showLeagueChooser(context, leagues: leagues, now: DateTime.now());
+    if (league == null || !mounted) return;
+
+    LeagueTeam? leagueTeamOf(CurlingTeam team) =>
+        league.teams.where((t) => t.id == team.teamId).firstOrNull;
+    final team1 = leagueTeamOf(gameObject.team1);
+    final team2 = leagueTeamOf(gameObject.team2);
+
+    final picked = await showDialog<LeagueMatchup>(
+      context: context,
+      builder: (_) => LeagueMatchupPicker(
+        league: league,
+        rockColors: _gameRockColors,
+        initial: team1 == null || team2 == null
+            ? null
+            : LeagueMatchup(league: league, team1: team1, team2: team2),
+      ),
+    );
+    if (picked == null) return;
+
+    _gameController.changeTeams(
+      league: GameLeague(id: picked.league.id, name: picked.league.name),
+      team1: picked.team1,
+      team2: picked.team2,
+    );
   }
 
   Future<void> showFinishGameConfirmationDialog(BuildContext context) async {
@@ -363,6 +411,18 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           ),
         ),
         actions: <Widget>[
+          // Shows up once the club's leagues load, and goes if they all end.
+          if (widget.leagueService case final leagueService?)
+            ListenableBuilder(
+              listenable: leagueService.leagues,
+              builder: (context, _) => _canChangeTeams
+                  ? AppBarActionButton(
+                      icon: Icons.groups,
+                      label: context.l10n.appBarTeamsButtonLabel,
+                      onPressed: _changeTeams,
+                    )
+                  : const SizedBox.shrink(),
+            ),
           AppBarActionButton(
             icon: Icons.add,
             label: context.l10n.appBarAddScoreButtonLabel,
@@ -391,6 +451,11 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     );
   }
 
+  bool get _hasTeamNames => [
+    gameObject.team1,
+    gameObject.team2,
+  ].any((team) => team.name != team.colorName);
+
   Widget buildBody() {
     return Column(
       children: [
@@ -410,6 +475,16 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
             endNumber: gameObject.currentPlayingEndForDisplay,
           ),
         ),
+        // Only once a team has a name of its own: otherwise it would just
+        // spell out the rock colors.
+        if (_hasTeamNames)
+          Flexible(
+            child: TeamNamesRow(
+              team1: gameObject.team1,
+              team2: gameObject.team2,
+              onPressed: _canChangeTeams ? _changeTeams : null,
+            ),
+          ),
         if (gameObject.numberOfPlayersPerTeam > 0)
           Flexible(
             child: GameInfoRowWidget(
