@@ -58,6 +58,10 @@ CurlingGame _game({
   numberOfPlayersPerTeam: numberOfPlayersPerTeam,
 );
 
+const _league = GameLeague(id: 'league-1', name: 'Tuesday Night');
+const _rockets = LeagueTeam(id: 'rockets', name: 'Rockets', externalId: 'R-1');
+const _comets = LeagueTeam(id: 'comets', name: 'Comets');
+
 CurlingEnd _end(int endNumber, int score, [ScoringTeam? team]) =>
     CurlingEnd(endNumber: endNumber, score: score, scoringTeam: team);
 
@@ -405,6 +409,19 @@ void main() {
       });
     });
 
+    test('teams changed during the game are the ones saved', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game())
+          ..changeTeams(league: _league, team1: _rockets, team2: _comets)
+          ..finishGame();
+
+        final saved = sync.completedGames.single;
+        expect((saved['team1'] as Map)['name'], 'Rockets');
+        expect((saved['team2'] as Map)['name'], 'Comets');
+      });
+    });
+
     test('resetForNextGame clears the ends and the clock', () {
       fakeAsync((async) {
         controller.startGame(_game());
@@ -440,6 +457,53 @@ void main() {
 
         expect(controller.totalTimerSeconds, 2);
         expect(controller.secondsPerEnd, hasLength(7));
+      });
+    });
+  });
+
+  group('changeTeams', () {
+    test('names the teams, keeps their colors and pushes the live game', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game())
+          ..enterScore(_end(1, 2, ScoringTeam.team1));
+        sync.liveGamePushes.clear();
+        notifications = 0;
+
+        controller.changeTeams(
+          league: _league,
+          team1: _rockets,
+          team2: _comets,
+        );
+
+        final game = controller.game;
+        expect(game.league?.id, 'league-1');
+        expect(game.team1.name, 'Rockets');
+        expect(game.team1.teamId, 'rockets');
+        expect(game.team1.externalId, 'R-1');
+        expect(game.team1.colorName, 'Red');
+        expect(game.team1.color, Colors.red);
+        expect(game.team2.name, 'Comets');
+        expect(game.team2.teamId, 'comets');
+        expect(game.team2.externalId, isNull);
+        expect(game.team1TotalScore, 2);
+        expect(notifications, 1);
+        expect(sync.liveGamePushes, hasLength(1));
+        expect((sync.liveGamePushes.single['team1'] as Map)['name'], 'Rockets');
+      });
+    });
+
+    test('replaces teams picked before, external IDs included', () {
+      fakeAsync((async) {
+        controller
+          ..startGame(_game())
+          ..changeTeams(league: _league, team1: _rockets, team2: _comets)
+          ..changeTeams(league: _league, team1: _comets, team2: _rockets);
+
+        expect(controller.game.team1.name, 'Comets');
+        expect(controller.game.team1.externalId, isNull);
+        expect(controller.game.team2.name, 'Rockets');
+        expect(controller.game.team2.externalId, 'R-1');
       });
     });
   });

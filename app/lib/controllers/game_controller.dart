@@ -167,6 +167,31 @@ class GameController extends ChangeNotifier {
     unawaited(_syncService.pushLiveGame(_game));
   }
 
+  /// Puts league teams on the game, replacing whichever teams it started
+  /// with. [team1] throws the first rock color and [team2] the second.
+  ///
+  /// Teams forget to pick their names, or pick the wrong ones, so this works
+  /// at any point during the game. An open game becomes a game in [league].
+  void changeTeams({
+    required GameLeague league,
+    required LeagueTeam team1,
+    required LeagueTeam team2,
+  }) {
+    _game.league = league;
+    for (final (team, leagueTeam) in [
+      (_game.team1, team1),
+      (_game.team2, team2),
+    ]) {
+      team
+        ..name = leagueTeam.name
+        ..teamId = leagueTeam.id
+        ..externalId = leagueTeam.externalId;
+    }
+    notifyListeners();
+
+    unawaited(_syncService.pushLiveGame(_game));
+  }
+
   /// Stops the game clock and saves the game as completed.
   void finishGame() {
     _timer?.cancel();

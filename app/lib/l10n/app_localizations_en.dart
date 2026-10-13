@@ -102,6 +102,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gameEndDialogButtonLabelDismiss => 'Dismiss';
 
   @override
+  String get appBarTeamsButtonLabel => 'Teams';
+
+  @override
   String scoreInputDialogTitle(String endNumberName) {
     return 'Score - End $endNumberName';
   }

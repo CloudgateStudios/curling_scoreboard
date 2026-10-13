@@ -271,6 +271,12 @@ abstract class AppLocalizations {
   /// **'Dismiss'**
   String get gameEndDialogButtonLabelDismiss;
 
+  /// Button text for picking or correcting the teams of the game in progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Teams'**
+  String get appBarTeamsButtonLabel;
+
   /// Title text for the edit score dialog.
   ///
   /// In en, this message translates to:

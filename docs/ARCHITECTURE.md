@@ -239,6 +239,7 @@ these points:
 | The app starts           | Remove `liveGame`                                         |
 | A game is started        | Overwrite `liveGame` on the sheet                         |
 | A score is entered or edited | Overwrite `liveGame` on the sheet                     |
+| The teams are changed    | Overwrite `liveGame` on the sheet                         |
 | Finish Game              | Add a `games` document and remove `liveGame`, in one batch |
 
 A game is live from the moment it starts, so the first end shows at 0-0.
@@ -336,9 +337,24 @@ Done sits in the same corner as Start Game, so the setup screen ignores taps
 for a moment after the picker closes. Otherwise a double tap on Done would
 start the game.
 
+### Changing the teams during a game
+
+Teams forget to pick their names, or pick the wrong ones. While a club has
+leagues, a Teams button on the scoreboard and a tap on the team names under
+the scores both open the same team picker, at any point until the game
+finishes.
+A league game picks from its own league, starting from the teams it has; an
+open game asks for the league first and becomes a league game. The rock
+colors stay as they are, so the swap button is how a matchup put on the wrong
+colors is fixed.
+
+Once a team has a name of its own, the scoreboard shows both names on their
+rock colors under the total scores, so the players can check them. An open
+game has none, as its names would only spell out the colors.
+
 The game carries the league and each team's `teamId` and `externalId`, which
 are written with `liveGame` and the completed game. The name and IDs are
-copied at the start of the game, so the record stands by itself whatever
+copied when the teams are picked, so the record stands by itself whatever
 happens to the league afterwards, and it is what a later score reporter needs
 to match a result to a team.
 
