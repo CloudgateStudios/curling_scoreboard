@@ -171,8 +171,7 @@ class GameController extends ChangeNotifier {
   /// with. [team1] throws the first rock color and [team2] the second.
   ///
   /// Teams forget to pick their names, or pick the wrong ones, so this works
-  /// at any point until the finished game is saved. An open game becomes a
-  /// game in [league].
+  /// at any point during the game. An open game becomes a game in [league].
   void changeTeams({
     required GameLeague league,
     required LeagueTeam team1,
@@ -193,16 +192,11 @@ class GameController extends ChangeNotifier {
     unawaited(_syncService.pushLiveGame(_game));
   }
 
-  /// Stops the game clock. The game stays live until [saveCompletedGame],
-  /// so its teams can still be corrected on the game report.
+  /// Stops the game clock and saves the game as completed.
   void finishGame() {
     _timer?.cancel();
     notifyListeners();
-  }
 
-  /// Saves the finished game as completed, which also takes it off the
-  /// sheet's live game.
-  void saveCompletedGame() {
     unawaited(_syncService.saveCompletedGame(_game));
   }
 

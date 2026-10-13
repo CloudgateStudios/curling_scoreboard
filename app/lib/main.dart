@@ -255,17 +255,10 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return GameEndDialog(
-          gameObject: gameObject,
-          onChangeTeams: _canChangeTeams ? _changeTeams : null,
-        );
+        return GameEndDialog(gameObject: gameObject);
       },
     ).then((value) async {
-      // Dismissing the report is what submits the game, so the teams can be
-      // corrected right up to then.
-      _gameController
-        ..saveCompletedGame()
-        ..resetForNextGame();
+      _gameController.resetForNextGame();
       await showGameStartDialog();
     });
   }

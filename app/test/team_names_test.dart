@@ -86,35 +86,6 @@ void main() {
     );
   });
 
-  testWidgets('the teams can be picked on the game report', (tester) async {
-    await _startOpenGame(tester);
-
-    await tester.tap(find.text('Finish Game'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Yes'));
-    await tester.pumpAndSettle();
-    expect(find.byType(GameEndDialog), findsOneWidget);
-
-    await tester.tap(find.text('Change Teams'));
-    await tester.pumpAndSettle();
-    await _pickTeams(tester);
-
-    expect(
-      find.descendant(
-        of: find.byType(GameEndDialog),
-        matching: find.text('Team Smith'),
-      ),
-      findsWidgets,
-    );
-
-    // Dismissing submits the game and goes on to the next one.
-    await tester.pump(GameEndDialog.changeTeamsGuardDuration);
-    await tester.tap(find.text('Dismiss'));
-    await tester.pumpAndSettle();
-    expect(find.byType(GameEndDialog), findsNothing);
-    expect(find.byType(GameStartDialog), findsOneWidget);
-  });
-
   testWidgets('teams cannot be changed without leagues', (tester) async {
     await _startOpenGame(tester, leagues: const []);
 

@@ -391,7 +391,7 @@ void main() {
   });
 
   group('finishGame', () {
-    test('stops the clock without saving the game yet', () {
+    test('stops the clock and saves the completed game once', () {
       fakeAsync((async) {
         controller
           ..startGame(_game())
@@ -403,31 +403,18 @@ void main() {
 
         expect(controller.isClockRunning, isFalse);
         expect(notifications, 1);
-        expect(sync.completedGames, isEmpty);
+        expect(sync.completedGames, hasLength(1));
+        expect(sync.completedGames.single['ends'], hasLength(1));
         expect(sync.liveGamePushes, isEmpty);
       });
     });
 
-    test('saveCompletedGame saves the finished game once', () {
+    test('teams changed during the game are the ones saved', () {
       fakeAsync((async) {
         controller
           ..startGame(_game())
-          ..enterScore(_end(1, 3, ScoringTeam.team1))
-          ..finishGame()
-          ..saveCompletedGame();
-
-        expect(sync.completedGames, hasLength(1));
-        expect(sync.completedGames.single['ends'], hasLength(1));
-      });
-    });
-
-    test('teams changed after the game finishes are the ones saved', () {
-      fakeAsync((async) {
-        controller
-          ..startGame(_game())
-          ..finishGame()
           ..changeTeams(league: _league, team1: _rockets, team2: _comets)
-          ..saveCompletedGame();
+          ..finishGame();
 
         final saved = sync.completedGames.single;
         expect((saved['team1'] as Map)['name'], 'Rockets');
@@ -441,8 +428,7 @@ void main() {
         async.elapse(const Duration(seconds: 7));
         controller
           ..enterScore(_end(1, 3, ScoringTeam.team1))
-          ..finishGame()
-          ..saveCompletedGame();
+          ..finishGame();
         notifications = 0;
 
         controller.resetForNextGame();

@@ -271,12 +271,6 @@ abstract class AppLocalizations {
   /// **'Dismiss'**
   String get gameEndDialogButtonLabelDismiss;
 
-  /// Button on the game report for picking the game's teams again before it is saved.
-  ///
-  /// In en, this message translates to:
-  /// **'Change Teams'**
-  String get gameEndDialogButtonLabelChangeTeams;
-
   /// Button text for picking or correcting the teams of the game in progress.
   ///
   /// In en, this message translates to:
