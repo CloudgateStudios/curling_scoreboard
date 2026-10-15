@@ -14,6 +14,9 @@ class TotalScoreRow extends StatelessWidget {
     required this.team2HasHammer,
     required this.team2HasLSFE,
     required this.endNumber,
+    this.team1Name,
+    this.team2Name,
+    this.onTeamNamePressed,
     super.key,
   });
 
@@ -29,8 +32,20 @@ class TotalScoreRow extends StatelessWidget {
   final bool team2HasLSFE;
   final String endNumber;
 
+  /// Each team's name, shown under its score. Null to show none.
+  final String? team1Name;
+  final String? team2Name;
+  final VoidCallback? onTeamNamePressed;
+
+  /// How much of the row's width the end number takes, in the middle.
+  static const _endNumberWidthFactor = 0.125;
+
   @override
   Widget build(BuildContext context) {
+    // Half the end number reaches into each team's side, plus a gap.
+    final innerClearance =
+        MediaQuery.of(context).size.width * _endNumberWidthFactor / 2 + 10;
+
     return Stack(
       children: [
         Row(
@@ -44,6 +59,9 @@ class TotalScoreRow extends StatelessWidget {
               shouldShowLSFEIcon: team1HasLSFE,
               hammerIconPosition: TeamHammerIconPosition.left,
               lsfeIconPosition: LSFEIconPosition.left,
+              teamName: team1Name,
+              onTeamNamePressed: onTeamNamePressed,
+              innerClearance: innerClearance,
             ),
             TeamTotalScoreWidget(
               score: team2Score.toString(),
@@ -51,12 +69,15 @@ class TotalScoreRow extends StatelessWidget {
               textColor: team2TextColor,
               shouldShowHammerIcon: team2HasHammer,
               shouldShowLSFEIcon: team2HasLSFE,
+              teamName: team2Name,
+              onTeamNamePressed: onTeamNamePressed,
+              innerClearance: innerClearance,
             ),
           ],
         ),
         Align(
           child: FractionallySizedBox(
-            widthFactor: 0.125,
+            widthFactor: _endNumberWidthFactor,
             heightFactor: 0.7,
             child: FittedBox(
               fit: BoxFit.fitHeight,
