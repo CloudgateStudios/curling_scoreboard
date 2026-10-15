@@ -10,6 +10,8 @@ import { FINAL_SHOWN_MS } from './state';
 //
 //   /display/{clubId}/sheets/{sheetId}/bug   the score bug for live streams
 //   /display/{clubId}/warm-room              every sheet, for a screen in the club
+//   /display/{clubId}                        whichever of those the display
+//                                            link's settings name
 //   /display/assets/*                        the pages' scripts and styles
 //
 // The pages are the same for everyone: the display link's token is in the
@@ -54,7 +56,7 @@ function contentSecurityPolicy(projectId: string): string {
 
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
-  page: 'bug' | 'warm-room';
+  page: 'bug' | 'warm-room' | 'link';
   clubId: string;
   sheetId?: string;
   firebase: ReturnType<typeof webConfig>;
@@ -172,6 +174,18 @@ app.get('/display/:clubId/warm-room', (req: Request, res: Response) => {
   }
   // From /display/{club}/ back up to /display/.
   sendPage(res, 'Live Scores', '../assets/', pageConfig(req, 'warm-room', clubId));
+});
+
+// A display link's own URL. The page reads the link's settings and opens the
+// page they name, which then follows any change an admin makes to them.
+app.get('/display/:clubId', (req: Request, res: Response) => {
+  const { clubId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId) || clubId === 'assets') {
+    notFound(res);
+    return;
+  }
+  // From /display/ itself.
+  sendPage(res, 'Display', 'assets/', pageConfig(req, 'link', clubId));
 });
 
 app.use((_req: Request, res: Response) => notFound(res));

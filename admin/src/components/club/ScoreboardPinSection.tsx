@@ -52,8 +52,7 @@ export function ScoreboardPinSection({ clubId }: Props) {
     <div className={common.section}>
       <h2 className={common.sectionTitle}>Scoreboard Admin PIN</h2>
       <p className={common.blurb}>
-        Entered on a scoreboard to disconnect it from its sheet, so nobody can do it by accident.
-        The same PIN works on every scoreboard at the club.
+        Entered on any of the club's scoreboards to disconnect it from its sheet.
         {!pin && ' Until one is set, scoreboards cannot be disconnected.'}
       </p>
 

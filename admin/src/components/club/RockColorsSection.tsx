@@ -100,8 +100,7 @@ export function RockColorsSection({ clubId }: Props) {
     <div className={common.section}>
       <h2 className={common.sectionTitle}>Rock Colors</h2>
       <p className={common.blurb}>
-        The colors your scoreboards show and name the teams by. A change applies to the next game
-        started on each paired scoreboard.
+        The colors your scoreboards show and name the teams by, from each one's next game.
       </p>
 
       {SLOTS.map((slot) => (

@@ -8,7 +8,8 @@
 //                      or none
 
 import {
-  STATUS_MESSAGES, config, connect, el, endLabel, now, sheetView, textColorOn,
+  STATUS_MESSAGES, config, connect, el, endLabel, followLink, followsLink, now, sheetView,
+  textColorOn,
 } from './display.js';
 
 const params = new URLSearchParams(location.search);
@@ -111,6 +112,8 @@ function render() {
 }
 
 connect({
+  // Opened from the display link's own URL: go wherever its settings say.
+  onLink: followsLink ? followLink : undefined,
   onSummary: (next) => {
     summary = next;
     render();

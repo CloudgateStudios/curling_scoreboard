@@ -11,6 +11,11 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 //
 // Only a hash of each token's secret is stored, so the links listed in the
 // portal cannot be turned back into working URLs.
+//
+// Each link also says what its screens show, in `settings`, which club admins
+// change in the portal. A screen opened at the link's own URL,
+// /display/{clubId}#k=<token>, follows them, so a screen can be pointed at
+// another sheet or view without touching it.
 
 /** A club can have this many links, which is plenty for its screens. */
 const MAX_LINKS = 20;
@@ -26,6 +31,9 @@ const CLUB_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const TOKEN_PATTERN = /^([A-Za-z0-9]{1,40})\.([0-9a-f]{32})$/;
 
 const INVALID_LINK = 'This display link is not valid. Ask a club admin for a new one.';
+
+/** What a new link shows until an admin chooses otherwise. */
+export const DEFAULT_SETTINGS = { page: 'warm-room' };
 
 function linksRef(clubId: string): CollectionReference {
   return getFirestore().collection('clubs').doc(clubId).collection('displayLinks');
@@ -60,6 +68,27 @@ function requireClubId(value: unknown): string {
   return value;
 }
 
+function requireLinkId(value: unknown): string {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9]{1,40}$/.test(value)) {
+    throw new HttpsError('invalid-argument', 'linkId is required.');
+  }
+  return value;
+}
+
+function newSecret(): string {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+// Deleting a link's user ends its refresh token, so a screen signed in with
+// the old secret stops within the hour. One that never signed in has no user.
+async function endSessions(clubId: string, linkId: string): Promise<void> {
+  try {
+    await getAuth().deleteUser(displayUid(clubId, linkId));
+  } catch (err) {
+    if ((err as { code?: unknown }).code !== 'auth/user-not-found') throw err;
+  }
+}
+
 function requireClubAdmin(token: Record<string, unknown> | undefined, clubId: string) {
   const allowed = token?.['role'] === 'superadmin'
     || (token?.['role'] === 'clubadmin' && token['clubId'] === clubId);
@@ -92,11 +121,12 @@ export const createDisplayLink = onCall(async (request) => {
     throw new HttpsError('resource-exhausted', `A club can have up to ${MAX_LINKS} display links. Remove one first.`);
   }
 
-  const secret = crypto.randomBytes(16).toString('hex');
+  const secret = newSecret();
   const ref = linksRef(clubId).doc();
   await ref.set({
     label,
     secretHash: hashSecret(secret),
+    settings: DEFAULT_SETTINGS,
     createdAt: FieldValue.serverTimestamp(),
   });
   return { linkId: ref.id, token: `${ref.id}.${secret}` };
@@ -109,20 +139,32 @@ export const revokeDisplayLink = onCall(async (request) => {
   const data = (request.data ?? {}) as { clubId?: unknown; linkId?: unknown };
   const clubId = requireClubId(data.clubId);
   requireClubAdmin(request.auth?.token, clubId);
-  const linkId = data.linkId;
-  if (typeof linkId !== 'string' || !/^[A-Za-z0-9]{1,40}$/.test(linkId)) {
-    throw new HttpsError('invalid-argument', 'linkId is required.');
-  }
+  const linkId = requireLinkId(data.linkId);
 
   await linksRef(clubId).doc(linkId).delete();
-  // Deleting the user ends its refresh token. One that never signed in has
-  // no user to delete.
-  try {
-    await getAuth().deleteUser(displayUid(clubId, linkId));
-  } catch (err) {
-    if ((err as { code?: unknown }).code !== 'auth/user-not-found') throw err;
-  }
+  await endSessions(clubId, linkId);
   return { success: true };
+});
+
+// Gives a link a new secret, and so a new URL, keeping its name and what it
+// shows. For a URL that got out, or was lost before it was copied. Screens
+// on the old URL stop within the hour, as for a removed link.
+export const resetDisplayLink = onCall(async (request) => {
+  const data = (request.data ?? {}) as { clubId?: unknown; linkId?: unknown };
+  const clubId = requireClubId(data.clubId);
+  requireClubAdmin(request.auth?.token, clubId);
+  const linkId = requireLinkId(data.linkId);
+
+  const secret = newSecret();
+  try {
+    await linksRef(clubId).doc(linkId).update({ secretHash: hashSecret(secret) });
+  } catch (err) {
+    // 5 is NOT_FOUND: the link was removed.
+    if ((err as { code?: unknown }).code === 5) throw new HttpsError('not-found', 'Display link not found.');
+    throw err;
+  }
+  await endSessions(clubId, linkId);
+  return { linkId, token: `${linkId}.${secret}` };
 });
 
 // Called by a display page, which is not signed in, with the token from its

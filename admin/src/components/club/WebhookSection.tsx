@@ -85,6 +85,11 @@ export function WebhookSection({ clubId }: Props) {
   const templateRef = useRef<HTMLTextAreaElement>(null);
   // The saved URL is shown masked until the admin asks to replace it.
   const [editingUrl, setEditingUrl] = useState(false);
+  // A saved webhook is shown as a summary until the admin asks to edit it.
+  const [expanded, setExpanded] = useState(false);
+  // Nothing is shown until the saved webhook is known, so a saved one does
+  // not flash up as the setup form first.
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<'save' | 'remove' | 'test' | null>(null);
   const [error, setError] = useState('');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
@@ -106,6 +111,8 @@ export function WebhookSection({ clubId }: Props) {
       setTemplate(next?.template ?? DEFAULT_TEMPLATE);
       setTimeZone(next?.timeZone ?? BROWSER_TIME_ZONE);
       setEditingUrl(false);
+      setExpanded(false);
+      setLoaded(true);
     });
   }, [clubId]);
 
@@ -116,6 +123,8 @@ export function WebhookSection({ clubId }: Props) {
     });
   }, [clubId]);
 
+  // A club with no webhook goes straight to setting one up.
+  const editing = loaded && (!saved || expanded);
   const enteringUrl = !saved || editingUrl;
   const trimmedUrl = url.trim();
   const urlInvalid = enteringUrl && trimmedUrl !== '' && !/^https:\/\/.+/.test(trimmedUrl);
@@ -129,6 +138,16 @@ export function WebhookSection({ clubId }: Props) {
   const hasMention = /@(everyone|here)\b|<@/.test(template);
 
   useUnsavedChanges(changed);
+
+  function handleCancel() {
+    setUrl('');
+    setGames(saved?.games ?? 'all');
+    setTemplate(saved?.template ?? DEFAULT_TEMPLATE);
+    setTimeZone(saved?.timeZone ?? BROWSER_TIME_ZONE);
+    setEditingUrl(false);
+    setExpanded(false);
+    setError('');
+  }
 
   async function handleSave() {
     setBusy('save');
@@ -194,133 +213,159 @@ export function WebhookSection({ clubId }: Props) {
     <div className={common.section}>
       <h2 className={common.sectionTitle}>Completed Game Webhook</h2>
       <p className={common.blurb}>
-        Post each result to a Slack or Discord channel, or to your own server, as soon as Finish
-        Game is tapped on a scoreboard. Paste the channel's incoming webhook URL here. On Discord,
-        results are posted silently: they show in the channel without notifying anyone.
+        Post each finished game to a Slack or Discord channel, or to your own server.
       </p>
 
-      {enteringUrl ? (
-        <label className={styles.field}>
-          Webhook URL
-          <input
-            className={common.input}
-            type="url"
-            placeholder="https://hooks.slack.com/services/…"
-            maxLength={MAX_URL_LENGTH}
-            autoComplete="off"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-        </label>
-      ) : (
-        <div className={styles.savedUrl}>
+      {saved && !editing && (
+        <div className={styles.summary}>
           <code>{maskUrl(saved.url)}</code>
-          <button className={common.linkButton} onClick={() => setEditingUrl(true)}>Replace URL</button>
+          <span className={styles.hint}>
+            {saved.games === 'league' ? 'League games only' : 'Every completed game'}
+            {' · '}
+            {saved.template ? 'your own message' : 'the default message'}
+            {saved.timeZone ? `, times in ${saved.timeZone}` : ', times in UTC'}
+          </span>
         </div>
       )}
-      {urlInvalid && <p className={common.warning}>The URL must start with https://.</p>}
 
-      <fieldset className={styles.choices}>
-        <legend>Post</legend>
-        {GAMES_CHOICES.map((choice) => (
-          <label key={choice.value} className={styles.choice}>
-            <input
-              type="radio"
-              name={`webhook-games-${clubId}`}
-              checked={games === choice.value}
-              onChange={() => setGames(choice.value)}
-            />
-            {choice.label}
-          </label>
-        ))}
-      </fieldset>
-
-      <label className={styles.field}>
-        Message
-        <textarea
-          ref={templateRef}
-          className={`${common.input} ${styles.template}`}
-          rows={3}
-          maxLength={MAX_TEMPLATE_LENGTH}
-          value={template}
-          onChange={(e) => setTemplate(e.target.value)}
-        />
-      </label>
-      <div className={styles.templateTools}>
-        <span className={styles.hint}>
-          Click a variable to add it where the cursor is. Mentions such as @everyone or a role are
-          shown as plain text on Discord and ping nobody. The game's details are posted alongside
-          the message for servers that read them.
-        </span>
-        {template !== DEFAULT_TEMPLATE && (
-          <button className={common.linkButton} onClick={() => setTemplate(DEFAULT_TEMPLATE)}>
-            Reset to default
-          </button>
-        )}
-      </div>
-      <div className={styles.variables}>
-        {MESSAGE_VARIABLES.map((group) => (
-          <div key={group.title} className={styles.variableGroup}>
-            <span className={styles.variableGroupTitle}>{group.title}</span>
-            <div className={styles.variableChips}>
-              {group.variables.map((variable) => (
-                <button
-                  key={variable.name}
-                  type="button"
-                  className={styles.variableChip}
-                  title={`${variable.description}, e.g. ${variable.sample}`}
-                  onClick={() => insertVariable(variable.name)}
-                >
-                  {`{${variable.name}}`}
-                </button>
-              ))}
+      {editing && (
+        <>
+          {enteringUrl && (
+            <p className={styles.hint}>
+              Paste the channel's incoming webhook URL. On Discord, results are posted silently: they
+              show in the channel without notifying anyone.
+            </p>
+          )}
+          {enteringUrl ? (
+            <label className={styles.field}>
+              Webhook URL
+              <input
+                className={common.input}
+                type="url"
+                placeholder="https://hooks.slack.com/services/…"
+                maxLength={MAX_URL_LENGTH}
+                autoComplete="off"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </label>
+          ) : (
+            <div className={styles.savedUrl}>
+              <code>{maskUrl(saved.url)}</code>
+              <button className={common.linkButton} onClick={() => setEditingUrl(true)}>Replace URL</button>
             </div>
+          )}
+          {urlInvalid && <p className={common.warning}>The URL must start with https://.</p>}
+
+          <fieldset className={styles.choices}>
+            <legend>Post</legend>
+            {GAMES_CHOICES.map((choice) => (
+              <label key={choice.value} className={styles.choice}>
+                <input
+                  type="radio"
+                  name={`webhook-games-${clubId}`}
+                  checked={games === choice.value}
+                  onChange={() => setGames(choice.value)}
+                />
+                {choice.label}
+              </label>
+            ))}
+          </fieldset>
+
+          <label className={styles.field}>
+            Message
+            <textarea
+              ref={templateRef}
+              className={`${common.input} ${styles.template}`}
+              rows={3}
+              maxLength={MAX_TEMPLATE_LENGTH}
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+            />
+          </label>
+          <div className={styles.templateTools}>
+            <span className={styles.hint}>
+              Click a variable to add it where the cursor is. Mentions such as @everyone or a role are
+              shown as plain text on Discord and ping nobody. The game's details are posted alongside
+              the message for servers that read them.
+            </span>
+            {template !== DEFAULT_TEMPLATE && (
+              <button className={common.linkButton} onClick={() => setTemplate(DEFAULT_TEMPLATE)}>
+                Reset to default
+              </button>
+            )}
           </div>
-        ))}
-      </div>
-      {misspelled.length > 0 && (
-        <p className={common.warning}>
-          Not a variable, so it will be posted as written: {misspelled.map((name) => `{${name}}`).join(', ')}
-        </p>
-      )}
-      {hasMention && (
-        <p className={common.warning}>
-          Discord shows mentions in game results as plain text, so this won't notify anyone.
-        </p>
-      )}
-      <div className={styles.preview}>
-        <span className={styles.previewLabel}>Preview</span>
-        <p className={styles.previewText}>
-          {template.trim() === '' ? previewTemplate(DEFAULT_TEMPLATE) : previewTemplate(template)}
-        </p>
-      </div>
+          <div className={styles.variables}>
+            {MESSAGE_VARIABLES.map((group) => (
+              <div key={group.title} className={styles.variableGroup}>
+                <span className={styles.variableGroupTitle}>{group.title}</span>
+                <div className={styles.variableChips}>
+                  {group.variables.map((variable) => (
+                    <button
+                      key={variable.name}
+                      type="button"
+                      className={styles.variableChip}
+                      title={`${variable.description}, e.g. ${variable.sample}`}
+                      onClick={() => insertVariable(variable.name)}
+                    >
+                      {`{${variable.name}}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {misspelled.length > 0 && (
+            <p className={common.warning}>
+              Not a variable, so it will be posted as written: {misspelled.map((name) => `{${name}}`).join(', ')}
+            </p>
+          )}
+          {hasMention && (
+            <p className={common.warning}>
+              Discord shows mentions in game results as plain text, so this won't notify anyone.
+            </p>
+          )}
+          <div className={styles.preview}>
+            <span className={styles.previewLabel}>Preview</span>
+            <p className={styles.previewText}>
+              {template.trim() === '' ? previewTemplate(DEFAULT_TEMPLATE) : previewTemplate(template)}
+            </p>
+          </div>
 
-      <label className={styles.field}>
-        Time zone for dates and times
-        <select
-          className={`${common.input} ${styles.timeZone}`}
-          value={timeZone}
-          onChange={(e) => setTimeZone(e.target.value)}
-        >
-          {timeZoneChoices(saved?.timeZone).map((zone) => <option key={zone} value={zone}>{zone}</option>)}
-        </select>
-      </label>
-      {saved && !saved.timeZone && (
-        <p className={styles.hint}>Games are posted with times in UTC until you save a time zone.</p>
+          <label className={styles.field}>
+            Time zone for dates and times
+            <select
+              className={`${common.input} ${styles.timeZone}`}
+              value={timeZone}
+              onChange={(e) => setTimeZone(e.target.value)}
+            >
+              {timeZoneChoices(saved?.timeZone).map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+            </select>
+          </label>
+          {saved && !saved.timeZone && (
+            <p className={styles.hint}>Games are posted with times in UTC until you save a time zone.</p>
+          )}
+        </>
       )}
 
-      <div className={styles.actions}>
-        <button className={common.primaryButton} onClick={handleSave} disabled={!canSave}>
-          {busy === 'save' ? 'Saving…' : 'Save'}
-        </button>
-        {editingUrl && (
-          <button className={common.ghostButton} onClick={() => { setEditingUrl(false); setUrl(''); }}>
-            Cancel
-          </button>
-        )}
-        {saved && !editingUrl && (
+      <div className={styles.actions} hidden={!loaded}>
+        {editing ? (
           <>
-            <button className={common.ghostButton} onClick={handleTest} disabled={busy !== null || changed}>
+            <button className={common.primaryButton} onClick={handleSave} disabled={!canSave}>
+              {busy === 'save' ? 'Saving…' : 'Save'}
+            </button>
+            {saved && (
+              <button className={common.ghostButton} onClick={handleCancel} disabled={busy !== null}>
+                Cancel
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <button className={common.primaryButton} onClick={() => setExpanded(true)} disabled={busy !== null}>
+              Edit
+            </button>
+            <button className={common.ghostButton} onClick={handleTest} disabled={busy !== null}>
               {busy === 'test' ? 'Sending…' : 'Send Test'}
             </button>
             <button className={common.ghostButton} onClick={handleRemove} disabled={busy !== null}>

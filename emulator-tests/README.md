@@ -63,6 +63,8 @@ Access the app depends on:
 - anyone reading `appConfig/scoreboard` to pick up new builds
 - a display reading its club's display summary, and a club admin reading
   it and listing the club's display links
+- a club admin pointing a link at a sheet's score bug or the warm room, and
+  a display reading its own link's settings
 - a club admin setting, changing and removing the warm room's title and
   logo, and a display reading them
 
@@ -97,7 +99,11 @@ Access that must stay denied:
 - a display reading another club's display summary, its club document, API
   key, config or sheets, or the display links; anyone else but the club's
   admins reading the summary; anyone writing it
-- a club admin creating a display link directly, or listing another club's
+- a club admin creating a display link directly, or listing another club's;
+  changing a link's secret, a link in another club, or its settings to a
+  score bug with no sheet, a page that does not exist, an option out of
+  range or an unknown one; a display reading another link or changing its
+  own
 - a club admin setting another club's warm room branding, an SVG or remote
   logo, one over the size limit, a title over 60 characters, or anything
   else beside them; a display reading another club's branding or changing
@@ -134,8 +140,12 @@ Access that must stay denied:
   display in with claims that read the club's display summary but not its
   club document, and records that it was used. Wrong, malformed and other
   clubs' tokens are turned away. Revoking a link, used or not, stops it
-  signing in and removes its Auth user.
-- The display function serves the score bug and the warm room screen with
+  signing in and removes its Auth user. A new link shows the warm room, and
+  a display can read its own link but not another. Resetting a link gives
+  it a new token, keeps its settings, turns the old token away and removes
+  its Auth user; a removed link cannot be reset.
+- The display function serves the score bug, the warm room screen and a
+  display link's own page with
   their strict security headers,
   never cached, with the club, sheet and server time in the page; serves the
   pages' scripts and styles; and answers 404 for malformed IDs and anything

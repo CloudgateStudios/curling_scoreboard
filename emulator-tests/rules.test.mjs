@@ -40,7 +40,12 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
   await setDoc(doc(db, 'clubs/club-a/private/displayState'), { sheets: {} });
   await setDoc(doc(db, 'clubs/club-b/private/displayState'), { sheets: {} });
-  await setDoc(doc(db, 'clubs/club-a/displayLinks/link-1'), { label: 'Warm room', secretHash: 'ab' });
+  await setDoc(doc(db, 'clubs/club-a/displayLinks/link-1'), {
+    label: 'Warm room', secretHash: 'ab', settings: { page: 'warm-room' },
+  });
+  await setDoc(doc(db, 'clubs/club-a/displayLinks/link-2'), {
+    label: 'Stream', secretHash: 'cd', settings: { page: 'warm-room' },
+  });
   await setDoc(doc(db, 'clubs/club-b/sheets/sheet-secret'), {
     name: 'Sheet Secret', scoreboardUid: 'other-device',
   });
@@ -435,6 +440,48 @@ await check('attack: display reads its club\'s config', 'deny', () =>
 
 await check('attack: display lists the display links', 'deny', () =>
   getDocs(collection(displayA, 'clubs/club-a/displayLinks')));
+
+await check('display: reads its own link\'s settings', 'allow', () =>
+  getDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1')));
+
+await check('attack: display reads another link\'s settings', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-a/displayLinks/link-2')));
+
+await check('attack: display changes what its link shows', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), { settings: { page: 'warm-room', view: 'full' } }));
+
+await check('club admin: points a link at a sheet\'s score bug', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    label: 'YouTube stream',
+    settings: { page: 'bug', sheetId: 'sheet-paired', scale: 1.5, label: 'league' },
+  }));
+
+await check('club admin: points a link at the warm room, cycling', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'warm-room', view: 'cycle', every: 30 },
+  }));
+
+await check('attack: club admin points a score bug at no sheet', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'bug' } }));
+
+await check('attack: club admin sets a page that does not exist', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'admin' } }));
+
+await check('attack: club admin sets options out of range', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'warm-room', view: 'cycle', every: 1 },
+  }));
+
+await check('attack: club admin adds an unknown option', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'warm-room', script: 'alert(1)' },
+  }));
+
+await check('attack: club admin changes a link\'s secret directly', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { secretHash: 'chosen' }));
+
+await check('attack: club admin changes another club\'s link', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-b/displayLinks/any'), { label: 'Mine' }));
 
 await check('attack: club admin creates a display link directly', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/displayLinks/chosen'), { label: 'Mine', secretHash: 'ab' }));

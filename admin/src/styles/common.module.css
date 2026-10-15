@@ -355,3 +355,17 @@
   font-size: 0.9rem;
   color: #444;
 }
+
+/* Marks what only super admins see, so they can tell what club admins don't. */
+.adminTag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #f3e8fd;
+  color: #7b1fa2;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}

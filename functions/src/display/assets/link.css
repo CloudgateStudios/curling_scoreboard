@@ -1,0 +1,31 @@
+/* A display link's own URL, which moves straight on to the page its settings
+   name. Transparent, like the score bug, so nothing flashes on a stream. */
+
+html,
+body {
+  margin: 0;
+  background: transparent;
+  color-scheme: dark;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 1rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Shown only when the link is wrong, so it can be fixed while setting up. */
+.status {
+  display: inline-block;
+  max-width: 22rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.4rem;
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}

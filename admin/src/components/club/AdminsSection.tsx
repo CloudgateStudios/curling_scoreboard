@@ -78,11 +78,15 @@ export function AdminsSection({ clubId, clubName }: Props) {
   return (
     <div className={common.section}>
       <div className={common.sectionHeader}>
-        <h2 className={common.sectionTitle}>Admins ({admins.length})</h2>
+        <h2 className={common.sectionTitle}>
+          Club Admins ({admins.length}) <span className={common.adminTag}>Super admin</span>
+        </h2>
         <button className={common.primaryButton} onClick={openForm}>
           + Add Admin
         </button>
       </div>
+
+      <p className={common.blurb}>People who can sign in to the portal and manage this club.</p>
 
       <div className={styles.adminList}>
         {admins.map((a) => (

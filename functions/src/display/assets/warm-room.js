@@ -9,7 +9,8 @@
 //   every=20           with view=cycle, seconds on each, from 5 to 300
 
 import {
-  STATUS_MESSAGES, connect, el, endLabel, isPlayedOut, now, sheetView, textColorOn,
+  STATUS_MESSAGES, connect, el, endLabel, followLink, followsLink, isPlayedOut, now, sheetView,
+  textColorOn,
 } from './display.js';
 
 // Width over height of a sheet's card, which the layout keeps to as closely
@@ -219,6 +220,8 @@ function showBranding(branding) {
 }
 
 connect({
+  // Opened from the display link's own URL: go wherever its settings say.
+  onLink: followsLink ? followLink : undefined,
   onBranding: showBranding,
   onSummary: (next) => {
     summary = next;

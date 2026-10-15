@@ -33,6 +33,23 @@ service cloud.firestore {
           && request.auth.token.clubId == clubId;
     }
 
+    // What a display link shows: the warm room, or a sheet's score bug, with
+    // the options each page takes. Kept to what the pages understand.
+    function isDisplaySettings(settings) {
+      return settings is map
+          && settings.keys().hasOnly(['page', 'sheetId', 'view', 'every', 'scale', 'label'])
+          && settings.get('page', '') in ['bug', 'warm-room']
+          && (settings.page != 'bug'
+              || (settings.get('sheetId', null) is string
+                  && settings.sheetId.matches('^[A-Za-z0-9_-]{1,128}$')))
+          && settings.get('view', 'totals') in ['totals', 'full', 'cycle']
+          && (!('every' in settings)
+              || (settings.every is int && settings.every >= 5 && settings.every <= 300))
+          && (!('scale' in settings)
+              || (settings.scale is number && settings.scale >= 0.5 && settings.scale <= 4))
+          && settings.get('label', 'sheet') in ['sheet', 'league', 'none'];
+    }
+
     function isRockColor(color) {
       return color.keys().hasOnly(['name', 'hex'])
           && color.name is string
@@ -142,10 +159,20 @@ service cloud.firestore {
       }
 
       // The links the club's displays sign in with. Club admins see them in
-      // the portal; the functions create and remove them, since only a hash
-      // of each token is kept and the token is shown once.
+      // the portal; the functions create, reset and remove them, since only a
+      // hash of each token is kept and the token is shown once. Admins change
+      // a link's name and what it shows, and a display reads its own link to
+      // follow those settings. The hash is no use to the screen holding the
+      // token it was made from.
       match /displayLinks/{linkId} {
-        allow read: if isClubAdmin(clubId);
+        allow read: if isClubAdmin(clubId)
+            || (isClubDisplay(clubId) && request.auth.token.linkId == linkId);
+        allow update: if isClubAdmin(clubId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label', 'settings'])
+            && request.resource.data.label is string
+            && request.resource.data.label.size() > 0
+            && request.resource.data.label.size() <= 60
+            && isDisplaySettings(request.resource.data.settings);
       }
 
       match /admins/{uid} {
