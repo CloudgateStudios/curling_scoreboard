@@ -81,9 +81,13 @@ class SyncService {
   @visibleForTesting
   static Map<String, dynamic> liveGameFields(CurlingGame game) => {
     'currentEnd': game.currentPlayingEnd,
+    'numberOfEnds': game.numberOfEnds,
     'league': ?game.league?.toJson(),
     'team1': _liveTeam(game.team1, game.team1TotalScore),
     'team2': _liveTeam(game.team2, game.team2TotalScore),
+    // The ends so far, as the completed game records them, so the warm room
+    // display can show the game end by end while it is played.
+    'ends': _endsOf(game),
   };
 
   static Map<String, dynamic> _liveTeam(CurlingTeam team, int score) => {
@@ -136,19 +140,7 @@ class SyncService {
             'totalScore': game.team2TotalScore,
             'hadLastStoneFirstEnd': game.team2.hadLastStoneFirstEnd,
           },
-          'ends': [
-            for (final e in game.ends)
-              {
-                'endNumber': e.endNumber,
-                // The display name is kept as-is so existing readers,
-                // including the public games API, are unaffected.
-                // scoringTeamSlot is the unambiguous value to prefer.
-                'scoringTeam': _teamNameFor(game, e.scoringTeam),
-                'scoringTeamSlot': e.scoringTeam?.name,
-                'score': e.score,
-                'gameTimeInSeconds': e.gameTimeInSeconds,
-              },
-          ],
+          'ends': _endsOf(game),
         })
         ..update(_sheetRef, {'liveGame': FieldValue.delete()});
       await batch.commit();
@@ -170,9 +162,24 @@ class SyncService {
     'externalId': ?team.externalId,
   };
 
-  String? _teamNameFor(CurlingGame game, ScoringTeam? team) => switch (team) {
-    ScoringTeam.team1 => game.team1.name,
-    ScoringTeam.team2 => game.team2.name,
-    null => null,
-  };
+  static List<Map<String, dynamic>> _endsOf(CurlingGame game) => [
+    for (final e in game.ends)
+      {
+        'endNumber': e.endNumber,
+        // The display name is kept as-is so existing readers,
+        // including the public games API, are unaffected.
+        // scoringTeamSlot is the unambiguous value to prefer.
+        'scoringTeam': _teamNameFor(game, e.scoringTeam),
+        'scoringTeamSlot': e.scoringTeam?.name,
+        'score': e.score,
+        'gameTimeInSeconds': e.gameTimeInSeconds,
+      },
+  ];
+
+  static String? _teamNameFor(CurlingGame game, ScoringTeam? team) =>
+      switch (team) {
+        ScoringTeam.team1 => game.team1.name,
+        ScoringTeam.team2 => game.team2.name,
+        null => null,
+      };
 }

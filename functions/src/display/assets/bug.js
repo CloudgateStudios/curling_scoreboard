@@ -8,7 +8,7 @@
 //                      or none
 
 import {
-  STATUS_MESSAGES, config, connect, el, now, sheetView, textColorOn,
+  STATUS_MESSAGES, config, connect, el, endLabel, now, sheetView, textColorOn,
 } from './display.js';
 
 const params = new URLSearchParams(location.search);
@@ -43,12 +43,6 @@ let summary = undefined;
 let linkStatus = 'connecting';
 // The scores last shown, so a change can be marked as it lands.
 let shown = null;
-
-function endText(view) {
-  if (view.kind === 'final') return 'Final';
-  const { currentEnd, numberOfEnds } = view.game;
-  return numberOfEnds && currentEnd > numberOfEnds ? 'Extra end' : `End ${currentEnd}`;
-}
 
 function labelText(sheet, view) {
   if (label === 'league') return view.game.league?.name ?? sheet.name;
@@ -111,8 +105,8 @@ function render() {
   shown = { key, team1: game.team1.score, team2: game.team2.score };
 
   footerLabel.textContent = labelText(sheet, view);
-  footerEnd.textContent = endText(view);
-  bug.classList.toggle('final', view.kind === 'final');
+  footerEnd.textContent = endLabel(view);
+  bug.classList.toggle('final', footerEnd.textContent === 'Final');
   bug.classList.remove('hidden');
 }
 

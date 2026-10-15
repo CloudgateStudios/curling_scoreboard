@@ -44,6 +44,23 @@ export function sheetView(sheet, at) {
   return { kind: 'idle' };
 }
 
+/**
+ * True when a live game has played its ends and is not tied, so it is over
+ * though nobody has tapped Finish Game yet. Mirrors isGameComplete in the
+ * app's CurlingGame. Unknown for scoreboards that do not send their ends.
+ */
+export function isPlayedOut(game) {
+  return Boolean(game.numberOfEnds && game.ends
+    && game.ends.length >= game.numberOfEnds && game.team1.score !== game.team2.score);
+}
+
+/** What a display says about where a game is: the end, or Final. */
+export function endLabel(view) {
+  if (view.kind === 'final' || isPlayedOut(view.game)) return 'Final';
+  const { currentEnd, numberOfEnds } = view.game;
+  return numberOfEnds && currentEnd > numberOfEnds ? 'Extra end' : `End ${currentEnd}`;
+}
+
 /** The link's token, from #k=<token> in the URL. */
 function linkToken() {
   return new URLSearchParams(location.hash.slice(1)).get('k') ?? '';

@@ -336,8 +336,21 @@ describe('REST API live games', () => {
     const body = await sheetWithLiveGame('sheet-started', { updatedAt, currentEnd: 1, ...teams });
     assert.equal(body.hasLiveGame, true);
     assert.deepEqual(body.liveGame, {
-      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, league: null, ...teams,
+      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, numberOfEnds: null, league: null,
+      ...teams, ends: null,
     });
+  });
+
+  test('reports the ends played so far and how many are scheduled', async () => {
+    const ends = [
+      { endNumber: 1, scoringTeam: 'Red', scoringTeamSlot: 'team1', score: 2, gameTimeInSeconds: 600 },
+      { endNumber: 2, scoringTeam: null, scoringTeamSlot: null, score: 0, gameTimeInSeconds: 1250 },
+    ];
+    const body = await sheetWithLiveGame('sheet-ends', {
+      updatedAt: minutesAgo(1), currentEnd: 3, numberOfEnds: 8, ...teams, ends,
+    });
+    assert.equal(body.liveGame.numberOfEnds, 8);
+    assert.deepEqual(body.liveGame.ends, ends);
   });
 
   test('reports the league and teams of a league game', async () => {

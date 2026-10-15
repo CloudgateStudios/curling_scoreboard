@@ -177,6 +177,126 @@ body {
   animation: scored 2s ease-out;
 }
 
+.sheet.full .sheet-name {
+  font-size: calc(var(--u) * 5);
+}
+
+.sheet.full .state {
+  font-size: calc(var(--u) * 3.8);
+}
+
+.sheet.full .league {
+  font-size: calc(var(--u) * 3.4);
+}
+
+/* A game shown by its totals in the full view, from a scoreboard that does
+   not send its ends, sized to the full view's shorter cards. */
+.sheet.compact .sheet-name {
+  font-size: calc(var(--u) * 5);
+}
+
+.sheet.compact .state {
+  font-size: calc(var(--u) * 3.8);
+}
+
+.sheet.compact .league {
+  font-size: calc(var(--u) * 3.4);
+}
+
+.sheet.compact .team {
+  height: calc(var(--u) * 10);
+}
+
+.sheet.compact .name {
+  font-size: calc(var(--u) * 4.4);
+}
+
+.sheet.compact .score {
+  font-size: calc(var(--u) * 6.5);
+}
+
+/* The full view: the game end by end. Columns are sized from --u like
+   everything else; the team names take what is left. */
+.line-score {
+  --cell: calc(var(--u) * 5);
+  --total: calc(var(--u) * 9);
+  display: grid;
+  align-items: stretch;
+  row-gap: calc(var(--u) * 1.2);
+}
+
+.end-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--u) * 5);
+  font-size: calc(var(--u) * 3.2);
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.end-head.current {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: calc(var(--u) * 1) calc(var(--u) * 1) 0 0;
+}
+
+.team-label {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 1.6) minmax(0, 1fr) auto;
+  align-items: center;
+  height: calc(var(--u) * 10);
+  min-width: 0;
+  border-radius: calc(var(--u) * 1.2) 0 0 calc(var(--u) * 1.2);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.full .name {
+  padding: 0 calc(var(--u) * 2);
+  font-size: calc(var(--u) * 4.4);
+}
+
+.full .hammer {
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+  margin-right: calc(var(--u) * 2);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 4.2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cell.current {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cell.scored {
+  font-weight: 800;
+}
+
+.total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 6.5);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0 calc(var(--u) * 1.2) calc(var(--u) * 1.2) 0;
+}
+
+.total.changed {
+  animation: scored 2s ease-out;
+}
+
 /* Shown in place of the sheets when there is nothing else to show. */
 .status {
   margin: auto;
@@ -193,7 +313,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .score.changed {
+  .score.changed,
+  .total.changed {
     animation: none;
   }
 }

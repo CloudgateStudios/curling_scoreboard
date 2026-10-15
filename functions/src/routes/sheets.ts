@@ -61,11 +61,14 @@ export function buildSheetResponse(
       ? {
           updatedAt: updatedAtOf(liveGame)?.toDate().toISOString() ?? null,
           currentEnd: liveGame['currentEnd'] as number,
+          // Both null for games from scoreboard builds that predate them.
+          numberOfEnds: (liveGame['numberOfEnds'] as number | undefined) ?? null,
           // Null for an open game, and for any game from a scoreboard build
           // that predates league games.
           league: liveGame['league'] ?? null,
           team1: liveGame['team1'],
           team2: liveGame['team2'],
+          ends: liveGame['ends'] ?? null,
         }
       : null,
   };

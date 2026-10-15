@@ -198,7 +198,7 @@ components:
 
     LiveGame:
       type: object
-      required: [updatedAt, currentEnd, league, team1, team2]
+      required: [updatedAt, currentEnd, numberOfEnds, league, team1, team2, ends]
       properties:
         updatedAt:
           type: [string, 'null']
@@ -212,6 +212,12 @@ components:
           type: integer
           minimum: 1
           example: 5
+        numberOfEnds:
+          type: [integer, 'null']
+          example: 8
+          description: >-
+            How many ends the game is scheduled for. Null for a game from a
+            scoreboard build that predates this field.
         league:
           oneOf:
             - $ref: '#/components/schemas/GameLeague'
@@ -221,6 +227,13 @@ components:
           $ref: '#/components/schemas/LiveGameTeam'
         team2:
           $ref: '#/components/schemas/LiveGameTeam'
+        ends:
+          type: [array, 'null']
+          items:
+            $ref: '#/components/schemas/End'
+          description: >-
+            The ends played so far, in the same form as a completed game's.
+            Null for a game from a scoreboard build that predates this field.
 
     Sheet:
       type: object

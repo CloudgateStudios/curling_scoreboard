@@ -58,7 +58,7 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
       live: {                // the live game, or null; see liveGame below
         updatedAt: timestamp | null
         currentEnd: int
-        numberOfEnds: int | null           // null until scoreboards send it
+        numberOfEnds: int | null           // null from scoreboard builds before it was sent
         league: { name: string } | null
         team1: { name: string, color: { name, hex } | null, score: int,
                  hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
@@ -118,11 +118,13 @@ clubs/{clubId}/sheets/{sheetId}
   liveGame?: {               // the game in progress, removed when it ends
     updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
+    numberOfEnds?: int       // absent from builds before it was sent
     league?: { id: string, name: string }   // league games only
     team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
              hadLastStoneFirstEnd: bool,
              teamId?: string, externalId?: string }   // the last two in league games
     team2: { ...the same }
+    ends?: [...as in games below]   // the ends so far; absent from builds before it was sent
   }
   device?: {                 // what the scoreboard last said about itself
     appVersion: string
@@ -415,6 +417,19 @@ its width, so any number of sheets fills the screen without scrolling, on a
 1080p or 4K TV or one turned on its side. A clock in the corner, on the
 server's time, shows the screen is still running.
 
+`?view=full` shows each game end by end instead, like the scoreboard's own
+baseball layout: a column per end, the scoring team's points on its rock
+color and 0 for the other team, the end being played picked out, and the
+totals. It has as many columns as the game's `numberOfEnds`, or more once
+extra ends are played. Its cards are wider and shorter, so the layout asks
+for that shape. A live game from a scoreboard that does not send its ends
+yet is shown by its totals among them. `?view=cycle` shows the two in turn,
+`?every=` seconds each (20 by default).
+
+Both pages say Final, not the end, once a live game has played its ends
+and is not tied, as the scoreboard does before anyone taps Finish Game, and
+"Extra end" once a tied game goes past them.
+
 The rewrite needs the `display` function to exist, so in a new project deploy
 the functions before the scoreboard's hosting.
 
@@ -575,7 +590,9 @@ under `/api/**` through a Hosting rewrite. It is read only:
 
 Live and completed games carry `league` (null for an open game) and, in a
 league game, each team's `teamId` and `externalId`, which match the teams the
-league endpoints return.
+league endpoints return. A live game also carries `numberOfEnds` and the
+`ends` played so far, in the same form as a completed game's; both are null
+for a game from a scoreboard build that predates them.
 
 Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is
