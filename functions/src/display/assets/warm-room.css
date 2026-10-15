@@ -37,20 +37,45 @@ body {
 
 .top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 2vw;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
+  min-width: 0;
+}
+
+/* The title bar is sized by the shorter side of the screen, so it stays in
+   proportion on a TV turned on its side. */
+.top {
+  --bar: min(3.2vh, 3.2vw);
+}
+
+/* Sized by height, so a wide logo and a square one sit the same in the bar. */
+.logo {
+  height: calc(var(--bar) * 1.9);
+  max-width: 30vw;
+  object-fit: contain;
+}
+
 .title {
   margin: 0;
-  font-size: 3.2vh;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--bar);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .clock {
-  font-size: 3.2vh;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: var(--bar);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--muted);

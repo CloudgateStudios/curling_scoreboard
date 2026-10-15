@@ -63,6 +63,8 @@ Access the app depends on:
 - anyone reading `appConfig/scoreboard` to pick up new builds
 - a display reading its club's display summary, and a club admin reading
   it and listing the club's display links
+- a club admin setting, changing and removing the warm room's title and
+  logo, and a display reading them
 
 Access that must stay denied:
 
@@ -96,6 +98,10 @@ Access that must stay denied:
   key, config or sheets, or the display links; anyone else but the club's
   admins reading the summary; anyone writing it
 - a club admin creating a display link directly, or listing another club's
+- a club admin setting another club's warm room branding, an SVG or remote
+  logo, one over the size limit, a title over 60 characters, or anything
+  else beside them; a display reading another club's branding or changing
+  its own; a paired scoreboard reading it
 
 ### Functions
 

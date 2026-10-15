@@ -12,6 +12,7 @@ import { RockColorsSection } from '../components/club/RockColorsSection';
 import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
 import { WebhookSection } from '../components/club/WebhookSection';
 import { DisplaysSection } from '../components/club/DisplaysSection';
+import { DisplayBrandingSection } from '../components/club/DisplayBrandingSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import { ClubHeader } from '../components/club/ClubHeader';
@@ -148,6 +149,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
           <ScoreboardPinSection clubId={resolvedClubId} />
           <WebhookSection clubId={resolvedClubId} />
           <DisplaysSection clubId={resolvedClubId} sheets={sheets} />
+          <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
           {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
         </div>
       </div>

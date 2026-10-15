@@ -78,6 +78,10 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
     }
   }
 
+clubs/{clubId}/private/displayBranding // the warm room screen's title bar; absent for the default
+  title?: string             // up to 60 characters, in place of "Live Scores"
+  logo?: string              // a PNG, JPEG or WebP data URL, up to 250,000 characters
+
 clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   label: string              // up to 60 characters, e.g. "Warm room TV"
   secretHash: string         // SHA-256 of the token's secret, in hex
@@ -182,7 +186,7 @@ admin scripts.
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
-| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`                                 |
+| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`   |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
@@ -417,6 +421,18 @@ its width, so any number of sheets fills the screen without scrolling, on a
 1080p or 4K TV or one turned on its side. A clock in the corner, on the
 server's time, shows the screen is still running.
 
+A club can give the screen its own title in place of "Live Scores", and a
+logo beside it, in the Warm Room Screen section of the portal's Settings
+tab. Both are kept in `private/displayBranding`, which the page listens to
+alongside the summary: one more read when it starts, and one when the club
+changes them. The portal shrinks the logo in the browser to fit 800 by 200
+pixels and keeps it as a PNG, or WebP when a PNG would be too large, in a
+data URL. Keeping it in Firestore rather than Cloud Storage means the page
+needs nothing but Firestore, and the CSP already allows `data:` images. Any
+image the browser can show, SVG included, is redrawn as a plain image, and
+the rules accept only PNG, JPEG and WebP data URLs, so nothing that can
+carry a script is stored.
+
 `?view=full` shows each game end by end instead, like the scoreboard's own
 baseball layout: a column per end, the scoring team's points on its rock
 color and 0 for the other team, the end being played picked out, and the
@@ -573,7 +589,7 @@ Routes depend on the signed in role:
   `/leagues/:leagueId` a league.
 
 The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days, leagues, the rock colors, the API key and the display links. Only super admins can add sheets, rotate the
+last seven days, leagues, the rock colors, the API key, the display links and the warm room screen's title and logo. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)
 

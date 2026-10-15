@@ -442,6 +442,54 @@ await check('attack: club admin creates a display link directly', 'deny', () =>
 await check('attack: club admin lists another club\'s display links', 'deny', () =>
   getDocs(collection(adminA, 'clubs/club-b/displayLinks')));
 
+// --- the warm room screen's title and logo ---
+const LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAX+XDSwAAAABJRU5ErkJggg==';
+
+await check('club admin: sets the warm room title and logo', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'), { title: 'Club A Curling', logo: LOGO }));
+
+await check('display: reads its club\'s branding', 'allow', () =>
+  getDoc(doc(displayA, 'clubs/club-a/private/displayBranding')));
+
+await check('club admin: sets only a title', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'), { title: 'Club A' }));
+
+await check('attack: club admin sets an SVG logo', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'),
+    { logo: 'data:image/svg+xml;base64,PHN2Zz48c2NyaXB0Pjwvc2NyaXB0Pjwvc3ZnPg==' }));
+
+await check('attack: club admin sets a logo that is a remote URL', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'), { logo: 'https://example.com/logo.png' }));
+
+await check('club admin: sets a logo just under the size limit', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'),
+    { logo: `data:image/webp;base64,${'A'.repeat(249000)}` }));
+
+await check('attack: club admin sets an oversized logo', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'),
+    { logo: `data:image/png;base64,${'A'.repeat(250000)}` }));
+
+await check('attack: club admin sets a title that is too long', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'), { title: 'x'.repeat(61) }));
+
+await check('attack: club admin stores something else with the branding', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayBranding'), { title: 'Club A', extra: true }));
+
+await check('attack: club admin sets another club\'s branding', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/private/displayBranding'), { title: 'Mine now' }));
+
+await check('attack: display reads another club\'s branding', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-b/private/displayBranding')));
+
+await check('attack: display changes its club\'s branding', 'deny', () =>
+  setDoc(doc(displayA, 'clubs/club-a/private/displayBranding'), { title: 'Hacked' }));
+
+await check('attack: paired scoreboard reads the branding', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/displayBranding')));
+
+await check('club admin: removes the branding', 'allow', () =>
+  deleteDoc(doc(adminA, 'clubs/club-a/private/displayBranding')));
+
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>
   getDoc(doc(unauthed, 'appConfig/scoreboard')));

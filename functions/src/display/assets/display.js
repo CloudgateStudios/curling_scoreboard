@@ -73,11 +73,13 @@ const RETRY_MAX_MS = 5 * 60_000;
  * Signs in and calls onSummary with the club's display summary (or null
  * before the club has one) each time it changes. onStatus is told what is
  * happening: 'connecting', 'live', 'no-link', 'bad-link' or 'offline'.
+ * onBranding, if given, gets the club's title and logo for its displays, or
+ * null when it has none.
  *
  * A display is left running for weeks, so every failure is retried, apart
  * from a link the server has refused, which needs someone to fix the URL.
  */
-export function connect({ onSummary, onStatus }) {
+export function connect({ onSummary, onStatus, onBranding }) {
   const token = linkToken();
   if (!token) {
     onStatus('no-link');
@@ -100,6 +102,7 @@ export function connect({ onSummary, onStatus }) {
   const startSession = httpsCallable(functions, 'startDisplaySession');
 
   let unsubscribe = null;
+  let unsubscribeBranding = null;
   let retryMs = RETRY_MIN_MS;
   let retryTimer = null;
   let starting = false;
@@ -107,6 +110,8 @@ export function connect({ onSummary, onStatus }) {
   function stopListening() {
     unsubscribe?.();
     unsubscribe = null;
+    unsubscribeBranding?.();
+    unsubscribeBranding = null;
   }
 
   function retryLater() {
@@ -152,6 +157,14 @@ export function connect({ onSummary, onStatus }) {
   }
 
   function listen() {
+    if (onBranding) {
+      // Nice to have: whatever goes wrong here, the scores carry on, and the
+      // summary's listener sorts out the sign-in.
+      const brandingRef = doc(db, 'clubs', config.clubId, 'private', 'displayBranding');
+      unsubscribeBranding = onSnapshot(brandingRef, (snap) => {
+        onBranding(snap.exists() ? snap.data() : null);
+      }, (err) => console.warn('Display branding listener stopped', err));
+    }
     const ref = doc(db, 'clubs', config.clubId, 'private', 'displayState');
     unsubscribe = onSnapshot(ref, (snap) => {
       retryMs = RETRY_MIN_MS;

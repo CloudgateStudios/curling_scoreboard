@@ -29,9 +29,14 @@ const DEFAULT_ENDS = 8;
 
 const root = document.getElementById('display');
 const header = el('header', 'top');
-const title = el('h1', 'title', 'Live Scores');
+const brand = el('div', 'brand');
+const logo = el('img', 'logo hidden');
+logo.alt = '';
+const DEFAULT_TITLE = 'Live Scores';
+const title = el('h1', 'title', DEFAULT_TITLE);
+brand.append(logo, title);
 const clock = el('time', 'clock');
-header.append(title, clock);
+header.append(brand, clock);
 const grid = el('div', 'grid');
 const status = el('p', 'status hidden');
 root.append(header, grid, status);
@@ -202,7 +207,19 @@ function render() {
   layout(sheets.length);
 }
 
+// The club's own title and logo, set in the admin portal. The logo is a data
+// URL of a raster image, which the page's CSP allows and nothing else.
+function showBranding(branding) {
+  title.textContent = branding?.title || DEFAULT_TITLE;
+  const src = typeof branding?.logo === 'string' && branding.logo.startsWith('data:image/') ? branding.logo : '';
+  if (src) logo.src = src;
+  else logo.removeAttribute('src');
+  logo.classList.toggle('hidden', !src);
+  document.title = branding?.title ? `${branding.title} · ${DEFAULT_TITLE}` : DEFAULT_TITLE;
+}
+
 connect({
+  onBranding: showBranding,
   onSummary: (next) => {
     summary = next;
     render();
