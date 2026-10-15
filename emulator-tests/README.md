@@ -110,6 +110,13 @@ Access that must stay denied:
   device status out of sheet responses. It lists a club's leagues and
   returns one, only with the club's own key and only the documented fields,
   and reports the league and teams on live and completed games.
+- The display summary lists each sheet by name, with its live game cut down
+  to what a display needs; follows a renamed sheet; is not written for a
+  scoreboard's status report; keeps a finished game as the last game once
+  its live game is removed, and shows the next draw's game ahead of it
+  straight away; keeps the later game when an earlier one arrives late; and
+  drops a deleted sheet. A display shows a live game first, then the final
+  score for ten minutes, ignoring a live game abandoned for over two hours.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, the
   scoreboard PIN it was given under `private/scoreboardPin`, and a club admin

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { gamesRouter } from './games';
+import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
 
 // Mounted under /api/v1/clubs/:clubId with mergeParams.
 export const sheetsRouter = Router({ mergeParams: true });
@@ -31,12 +32,6 @@ sheetsRouter.get('/sheets/:sheetId', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-// A scoreboard that is switched off or loses its connection mid-game never
-// clears its live game. Nothing is pushed while an end is being played, so
-// this has to be comfortably longer than the slowest end. The admin portal
-// applies the same cutoff in admin/src/lib/liveGame.ts.
-export const LIVE_GAME_TIMEOUT_MS = 120 * 60 * 1000;
 
 // Live games written before updatedAt existed do not have one.
 function updatedAtOf(liveGame: FirebaseFirestore.DocumentData): Timestamp | null {

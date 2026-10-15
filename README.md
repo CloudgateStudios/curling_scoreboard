@@ -155,6 +155,20 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-pins.js  # 
 
 It prints each new PIN. Clubs that already have one keep it, so it is safe to re-run. Club admins can see and change their PIN in the admin portal.
 
+### Backfilling display summaries
+
+The score bug and warm room displays read one summary document per club, which the `syncDisplaySheet` and `syncDisplayLastGame` functions keep up to date. They only see sheets that change after they are deployed, so after deploying them run the one-off backfill once per project. It reuses the functions' compiled code, so build them first:
+
+```bash
+(cd functions && npm install && npm run build)
+cd scripts
+npm install
+node backfill-display-state.js                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-display-state.js  # prod
+```
+
+It writes every sheet as it is now, so it is safe to re-run.
+
 ---
 
 ## Admin accounts

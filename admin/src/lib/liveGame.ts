@@ -5,7 +5,7 @@ import type { LiveGame } from '../types';
  * clears its live game. Nothing is pushed while an end is being played, so
  * this has to be comfortably longer than the slowest end.
  *
- * Keep in step with LIVE_GAME_TIMEOUT_MS in functions/src/routes/sheets.ts,
+ * Keep in step with LIVE_GAME_TIMEOUT_MS in functions/src/liveGame.ts,
  * which applies the same cutoff to the public API.
  */
 export const LIVE_GAME_TIMEOUT_MS = 120 * 60 * 1000;

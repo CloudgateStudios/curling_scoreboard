@@ -6,12 +6,13 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator, getAuth, signInAnonymously, signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
+import { FINAL_SHOWN_MS, sheetView } from '../functions/lib/display/state.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -51,6 +52,17 @@ async function rejectsWith(promise, code) {
     assert.equal(err.code, code);
     return true;
   });
+}
+
+// Triggers run some time after the write, so wait for what they do.
+async function waitFor(what, check) {
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 before(async () => {
@@ -807,17 +819,6 @@ describe('completed game webhook', () => {
     team2: { ...openGame.team2, name: 'Team Jones', teamId: 't2' },
   };
 
-  // The trigger runs some time after the write, so wait for what it does.
-  async function waitFor(what, check) {
-    const deadline = Date.now() + 15_000;
-    for (;;) {
-      const value = await check();
-      if (value) return value;
-      if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}`);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-
   const postsTo = (path) => received.filter((r) => r.path === path);
 
   test('posts a completed game with a message Slack and Discord both read', async () => {
@@ -1003,5 +1004,181 @@ describe('completed game webhook', () => {
         answerWith = 200;
       }
     });
+  });
+});
+
+describe('display summary', () => {
+  const club = 'clubs/display-club';
+  const stateDoc = db.doc(`${club}/private/displayState`);
+  const sheetOf = async (sheetId) => (await stateDoc.get()).get(`sheets.${sheetId}`);
+  const minutesAgo = (minutes) => Timestamp.fromMillis(Date.now() - minutes * 60 * 1000);
+  // Waits long enough for a trigger that was going to write to have done so.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const liveGame = {
+    updatedAt: minutesAgo(1),
+    currentEnd: 3,
+    league: { id: 'monday', name: 'Monday Night' },
+    team1: {
+      name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, teamId: 't1', externalId: '1042',
+      score: 2, hasHammer: false, hadLastStoneFirstEnd: true,
+    },
+    team2: {
+      name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, teamId: 't2',
+      score: 1, hasHammer: true, hadLastStoneFirstEnd: false,
+    },
+  };
+  const completedGame = (finishedAt) => ({
+    startedAt: Timestamp.fromMillis(finishedAt.toMillis() - 2 * 60 * 60 * 1000),
+    finishedAt,
+    numberOfEnds: 8,
+    league: liveGame.league,
+    team1: { name: 'Team Smith', color: liveGame.team1.color, teamId: 't1', totalScore: 3, hadLastStoneFirstEnd: true },
+    team2: { name: 'Team Jones', color: liveGame.team2.color, teamId: 't2', totalScore: 1, hadLastStoneFirstEnd: false },
+    ends: [
+      { endNumber: 1, scoringTeam: 'Team Smith', scoringTeamSlot: 'team1', score: 2, gameTimeInSeconds: 600 },
+      { endNumber: 2, scoringTeam: null, scoringTeamSlot: null, score: 0, gameTimeInSeconds: 1200 },
+      // From before scoringTeamSlot was recorded.
+      { endNumber: 3, scoringTeam: 'Team Jones', score: 1, gameTimeInSeconds: 1800 },
+      { endNumber: 4, scoringTeam: 'Team Smith', score: 1, gameTimeInSeconds: 2400 },
+    ],
+  });
+
+  before(async () => {
+    await db.doc(club).set({ name: 'Display Club' });
+  });
+
+  test('lists a new sheet with no game', async () => {
+    await db.doc(`${club}/sheets/s-new`).set({ name: 'Sheet New' });
+    const sheet = await waitFor('the sheet', () => sheetOf('s-new'));
+    assert.deepEqual(sheet, { name: 'Sheet New', live: null });
+  });
+
+  test('shows a live game with only what a display needs', async () => {
+    await db.doc(`${club}/sheets/s-live`).set({ name: 'Sheet Live', scoreboardUid: 'device', liveGame });
+    const sheet = await waitFor('the live game', async () => (await sheetOf('s-live'))?.live && sheetOf('s-live'));
+    assert.equal(sheet.live.updatedAt.toMillis(), liveGame.updatedAt.toMillis());
+    assert.deepEqual({ ...sheet.live, updatedAt: null }, {
+      updatedAt: null,
+      currentEnd: 3,
+      numberOfEnds: null,
+      league: { name: 'Monday Night' },
+      team1: {
+        name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 2,
+        hasHammer: false, hadLastStoneFirstEnd: true,
+      },
+      team2: {
+        name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, score: 1,
+        hasHammer: true, hadLastStoneFirstEnd: false,
+      },
+      ends: null,
+    });
+  });
+
+  test('follows a renamed sheet', async () => {
+    await db.doc(`${club}/sheets/s-rename`).set({ name: 'Old Name' });
+    await waitFor('the sheet', () => sheetOf('s-rename'));
+    await db.doc(`${club}/sheets/s-rename`).update({ name: 'New Name' });
+    await waitFor('the new name', async () => (await sheetOf('s-rename'))?.name === 'New Name');
+  });
+
+  test('is not written for a scoreboard status report', async () => {
+    await db.doc(`${club}/sheets/s-status`).set({ name: 'Sheet Status' });
+    await waitFor('the sheet', () => sheetOf('s-status'));
+    await settle();
+    const written = (await stateDoc.get()).updateTime;
+
+    await db.doc(`${club}/sheets/s-status`).update({ device: { appVersion: '0.0.53' } });
+    await settle();
+    assert.equal((await stateDoc.get()).updateTime.toMillis(), written.toMillis());
+  });
+
+  test('keeps a finished game as the last game once the live game ends', async () => {
+    const sheetRef = db.doc(`${club}/sheets/s-final`);
+    await sheetRef.set({ name: 'Sheet Final', liveGame });
+    await waitFor('the live game', async () => (await sheetOf('s-final'))?.live);
+
+    // The scoreboard's Finish Game write.
+    const finishedAt = minutesAgo(1);
+    const batch = db.batch();
+    batch.set(sheetRef.collection('games').doc('g1'), completedGame(finishedAt));
+    batch.update(sheetRef, { liveGame: FieldValue.delete() });
+    await batch.commit();
+
+    const sheet = await waitFor('the final score', async () => {
+      const s = await sheetOf('s-final');
+      return s?.lastGame && s.live === null && s;
+    });
+    assert.equal(sheet.lastGame.gameId, 'g1');
+    assert.equal(sheet.lastGame.finishedAt.toMillis(), finishedAt.toMillis());
+    assert.equal(sheet.lastGame.numberOfEnds, 8);
+    assert.deepEqual(sheet.lastGame.league, { name: 'Monday Night' });
+    assert.deepEqual(sheet.lastGame.team1, {
+      name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 3,
+      hasHammer: null, hadLastStoneFirstEnd: true,
+    });
+    assert.deepEqual(sheet.lastGame.ends, [
+      { endNumber: 1, scoringTeamSlot: 'team1', score: 2 },
+      { endNumber: 2, scoringTeamSlot: null, score: 0 },
+      { endNumber: 3, scoringTeamSlot: 'team2', score: 1 },
+      { endNumber: 4, scoringTeamSlot: 'team1', score: 1 },
+    ]);
+    assert.equal(sheetView(sheet, Date.now()).kind, 'final');
+
+    // The next draw starts on the sheet, inside the ten minutes.
+    await sheetRef.update({ liveGame: { ...liveGame, updatedAt: Timestamp.now(), currentEnd: 1 } });
+    const next = await waitFor('the new game', async () => (await sheetOf('s-final'))?.live && sheetOf('s-final'));
+    assert.equal(next.lastGame.gameId, 'g1', 'keeps the last game');
+    assert.equal(sheetView(next, Date.now()).kind, 'live');
+  });
+
+  test('keeps the later game when an earlier one arrives late', async () => {
+    const sheetRef = db.doc(`${club}/sheets/s-late`);
+    await sheetRef.set({ name: 'Sheet Late' });
+    await sheetRef.collection('games').doc('newer').set(completedGame(minutesAgo(5)));
+    await waitFor('the newer game', async () => (await sheetOf('s-late'))?.lastGame?.gameId === 'newer');
+
+    // From a scoreboard that was offline, say.
+    await sheetRef.collection('games').doc('older').set(completedGame(minutesAgo(60)));
+    await settle();
+    assert.equal((await sheetOf('s-late')).lastGame.gameId, 'newer');
+  });
+
+  test('drops a deleted sheet', async () => {
+    await db.doc(`${club}/sheets/s-gone`).set({ name: 'Sheet Gone' });
+    await waitFor('the sheet', () => sheetOf('s-gone'));
+    await db.doc(`${club}/sheets/s-gone`).delete();
+    await waitFor('the sheet to go', async () => (await sheetOf('s-gone')) === undefined);
+  });
+});
+
+describe('what a display shows for a sheet', () => {
+  const now = Date.now();
+  const at = (msAgo) => Timestamp.fromMillis(now - msAgo);
+  const minutes = 60 * 1000;
+  const live = (updatedAt) => ({ updatedAt, currentEnd: 1 });
+  const lastGame = (finishedAt) => ({ gameId: 'g', finishedAt });
+
+  test('shows a live game ahead of a final score', () => {
+    const view = sheetView({ name: 'S', live: live(at(0)), lastGame: lastGame(at(1 * minutes)) }, now);
+    assert.equal(view.kind, 'live');
+  });
+
+  test('shows the final score for ten minutes', () => {
+    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS)) }, now).kind, 'final');
+    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS + 1)) }, now).kind, 'idle');
+  });
+
+  test('ignores a live game abandoned for over two hours', () => {
+    assert.equal(sheetView({ name: 'S', live: live(at(121 * minutes)) }, now).kind, 'idle');
+    assert.equal(sheetView({ name: 'S', live: live(at(119 * minutes)) }, now).kind, 'live');
+  });
+
+  test('keeps a live game written before updatedAt was recorded', () => {
+    assert.equal(sheetView({ name: 'S', live: live(null) }, now).kind, 'live');
+  });
+
+  test('shows nothing for a sheet that has never had a game', () => {
+    assert.equal(sheetView({ name: 'S', live: null }, now).kind, 'idle');
   });
 });

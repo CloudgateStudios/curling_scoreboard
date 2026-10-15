@@ -51,6 +51,33 @@ clubs/{clubId}/private/webhookStatus // the last post, written by the functions
   status?: int               // the receiver's HTTP status, if it answered
   error?: string
 
+clubs/{clubId}/private/displayState  // what the display pages show, written by the functions
+  sheets: {
+    [sheetId]: {
+      name: string
+      live: {                // the live game, or null; see liveGame below
+        updatedAt: timestamp | null
+        currentEnd: int
+        numberOfEnds: int | null           // null until scoreboards send it
+        league: { name: string } | null
+        team1: { name: string, color: { name, hex } | null, score: int,
+                 hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
+        team2: { ...the same }
+        ends: [{ endNumber: int, scoringTeamSlot: 'team1' | 'team2' | null, score: int }] | null
+      } | null
+      lastGame?: {           // the sheet's latest completed game
+        gameId: string
+        startedAt: timestamp | null
+        finishedAt: timestamp
+        numberOfEnds: int | null
+        league: { name: string } | null
+        team1: { ...as in live, with hasHammer null }
+        team2: { ...the same }
+        ends: [...as in live]
+      }
+    }
+  }
+
 clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
   rockColors?: {             // absent means red and yellow
     team1: { name: string, hex: string }   // hex is '#RRGGBB'
@@ -250,6 +277,44 @@ scoreboard that is switched off or offline, readers ignore a `liveGame`
 whose `updatedAt` is more than 120 minutes old: the REST API reports it as
 null and the admin portal shows the sheet as idle. The stored field is left
 alone until that scoreboard next starts up or starts a game.
+
+## Display summary
+
+The score bug for live streams and the warm room screen show a club's sheets
+as they change. Reading the sheets themselves would cost a read per sheet
+each time a display looked, so each club has one summary document,
+`private/displayState`, that a display listens to instead: one read when it
+starts and one per change after that, however long it stays open.
+
+Two functions in `functions/src/display/triggers.ts` keep it up to date:
+
+- `syncDisplaySheet` fires on every write to a sheet and copies its name and
+  live game. A scoreboard's status report every half hour changes neither, so
+  it ends there without a read or a write. Otherwise it rebuilds the entry
+  from the sheet as it is now, in a transaction, rather than from the event:
+  events can arrive late, out of order or twice, and this way a late one
+  writes the current state again instead of an older one. A deleted sheet is
+  removed.
+- `syncDisplayLastGame` fires on each completed game and keeps it as the
+  sheet's `lastGame`, unless the one already there finished later, which
+  happens when a scoreboard that was offline delivers an old game.
+
+Each writes only its own fields of the entry, so neither undoes the other.
+The entries carry only what a display shows: league and team names, colors
+and scores, not the IDs integrations match on.
+
+What a display shows for a sheet is decided by `sheetView` in
+`functions/src/display/state.ts`. A live game comes first, so the next draw
+replaces the final score as soon as its game starts. A live game that has
+gone two hours without a write is ignored, as in the REST API. Otherwise the
+last game is shown as the final score for ten minutes after it finished, and
+after that the sheet is idle. That is worked out by the display from the
+times in the summary, so nothing has to be written when the ten minutes are
+up.
+
+Sheets that existed before the functions were deployed are added by
+`scripts/backfill-display-state.js` (see the README), or by their next
+change.
 
 ## Rock colors
 
