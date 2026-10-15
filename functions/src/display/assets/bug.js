@@ -6,6 +6,9 @@
 //   scale=1.5          size, from 0.5 to 4
 //   label=league       what the bottom line names: sheet (default), league
 //                      or none
+//   preview            while setting up: show an outlined placeholder of the
+//                      same size while the sheet has no game, instead of
+//                      nothing, so the bug can be placed in OBS between draws
 
 import {
   STATUS_MESSAGES, config, connect, el, endLabel, followLink, followsLink, now, sheetView,
@@ -15,6 +18,7 @@ import {
 const params = new URLSearchParams(location.search);
 const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
 const label = ['sheet', 'league', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
+const preview = params.has('preview') && params.get('preview') !== '0';
 document.documentElement.style.setProperty('--scale', String(scale));
 
 const root = document.getElementById('display');
@@ -68,6 +72,27 @@ function showTeam(parts, team, view, changed) {
   }
 }
 
+// What an idle sheet shows with ?preview: the bug at its real size, faded
+// and outlined, so it can be placed in OBS before a game starts.
+function showPlaceholder(sheet) {
+  for (const [slot, name] of [['team1', 'Team 1'], ['team2', 'Team 2']]) {
+    const parts = rows[slot];
+    parts.stripe.style.background = '';
+    parts.name.textContent = name;
+    parts.name.title = '';
+    parts.hammer.classList.add('off');
+    parts.score.textContent = '0';
+    parts.score.style.background = '';
+    parts.score.style.color = '';
+    parts.score.classList.remove('changed');
+  }
+  footerLabel.textContent = label === 'none' ? '' : sheet.name;
+  footerEnd.textContent = 'No game';
+  bug.classList.remove('final');
+  bug.classList.add('placeholder');
+  bug.classList.remove('hidden');
+}
+
 function showStatus(message) {
   status.textContent = message ?? '';
   status.classList.toggle('hidden', !message);
@@ -92,10 +117,12 @@ function render() {
 
   const view = sheetView(sheet, now());
   if (view.kind === 'idle') {
-    bug.classList.add('hidden');
     shown = null;
+    if (preview) showPlaceholder(sheet);
+    else bug.classList.add('hidden');
     return;
   }
+  bug.classList.remove('placeholder');
 
   const { game } = view;
   const key = view.kind === 'final' ? game.gameId : 'live';

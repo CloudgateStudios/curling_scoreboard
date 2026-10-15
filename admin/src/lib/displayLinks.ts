@@ -36,6 +36,15 @@ export function displayUrl(siteUrl: string, clubId: string, token: string): stri
   return `${siteUrl}/display/${encodeURIComponent(clubId)}#k=${encodeURIComponent(token)}`;
 }
 
+/**
+ * The link's URL in preview mode, for checking a screen while setting it up:
+ * a score bug shows an outlined placeholder while its sheet has no game,
+ * rather than nothing.
+ */
+export function displayPreviewUrl(siteUrl: string, clubId: string, token: string): string {
+  return displayUrl(siteUrl, clubId, token).replace('#', '?preview#');
+}
+
 /** The settings as they are stored: only what the page uses, defaults left out. */
 export function settingsToSave(settings: DisplaySettings): DisplaySettings {
   if (settings.page === 'bug' && settings.sheetId) {
