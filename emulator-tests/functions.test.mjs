@@ -1291,3 +1291,61 @@ describe('display links', () => {
     await rejectsWith(caller.call('createDisplayLink', { clubId: limited, label: 'One more' }), 'functions/resource-exhausted');
   });
 });
+
+describe('display pages', () => {
+  const PAGES_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/display/display`;
+
+  function pageConfig(html) {
+    const match = /<script type="application\/json" id="display-config">(.*?)<\/script>/s.exec(html);
+    assert.ok(match, 'has the config block');
+    return JSON.parse(match[1]);
+  }
+
+  test('serves the score bug, locked down and never cached', async () => {
+    const before = Date.now();
+    const res = await fetch(`${PAGES_URL}/club-a/sheets/sheet-1/bug`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /^text\/html/);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(res.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(res.headers.get('access-control-allow-origin'), null);
+    const csp = res.headers.get('content-security-policy');
+    assert.match(csp, /default-src 'none'/);
+    assert.match(csp, /script-src 'self' https:\/\/www\.gstatic\.com(;|$)/);
+    assert.match(csp, /frame-ancestors 'none'/);
+
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/\.\.\/\.\.\/assets\/bug\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'bug');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.sheetId, 'sheet-1');
+    assert.equal(config.firebase.projectId, PROJECT_ID);
+    assert.equal(config.finalShownMs, FINAL_SHOWN_MS);
+    assert.ok(config.serverNow >= before && config.serverNow <= Date.now(), 'carries the server time');
+  });
+
+  test('serves the pages\' scripts and styles', async () => {
+    for (const [file, type] of [['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/]]) {
+      const res = await fetch(`${PAGES_URL}/assets/${file}`);
+      assert.equal(res.status, 200, file);
+      assert.match(res.headers.get('content-type'), type, file);
+      assert.equal(res.headers.get('cache-control'), 'no-cache', file);
+    }
+  });
+
+  test('answers 404 for anything else', async () => {
+    for (const path of [
+      '/club-a/sheets/sheet%3Cscript%3E/bug',
+      '/club.a/sheets/sheet-1/bug',
+      '/club-a/sheets/sheet-1',
+      '/assets/missing.js',
+      '/assets/../pages.js',
+      '/',
+    ]) {
+      const res = await fetch(`${PAGES_URL}${path}`);
+      assert.equal(res.status, 404, path);
+    }
+  });
+});

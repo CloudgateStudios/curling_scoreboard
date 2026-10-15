@@ -4,8 +4,10 @@ cupertino
 firebaseapp
 firestore
 fvmrc
+gstatic
 iamcredentials
 ltrb
+nosniff
 notmain
 nums
 prefs

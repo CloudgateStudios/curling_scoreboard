@@ -12,7 +12,7 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
 | `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
-| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                                                                |
+| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access; also serves the display pages                                  |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
 `curling-scoreboard-prod`, with the same layout. Access control lives in
@@ -356,6 +356,56 @@ does not write each time. A club can have 20 links.
 
 Minting custom tokens needs the functions' service account to be able to
 sign as itself; see "Display links" in the README.
+
+## Display pages
+
+The `display` function serves the display pages on the scoreboard's hosting
+site, under `/display/**` through a Hosting rewrite, like the API:
+
+- `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
+- `/display/assets/*`: the pages' scripts and styles, from
+  `functions/src/display/assets`, which `npm run build` copies next to the
+  compiled function
+
+A page is the same for everyone and never reads Firestore on the server: the
+link's token is after the `#`, which the function never sees. The HTML only
+holds a JSON block saying which club and sheet to show, the Firebase web
+config, and the server's time. The script, `assets/display.js`, then:
+
+1. Signs in. A display already signed in as this link, from an earlier
+   load, carries on; otherwise it calls `startDisplaySession` with the token
+   and signs in with the custom token it returns. The sign-in is kept in the
+   browser's IndexedDB, so a reload does not start a new session.
+2. Listens to the club's `private/displayState` and redraws on each change.
+3. Redraws every 15 seconds as well, because a final score comes down ten
+   minutes after the game with no write to say so. `sheetView` there mirrors
+   the one in `functions/src/display/state.ts`, with the same limits passed
+   in through the page. Times are compared on the server's clock, worked out
+   from the time in the page, so a screen with its clock off still takes
+   the final score down on time.
+
+A display is left running for weeks, so everything is retried, backing off
+to five minutes: a failed sign-in, a listener the server ended, a sign-in
+that could not be renewed. A link the server refuses, or a URL with no
+token, is said on the page so it can be fixed while setting up; the page is
+otherwise silent about trouble and keeps showing the last scores.
+
+The Firebase SDK is loaded as ES modules from `www.gstatic.com`, pinned to
+the version the admin portal uses. Nothing is inline, so the
+`Content-Security-Policy` allows scripts only from the function and gstatic,
+connections only to the Firebase services the page uses, and no framing.
+Responses carry `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`; pages are `no-store`, since they carry the
+server's time, and assets `no-cache`.
+
+The score bug is transparent, so an OBS browser source shows only the bug.
+It shows the two teams with their rock colors and scores, the hammer in a
+live game, and the end or Final, and hides itself while the sheet is idle.
+`?scale=` (0.5 to 4) sizes it, and `?label=league` or `?label=none` changes
+the sheet name under the scores.
+
+The rewrite needs the `display` function to exist, so in a new project deploy
+the functions before the scoreboard's hosting.
 
 ## Rock colors
 
