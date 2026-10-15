@@ -33,3 +33,14 @@
   gap: 0.75rem;
   flex-wrap: wrap;
 }
+
+.options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.options .field {
+  flex: 1;
+  min-width: 10rem;
+}

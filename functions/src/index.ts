@@ -9,7 +9,9 @@ export {
 export { pairSheet, unpairSheet } from './pairing';
 export { sendCompletedGameWebhook, sendTestWebhook } from './webhook';
 export { syncDisplayLastGame, syncDisplaySheet } from './display/triggers';
-export { createDisplayLink, revokeDisplayLink, startDisplaySession } from './display/links';
+export {
+  createDisplayLink, resetDisplayLink, revokeDisplayLink, startDisplaySession,
+} from './display/links';
 export { display } from './display/pages';
 
 initializeApp();

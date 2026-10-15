@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore';
+import type { DisplaySettings } from '../lib/displayLinks';
 
 export interface Club {
   id: string;
@@ -170,6 +171,8 @@ export interface WebhookStatus {
 export interface DisplayLink {
   id: string;
   label: string;
+  /** What the link's screens show; the warm room's totals when absent. */
+  settings?: DisplaySettings;
   createdAt?: Timestamp;
   /** Updated at most hourly, when a display starts with the link. */
   lastUsedAt?: Timestamp;

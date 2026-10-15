@@ -66,6 +66,53 @@ function linkToken() {
   return new URLSearchParams(location.hash.slice(1)).get('k') ?? '';
 }
 
+// /display/, wherever the pages are served from: these files are in
+// /display/assets/.
+const DISPLAY_BASE = new URL('../', import.meta.url);
+
+/**
+ * The page a display link's settings name, as a URL without the token:
+ * a sheet's score bug or the warm room, with options left out at their
+ * defaults. Mirrors the options bug.js and warm-room.js read.
+ */
+export function linkPageUrl(settings) {
+  const club = encodeURIComponent(config.clubId);
+  const query = new URLSearchParams();
+  let path;
+  if (settings?.page === 'bug' && typeof settings.sheetId === 'string') {
+    path = `${club}/sheets/${encodeURIComponent(settings.sheetId)}/bug`;
+    if (settings.scale && settings.scale !== 1) query.set('scale', String(settings.scale));
+    if (settings.label && settings.label !== 'sheet') query.set('label', settings.label);
+  } else {
+    path = `${club}/warm-room`;
+    if (settings?.view && settings.view !== 'totals') query.set('view', settings.view);
+    if (settings?.view === 'cycle' && settings.every && settings.every !== 20) {
+      query.set('every', String(settings.every));
+    }
+  }
+  const url = new URL(path, DISPLAY_BASE);
+  url.search = query.toString();
+  return url;
+}
+
+/**
+ * Whether this page was opened from its display link's own URL, and so
+ * follows the link's settings. Pages opened at their own URL stay put.
+ */
+export const followsLink = new URLSearchParams(location.hash.slice(1)).get('link') === '1';
+
+/**
+ * Moves to the page the link's settings name, unless this is it already.
+ * The sign-in is kept in the browser, so the new page carries straight on.
+ */
+export function followLink(settings) {
+  if (!settings) return;
+  const target = linkPageUrl(settings);
+  if (target.pathname === location.pathname && target.search === location.search) return;
+  target.hash = `k=${encodeURIComponent(linkToken())}&link=1`;
+  location.replace(target.href);
+}
+
 const RETRY_MIN_MS = 5_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
@@ -74,12 +121,14 @@ const RETRY_MAX_MS = 5 * 60_000;
  * before the club has one) each time it changes. onStatus is told what is
  * happening: 'connecting', 'live', 'no-link', 'bad-link' or 'offline'.
  * onBranding, if given, gets the club's title and logo for its displays, or
- * null when it has none.
+ * null when it has none, and onLink the display link's settings, or null
+ * once the link is removed. Each is optional; the first of onSummary and
+ * onLink given is the one the page needs, whose failures are retried.
  *
  * A display is left running for weeks, so every failure is retried, apart
  * from a link the server has refused, which needs someone to fix the URL.
  */
-export function connect({ onSummary, onStatus, onBranding }) {
+export function connect({ onSummary, onStatus, onBranding, onLink }) {
   const token = linkToken();
   if (!token) {
     onStatus('no-link');
@@ -102,7 +151,8 @@ export function connect({ onSummary, onStatus, onBranding }) {
   const startSession = httpsCallable(functions, 'startDisplaySession');
 
   let unsubscribe = null;
-  let unsubscribeBranding = null;
+  // The listeners the page can do without.
+  let extras = [];
   let retryMs = RETRY_MIN_MS;
   let retryTimer = null;
   let starting = false;
@@ -110,8 +160,8 @@ export function connect({ onSummary, onStatus, onBranding }) {
   function stopListening() {
     unsubscribe?.();
     unsubscribe = null;
-    unsubscribeBranding?.();
-    unsubscribeBranding = null;
+    for (const stop of extras) stop();
+    extras = [];
   }
 
   function retryLater() {
@@ -157,24 +207,36 @@ export function connect({ onSummary, onStatus, onBranding }) {
   }
 
   function listen() {
-    if (onBranding) {
-      // Nice to have: whatever goes wrong here, the scores carry on, and the
-      // summary's listener sorts out the sign-in.
-      const brandingRef = doc(db, 'clubs', config.clubId, 'private', 'displayBranding');
-      unsubscribeBranding = onSnapshot(brandingRef, (snap) => {
-        onBranding(snap.exists() ? snap.data() : null);
-      }, (err) => console.warn('Display branding listener stopped', err));
+    const club = ['clubs', config.clubId];
+    const watched = [
+      onSummary && { what: 'summary', ref: doc(db, ...club, 'private', 'displayState'), on: onSummary },
+      // Only the settings: the rest of the link is the portal's. A link from
+      // before settings existed shows the warm room, as a new one does.
+      onLink && {
+        what: 'link',
+        ref: doc(db, ...club, 'displayLinks', linkId),
+        on: (link) => onLink(link ? (link.settings ?? { page: 'warm-room' }) : null),
+      },
+      onBranding && { what: 'branding', ref: doc(db, ...club, 'private', 'displayBranding'), on: onBranding },
+    ].filter(Boolean);
+    const [main, ...rest] = watched;
+    const dataOf = (snap) => (snap.exists() ? snap.data() : null);
+
+    // Nice to have: whatever goes wrong with these, the page carries on, and
+    // the main listener sorts out the sign-in.
+    for (const watch of rest) {
+      extras.push(onSnapshot(watch.ref, (snap) => watch.on(dataOf(snap)),
+        (err) => console.warn(`Display ${watch.what} listener stopped`, err)));
     }
-    const ref = doc(db, 'clubs', config.clubId, 'private', 'displayState');
-    unsubscribe = onSnapshot(ref, (snap) => {
+    unsubscribe = onSnapshot(main.ref, (snap) => {
       retryMs = RETRY_MIN_MS;
       onStatus('live');
-      onSummary(snap.exists() ? snap.data() : null);
+      main.on(dataOf(snap));
     }, (err) => {
       // Firestore reconnects by itself after network trouble, so an error
       // here is final for this listener: usually a link that was removed,
       // whose sign-in has run out. Starting again finds out.
-      console.warn('Display summary listener stopped', err);
+      console.warn(`Display ${main.what} listener stopped`, err);
       unsubscribe = null;
       onStatus(err?.code === 'permission-denied' ? 'connecting' : 'offline');
       if (err?.code === 'permission-denied') signOut(auth).catch(() => {});
@@ -218,4 +280,5 @@ export function el(tag, className, text) {
 export const STATUS_MESSAGES = {
   'no-link': 'This display link is incomplete. Copy it again from the admin portal.',
   'bad-link': 'This display link is not valid. Ask a club admin for a new one.',
+  'removed-link': 'This display link has been removed. Ask a club admin for a new one.',
 };

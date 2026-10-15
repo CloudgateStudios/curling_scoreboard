@@ -1231,7 +1231,8 @@ describe('display links', () => {
     const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
     assert.equal(link.label, 'Stream');
     assert.ok(link.createdAt);
-    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash']);
+    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash', 'settings']);
+    assert.deepEqual(link.settings, { page: 'warm-room' }, 'shows the warm room until changed');
     assert.ok(!JSON.stringify(link).includes(token.split('.')[1]), 'does not store the secret');
   });
 
@@ -1284,6 +1285,45 @@ describe('display links', () => {
     assert.equal((await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).exists, false);
     await assert.rejects(adminAuth.getUser(uid), (err) => err.code === 'auth/user-not-found');
     await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
+  });
+
+  test('a display reads its own link\'s settings, not another\'s', async () => {
+    const { linkId, token } = await createLink();
+    const other = await createLink('Other');
+    const display = await clientFor();
+    await signInWithCustomToken(display.auth, (await display.call('startDisplaySession', { clubId, token })).data.token);
+    const firestore = getClientFirestore(display.app);
+    connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+    const own = await clientGetDoc(clientDoc(firestore, `clubs/${clubId}/displayLinks/${linkId}`));
+    assert.deepEqual(own.get('settings'), { page: 'warm-room' });
+    await assert.rejects(clientGetDoc(clientDoc(firestore, `clubs/${clubId}/displayLinks/${other.linkId}`)));
+  });
+
+  test('resetting a link gives it a new URL and keeps what it shows', async () => {
+    const { linkId, token } = await createLink();
+    await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).update({ settings: { page: 'bug', sheetId: 's1' } });
+    const display = await clientFor();
+    await signInWithCustomToken(display.auth, (await display.call('startDisplaySession', { clubId, token })).data.token);
+    const uid = display.auth.currentUser.uid;
+
+    await rejectsWith((await anonymous()).call('resetDisplayLink', { clubId, linkId }), 'functions/permission-denied');
+    const reset = (await admin.call('resetDisplayLink', { clubId, linkId })).data;
+    assert.equal(reset.linkId, linkId);
+    assert.match(reset.token, new RegExp(`^${linkId}\\.[0-9a-f]{32}$`));
+    assert.notEqual(reset.token, token);
+
+    const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
+    assert.deepEqual(link.settings, { page: 'bug', sheetId: 's1' });
+    await assert.rejects(adminAuth.getUser(uid), (err) => err.code === 'auth/user-not-found');
+    await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
+    const fresh = await clientFor();
+    assert.ok((await fresh.call('startDisplaySession', { clubId, token: reset.token })).data.token);
+  });
+
+  test('cannot reset a link that was removed', async () => {
+    const { linkId } = await createLink();
+    await admin.call('revokeDisplayLink', { clubId, linkId });
+    await rejectsWith(admin.call('resetDisplayLink', { clubId, linkId }), 'functions/not-found');
   });
 
   test('revokes a link that was never used', async () => {
@@ -1352,10 +1392,23 @@ describe('display pages', () => {
     assert.equal(config.sheetId, undefined);
   });
 
+  test('serves a display link\'s own page for a club', async () => {
+    const res = await fetch(`${PAGES_URL}/club-a`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="assets\/link\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'link');
+    assert.equal(config.clubId, 'club-a');
+  });
+
   test('serves the pages\' scripts and styles', async () => {
     for (const [file, type] of [
       ['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/],
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
+      ['link.js', /javascript/], ['link.css', /css/],
     ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
@@ -1373,6 +1426,8 @@ describe('display pages', () => {
       '/assets/missing.js',
       '/assets/../pages.js',
       '/',
+      '/assets',
+      '/club%3Cb%3E',
     ]) {
       const res = await fetch(`${PAGES_URL}${path}`);
       assert.equal(res.status, 404, path);
