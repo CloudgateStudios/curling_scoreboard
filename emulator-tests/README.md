@@ -129,7 +129,8 @@ Access that must stay denied:
   club document, and records that it was used. Wrong, malformed and other
   clubs' tokens are turned away. Revoking a link, used or not, stops it
   signing in and removes its Auth user.
-- The display function serves the score bug with its strict security headers,
+- The display function serves the score bug and the warm room screen with
+  their strict security headers,
   never cached, with the club, sheet and server time in the page; serves the
   pages' scripts and styles; and answers 404 for malformed IDs and anything
   else.

@@ -9,6 +9,7 @@ import { FINAL_SHOWN_MS } from './state';
 // /display/** through a Hosting rewrite:
 //
 //   /display/{clubId}/sheets/{sheetId}/bug   the score bug for live streams
+//   /display/{clubId}/warm-room              every sheet, for a screen in the club
 //   /display/assets/*                        the pages' scripts and styles
 //
 // The pages are the same for everyone: the display link's token is in the
@@ -53,7 +54,7 @@ function contentSecurityPolicy(projectId: string): string {
 
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
-  page: 'bug';
+  page: 'bug' | 'warm-room';
   clubId: string;
   sheetId?: string;
   firebase: ReturnType<typeof webConfig>;
@@ -140,25 +141,40 @@ app.use('/display/assets', express.static(path.join(__dirname, 'assets'), {
   setHeaders: (res) => res.set('Cache-Control', 'no-cache'),
 }));
 
-app.get('/display/:clubId/sheets/:sheetId/bug', (req: Request, res: Response) => {
-  const { clubId, sheetId } = req.params as Record<string, string>;
-  if (!ID_PATTERN.test(clubId) || !ID_PATTERN.test(sheetId)) {
-    res.status(404).type('text/plain').send('Not found');
-    return;
-  }
-  const projectId = currentProjectId();
+function sendPage(res: Response, title: string, assetBase: string, config: PageConfig) {
   res.set({
-    'Content-Security-Policy': contentSecurityPolicy(projectId),
+    'Content-Security-Policy': contentSecurityPolicy(currentProjectId()),
     // Holds the server's time, so it must never come from a cache.
     'Cache-Control': 'no-store',
   });
+  res.type('html').send(renderPage(title, assetBase, config));
+}
+
+function notFound(res: Response) {
+  res.status(404).type('text/plain').send('Not found');
+}
+
+app.get('/display/:clubId/sheets/:sheetId/bug', (req: Request, res: Response) => {
+  const { clubId, sheetId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId) || !ID_PATTERN.test(sheetId)) {
+    notFound(res);
+    return;
+  }
   // From /display/{club}/sheets/{sheet}/ back up to /display/.
-  res.type('html').send(renderPage('Score Bug', '../../../assets/', pageConfig(req, 'bug', clubId, sheetId)));
+  sendPage(res, 'Score Bug', '../../../assets/', pageConfig(req, 'bug', clubId, sheetId));
 });
 
-app.use((_req: Request, res: Response) => {
-  res.status(404).type('text/plain').send('Not found');
+app.get('/display/:clubId/warm-room', (req: Request, res: Response) => {
+  const { clubId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId)) {
+    notFound(res);
+    return;
+  }
+  // From /display/{club}/ back up to /display/.
+  sendPage(res, 'Live Scores', '../assets/', pageConfig(req, 'warm-room', clubId));
 });
+
+app.use((_req: Request, res: Response) => notFound(res));
 
 // cors: false: these are pages, not an API, so no other site may read them.
 export const display = onRequest({ cors: false }, app);

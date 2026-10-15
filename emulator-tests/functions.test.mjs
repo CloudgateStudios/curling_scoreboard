@@ -1326,8 +1326,24 @@ describe('display pages', () => {
     assert.ok(config.serverNow >= before && config.serverNow <= Date.now(), 'carries the server time');
   });
 
+  test('serves the warm room screen for a club', async () => {
+    const res = await fetch(`${PAGES_URL}/club-a/warm-room`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/assets\/warm-room\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'warm-room');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.sheetId, undefined);
+  });
+
   test('serves the pages\' scripts and styles', async () => {
-    for (const [file, type] of [['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/]]) {
+    for (const [file, type] of [
+      ['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/],
+      ['warm-room.js', /javascript/], ['warm-room.css', /css/],
+    ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
       assert.match(res.headers.get('content-type'), type, file);
@@ -1340,6 +1356,7 @@ describe('display pages', () => {
       '/club-a/sheets/sheet%3Cscript%3E/bug',
       '/club.a/sheets/sheet-1/bug',
       '/club-a/sheets/sheet-1',
+      '/club%3Cb%3E/warm-room',
       '/assets/missing.js',
       '/assets/../pages.js',
       '/',

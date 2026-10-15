@@ -363,6 +363,7 @@ The `display` function serves the display pages on the scoreboard's hosting
 site, under `/display/**` through a Hosting rewrite, like the API:
 
 - `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
+- `/display/{clubId}/warm-room`: every sheet, for a screen in the club
 - `/display/assets/*`: the pages' scripts and styles, from
   `functions/src/display/assets`, which `npm run build` copies next to the
   compiled function
@@ -403,6 +404,16 @@ It shows the two teams with their rock colors and scores, the hammer in a
 live game, and the end or Final, and hides itself while the sheet is idle.
 `?scale=` (0.5 to 4) sizes it, and `?label=league` or `?label=none` changes
 the sheet name under the scores.
+
+The warm room screen shows every sheet in the summary, in name order with
+numbers in order ("Sheet 2" before "Sheet 10"), on a dark background meant
+for a TV. Each card has the sheet's name, the end or Final, the league, and
+both teams with their rock colors, scores and the hammer; an idle sheet is
+dimmed and says "No game". The page tries each number of columns and keeps
+the one that makes the cards largest, then sizes everything in a card from
+its width, so any number of sheets fills the screen without scrolling, on a
+1080p or 4K TV or one turned on its side. A clock in the corner, on the
+server's time, shows the screen is still running.
 
 The rewrite needs the `display` function to exist, so in a new project deploy
 the functions before the scoreboard's hosting.
