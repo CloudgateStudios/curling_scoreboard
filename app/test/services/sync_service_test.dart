@@ -54,13 +54,19 @@ void main() {
       currentPlayingEnd: 2,
       league: league,
       ends: [
-        CurlingEnd(endNumber: 1, scoringTeam: ScoringTeam.team1, score: 3),
+        CurlingEnd(
+          endNumber: 1,
+          scoringTeam: ScoringTeam.team1,
+          score: 3,
+          gameTimeInSeconds: 540,
+        ),
       ],
     );
 
     test('an open game names each team by its rock color', () {
       expect(SyncService.liveGameFields(game()), {
         'currentEnd': 2,
+        'numberOfEnds': 8,
         'team1': {
           'name': 'Blue',
           'color': {'name': 'Blue', 'hex': '#2196F3'},
@@ -75,6 +81,29 @@ void main() {
           'hasHammer': true,
           'hadLastStoneFirstEnd': false,
         },
+        'ends': [
+          {
+            'endNumber': 1,
+            'scoringTeam': 'Blue',
+            'scoringTeamSlot': 'team1',
+            'score': 3,
+            'gameTimeInSeconds': 540,
+          },
+        ],
+      });
+    });
+
+    test('a blank end has no scoring team', () {
+      final blanked = game()
+        ..ends.add(CurlingEnd(endNumber: 2, score: 0))
+        ..currentPlayingEnd = 3;
+      final fields = SyncService.liveGameFields(blanked);
+      expect((fields['ends'] as List).last, {
+        'endNumber': 2,
+        'scoringTeam': null,
+        'scoringTeamSlot': null,
+        'score': 0,
+        'gameTimeInSeconds': -1,
       });
     });
 

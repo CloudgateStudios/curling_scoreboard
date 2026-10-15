@@ -4,11 +4,15 @@ cupertino
 firebaseapp
 firestore
 fvmrc
+gstatic
+iamcredentials
 ltrb
+nosniff
 notmain
 nums
 prefs
 pubspec
+Referer
 RRGGBB
 subcollection
 subcollections

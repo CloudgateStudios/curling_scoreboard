@@ -6,12 +6,16 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import {
-  connectAuthEmulator, getAuth, signInAnonymously, signInWithEmailAndPassword,
+  connectAuthEmulator, getAuth, signInAnonymously, signInWithCustomToken, signInWithEmailAndPassword,
 } from 'firebase/auth';
+import {
+  connectFirestoreEmulator, doc as clientDoc, getDoc as clientGetDoc, getFirestore as getClientFirestore,
+} from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
+import { FINAL_SHOWN_MS, sheetView } from '../functions/lib/display/state.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -33,7 +37,7 @@ async function clientFor(signIn) {
   const functions = getFunctions(app, 'us-central1');
   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
   if (signIn) await signIn(auth);
-  return { auth, call: (name, data) => httpsCallable(functions, name)(data) };
+  return { app, auth, call: (name, data) => httpsCallable(functions, name)(data) };
 }
 
 const anonymous = () => clientFor((auth) => signInAnonymously(auth));
@@ -51,6 +55,17 @@ async function rejectsWith(promise, code) {
     assert.equal(err.code, code);
     return true;
   });
+}
+
+// Triggers run some time after the write, so wait for what they do.
+async function waitFor(what, check) {
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const value = await check();
+    if (value) return value;
+    if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 before(async () => {
@@ -321,8 +336,21 @@ describe('REST API live games', () => {
     const body = await sheetWithLiveGame('sheet-started', { updatedAt, currentEnd: 1, ...teams });
     assert.equal(body.hasLiveGame, true);
     assert.deepEqual(body.liveGame, {
-      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, league: null, ...teams,
+      updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, numberOfEnds: null, league: null,
+      ...teams, ends: null,
     });
+  });
+
+  test('reports the ends played so far and how many are scheduled', async () => {
+    const ends = [
+      { endNumber: 1, scoringTeam: 'Red', scoringTeamSlot: 'team1', score: 2, gameTimeInSeconds: 600 },
+      { endNumber: 2, scoringTeam: null, scoringTeamSlot: null, score: 0, gameTimeInSeconds: 1250 },
+    ];
+    const body = await sheetWithLiveGame('sheet-ends', {
+      updatedAt: minutesAgo(1), currentEnd: 3, numberOfEnds: 8, ...teams, ends,
+    });
+    assert.equal(body.liveGame.numberOfEnds, 8);
+    assert.deepEqual(body.liveGame.ends, ends);
   });
 
   test('reports the league and teams of a league game', async () => {
@@ -807,17 +835,6 @@ describe('completed game webhook', () => {
     team2: { ...openGame.team2, name: 'Team Jones', teamId: 't2' },
   };
 
-  // The trigger runs some time after the write, so wait for what it does.
-  async function waitFor(what, check) {
-    const deadline = Date.now() + 15_000;
-    for (;;) {
-      const value = await check();
-      if (value) return value;
-      if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}`);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-  }
-
   const postsTo = (path) => received.filter((r) => r.path === path);
 
   test('posts a completed game with a message Slack and Discord both read', async () => {
@@ -1003,5 +1020,362 @@ describe('completed game webhook', () => {
         answerWith = 200;
       }
     });
+  });
+});
+
+describe('display summary', () => {
+  const club = 'clubs/display-club';
+  const stateDoc = db.doc(`${club}/private/displayState`);
+  const sheetOf = async (sheetId) => (await stateDoc.get()).get(`sheets.${sheetId}`);
+  const minutesAgo = (minutes) => Timestamp.fromMillis(Date.now() - minutes * 60 * 1000);
+  // Waits long enough for a trigger that was going to write to have done so.
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 3000));
+
+  const liveGame = {
+    updatedAt: minutesAgo(1),
+    currentEnd: 3,
+    league: { id: 'monday', name: 'Monday Night' },
+    team1: {
+      name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, teamId: 't1', externalId: '1042',
+      score: 2, hasHammer: false, hadLastStoneFirstEnd: true,
+    },
+    team2: {
+      name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, teamId: 't2',
+      score: 1, hasHammer: true, hadLastStoneFirstEnd: false,
+    },
+  };
+  const completedGame = (finishedAt) => ({
+    startedAt: Timestamp.fromMillis(finishedAt.toMillis() - 2 * 60 * 60 * 1000),
+    finishedAt,
+    numberOfEnds: 8,
+    league: liveGame.league,
+    team1: { name: 'Team Smith', color: liveGame.team1.color, teamId: 't1', totalScore: 3, hadLastStoneFirstEnd: true },
+    team2: { name: 'Team Jones', color: liveGame.team2.color, teamId: 't2', totalScore: 1, hadLastStoneFirstEnd: false },
+    ends: [
+      { endNumber: 1, scoringTeam: 'Team Smith', scoringTeamSlot: 'team1', score: 2, gameTimeInSeconds: 600 },
+      { endNumber: 2, scoringTeam: null, scoringTeamSlot: null, score: 0, gameTimeInSeconds: 1200 },
+      // From before scoringTeamSlot was recorded.
+      { endNumber: 3, scoringTeam: 'Team Jones', score: 1, gameTimeInSeconds: 1800 },
+      { endNumber: 4, scoringTeam: 'Team Smith', score: 1, gameTimeInSeconds: 2400 },
+    ],
+  });
+
+  before(async () => {
+    await db.doc(club).set({ name: 'Display Club' });
+  });
+
+  test('lists a new sheet with no game', async () => {
+    await db.doc(`${club}/sheets/s-new`).set({ name: 'Sheet New' });
+    const sheet = await waitFor('the sheet', () => sheetOf('s-new'));
+    assert.deepEqual(sheet, { name: 'Sheet New', live: null });
+  });
+
+  test('shows a live game with only what a display needs', async () => {
+    await db.doc(`${club}/sheets/s-live`).set({ name: 'Sheet Live', scoreboardUid: 'device', liveGame });
+    const sheet = await waitFor('the live game', async () => (await sheetOf('s-live'))?.live && sheetOf('s-live'));
+    assert.equal(sheet.live.updatedAt.toMillis(), liveGame.updatedAt.toMillis());
+    assert.deepEqual({ ...sheet.live, updatedAt: null }, {
+      updatedAt: null,
+      currentEnd: 3,
+      numberOfEnds: null,
+      league: { name: 'Monday Night' },
+      team1: {
+        name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 2,
+        hasHammer: false, hadLastStoneFirstEnd: true,
+      },
+      team2: {
+        name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, score: 1,
+        hasHammer: true, hadLastStoneFirstEnd: false,
+      },
+      ends: null,
+    });
+  });
+
+  test('follows a renamed sheet', async () => {
+    await db.doc(`${club}/sheets/s-rename`).set({ name: 'Old Name' });
+    await waitFor('the sheet', () => sheetOf('s-rename'));
+    await db.doc(`${club}/sheets/s-rename`).update({ name: 'New Name' });
+    await waitFor('the new name', async () => (await sheetOf('s-rename'))?.name === 'New Name');
+  });
+
+  test('is not written for a scoreboard status report', async () => {
+    await db.doc(`${club}/sheets/s-status`).set({ name: 'Sheet Status' });
+    await waitFor('the sheet', () => sheetOf('s-status'));
+    await settle();
+    const written = (await stateDoc.get()).updateTime;
+
+    await db.doc(`${club}/sheets/s-status`).update({ device: { appVersion: '0.0.53' } });
+    await settle();
+    assert.equal((await stateDoc.get()).updateTime.toMillis(), written.toMillis());
+  });
+
+  test('keeps a finished game as the last game once the live game ends', async () => {
+    const sheetRef = db.doc(`${club}/sheets/s-final`);
+    await sheetRef.set({ name: 'Sheet Final', liveGame });
+    await waitFor('the live game', async () => (await sheetOf('s-final'))?.live);
+
+    // The scoreboard's Finish Game write.
+    const finishedAt = minutesAgo(1);
+    const batch = db.batch();
+    batch.set(sheetRef.collection('games').doc('g1'), completedGame(finishedAt));
+    batch.update(sheetRef, { liveGame: FieldValue.delete() });
+    await batch.commit();
+
+    const sheet = await waitFor('the final score', async () => {
+      const s = await sheetOf('s-final');
+      return s?.lastGame && s.live === null && s;
+    });
+    assert.equal(sheet.lastGame.gameId, 'g1');
+    assert.equal(sheet.lastGame.finishedAt.toMillis(), finishedAt.toMillis());
+    assert.equal(sheet.lastGame.numberOfEnds, 8);
+    assert.deepEqual(sheet.lastGame.league, { name: 'Monday Night' });
+    assert.deepEqual(sheet.lastGame.team1, {
+      name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 3,
+      hasHammer: null, hadLastStoneFirstEnd: true,
+    });
+    assert.deepEqual(sheet.lastGame.ends, [
+      { endNumber: 1, scoringTeamSlot: 'team1', score: 2 },
+      { endNumber: 2, scoringTeamSlot: null, score: 0 },
+      { endNumber: 3, scoringTeamSlot: 'team2', score: 1 },
+      { endNumber: 4, scoringTeamSlot: 'team1', score: 1 },
+    ]);
+    assert.equal(sheetView(sheet, Date.now()).kind, 'final');
+
+    // The next draw starts on the sheet, inside the ten minutes.
+    await sheetRef.update({ liveGame: { ...liveGame, updatedAt: Timestamp.now(), currentEnd: 1 } });
+    const next = await waitFor('the new game', async () => (await sheetOf('s-final'))?.live && sheetOf('s-final'));
+    assert.equal(next.lastGame.gameId, 'g1', 'keeps the last game');
+    assert.equal(sheetView(next, Date.now()).kind, 'live');
+  });
+
+  test('keeps the later game when an earlier one arrives late', async () => {
+    const sheetRef = db.doc(`${club}/sheets/s-late`);
+    await sheetRef.set({ name: 'Sheet Late' });
+    await sheetRef.collection('games').doc('newer').set(completedGame(minutesAgo(5)));
+    await waitFor('the newer game', async () => (await sheetOf('s-late'))?.lastGame?.gameId === 'newer');
+
+    // From a scoreboard that was offline, say.
+    await sheetRef.collection('games').doc('older').set(completedGame(minutesAgo(60)));
+    await settle();
+    assert.equal((await sheetOf('s-late')).lastGame.gameId, 'newer');
+  });
+
+  test('drops a deleted sheet', async () => {
+    await db.doc(`${club}/sheets/s-gone`).set({ name: 'Sheet Gone' });
+    await waitFor('the sheet', () => sheetOf('s-gone'));
+    await db.doc(`${club}/sheets/s-gone`).delete();
+    await waitFor('the sheet to go', async () => (await sheetOf('s-gone')) === undefined);
+  });
+});
+
+describe('what a display shows for a sheet', () => {
+  const now = Date.now();
+  const at = (msAgo) => Timestamp.fromMillis(now - msAgo);
+  const minutes = 60 * 1000;
+  const live = (updatedAt) => ({ updatedAt, currentEnd: 1 });
+  const lastGame = (finishedAt) => ({ gameId: 'g', finishedAt });
+
+  test('shows a live game ahead of a final score', () => {
+    const view = sheetView({ name: 'S', live: live(at(0)), lastGame: lastGame(at(1 * minutes)) }, now);
+    assert.equal(view.kind, 'live');
+  });
+
+  test('shows the final score for ten minutes', () => {
+    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS)) }, now).kind, 'final');
+    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS + 1)) }, now).kind, 'idle');
+  });
+
+  test('ignores a live game abandoned for over two hours', () => {
+    assert.equal(sheetView({ name: 'S', live: live(at(121 * minutes)) }, now).kind, 'idle');
+    assert.equal(sheetView({ name: 'S', live: live(at(119 * minutes)) }, now).kind, 'live');
+  });
+
+  test('keeps a live game written before updatedAt was recorded', () => {
+    assert.equal(sheetView({ name: 'S', live: live(null) }, now).kind, 'live');
+  });
+
+  test('shows nothing for a sheet that has never had a game', () => {
+    assert.equal(sheetView({ name: 'S', live: null }, now).kind, 'idle');
+  });
+});
+
+describe('display links', () => {
+  const clubId = 'display-links';
+  let admin;
+
+  before(async () => {
+    await db.doc(`clubs/${clubId}`).set({ name: 'Display Links' });
+    await db.doc(`clubs/${clubId}/private/displayState`).set({ sheets: { s1: { name: 'Sheet 1', live: null } } });
+    await db.doc('clubs/display-other').set({ name: 'Other Club' });
+    admin = await userWithClaims('display-admin@example.com', { role: 'clubadmin', clubId });
+  });
+
+  const createLink = async (label = 'Warm room TV') =>
+    (await admin.call('createDisplayLink', { clubId, label })).data;
+
+  test('creating a link is limited to the club\'s admins', async () => {
+    const otherAdmin = await userWithClaims('display-other-admin@example.com', { role: 'clubadmin', clubId: 'display-other' });
+    await rejectsWith(otherAdmin.call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+    await rejectsWith((await anonymous()).call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+    await rejectsWith((await clientFor()).call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+  });
+
+  test('a link needs a name', async () => {
+    await rejectsWith(admin.call('createDisplayLink', { clubId, label: '  ' }), 'functions/invalid-argument');
+    await rejectsWith(admin.call('createDisplayLink', { clubId, label: 'x'.repeat(61) }), 'functions/invalid-argument');
+  });
+
+  test('creates a link and keeps only a hash of its secret', async () => {
+    const { linkId, token } = await createLink(' Stream ');
+    assert.match(token, new RegExp(`^${linkId}\\.[0-9a-f]{32}$`));
+    const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
+    assert.equal(link.label, 'Stream');
+    assert.ok(link.createdAt);
+    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash']);
+    assert.ok(!JSON.stringify(link).includes(token.split('.')[1]), 'does not store the secret');
+  });
+
+  test('a link signs a display in to read its club\'s summary, and nothing else', async () => {
+    const { linkId, token } = await createLink();
+    const unsigned = await clientFor();
+    const session = await unsigned.call('startDisplaySession', { clubId, token });
+    await signInWithCustomToken(unsigned.auth, session.data.token);
+
+    const claims = (await unsigned.auth.currentUser.getIdTokenResult()).claims;
+    assert.equal(claims.role, 'display');
+    assert.equal(claims.clubId, clubId);
+    assert.equal(claims.linkId, linkId);
+
+    const firestore = getClientFirestore(unsigned.app);
+    connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+    const summary = await clientGetDoc(clientDoc(firestore, `clubs/${clubId}/private/displayState`));
+    assert.equal(summary.get('sheets.s1.name'), 'Sheet 1');
+    await assert.rejects(clientGetDoc(clientDoc(firestore, `clubs/${clubId}`)));
+
+    const link = await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get();
+    assert.ok(link.get('lastUsedAt'), 'records that the link was used');
+  });
+
+  test('turns away a wrong, malformed or other club\'s token', async () => {
+    const { linkId, token } = await createLink();
+    const caller = await clientFor();
+    const wrongSecret = `${linkId}.${'0'.repeat(32)}`;
+    for (const attempt of [
+      { clubId, token: wrongSecret },
+      { clubId, token: `nope.${'0'.repeat(32)}` },
+      { clubId, token: 'not a token' },
+      { clubId, token: token.toUpperCase() },
+      { clubId: 'display-other', token },
+    ]) {
+      await rejectsWith(caller.call('startDisplaySession', attempt), 'functions/permission-denied');
+    }
+    await rejectsWith(caller.call('startDisplaySession', { clubId: 'a/b', token }), 'functions/invalid-argument');
+  });
+
+  test('revoking a link stops it signing in and removes its user', async () => {
+    const { linkId, token } = await createLink();
+    const display = await clientFor();
+    await signInWithCustomToken(display.auth, (await display.call('startDisplaySession', { clubId, token })).data.token);
+    const uid = display.auth.currentUser.uid;
+
+    await rejectsWith((await anonymous()).call('revokeDisplayLink', { clubId, linkId }), 'functions/permission-denied');
+    await admin.call('revokeDisplayLink', { clubId, linkId });
+
+    assert.equal((await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).exists, false);
+    await assert.rejects(adminAuth.getUser(uid), (err) => err.code === 'auth/user-not-found');
+    await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
+  });
+
+  test('revokes a link that was never used', async () => {
+    const { linkId } = await createLink();
+    await admin.call('revokeDisplayLink', { clubId, linkId });
+    assert.equal((await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).exists, false);
+  });
+
+  test('limits a club to twenty links', async () => {
+    const limited = 'display-limited';
+    await db.doc(`clubs/${limited}`).set({ name: 'Limited' });
+    const batch = db.batch();
+    for (let i = 0; i < 20; i++) {
+      batch.set(db.doc(`clubs/${limited}/displayLinks/l${i}`), { label: `TV ${i}`, secretHash: 'ab' });
+    }
+    await batch.commit();
+    const caller = await superAdmin('display-super@example.com');
+    await rejectsWith(caller.call('createDisplayLink', { clubId: limited, label: 'One more' }), 'functions/resource-exhausted');
+  });
+});
+
+describe('display pages', () => {
+  const PAGES_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/display/display`;
+
+  function pageConfig(html) {
+    const match = /<script type="application\/json" id="display-config">(.*?)<\/script>/s.exec(html);
+    assert.ok(match, 'has the config block');
+    return JSON.parse(match[1]);
+  }
+
+  test('serves the score bug, locked down and never cached', async () => {
+    const before = Date.now();
+    const res = await fetch(`${PAGES_URL}/club-a/sheets/sheet-1/bug`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /^text\/html/);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(res.headers.get('referrer-policy'), 'no-referrer');
+    assert.equal(res.headers.get('access-control-allow-origin'), null);
+    const csp = res.headers.get('content-security-policy');
+    assert.match(csp, /default-src 'none'/);
+    assert.match(csp, /script-src 'self' https:\/\/www\.gstatic\.com(;|$)/);
+    assert.match(csp, /frame-ancestors 'none'/);
+
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/\.\.\/\.\.\/assets\/bug\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'bug');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.sheetId, 'sheet-1');
+    assert.equal(config.firebase.projectId, PROJECT_ID);
+    assert.equal(config.finalShownMs, FINAL_SHOWN_MS);
+    assert.ok(config.serverNow >= before && config.serverNow <= Date.now(), 'carries the server time');
+  });
+
+  test('serves the warm room screen for a club', async () => {
+    const res = await fetch(`${PAGES_URL}/club-a/warm-room`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/assets\/warm-room\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'warm-room');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.sheetId, undefined);
+  });
+
+  test('serves the pages\' scripts and styles', async () => {
+    for (const [file, type] of [
+      ['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/],
+      ['warm-room.js', /javascript/], ['warm-room.css', /css/],
+    ]) {
+      const res = await fetch(`${PAGES_URL}/assets/${file}`);
+      assert.equal(res.status, 200, file);
+      assert.match(res.headers.get('content-type'), type, file);
+      assert.equal(res.headers.get('cache-control'), 'no-cache', file);
+    }
+  });
+
+  test('answers 404 for anything else', async () => {
+    for (const path of [
+      '/club-a/sheets/sheet%3Cscript%3E/bug',
+      '/club.a/sheets/sheet-1/bug',
+      '/club-a/sheets/sheet-1',
+      '/club%3Cb%3E/warm-room',
+      '/assets/missing.js',
+      '/assets/../pages.js',
+      '/',
+    ]) {
+      const res = await fetch(`${PAGES_URL}${path}`);
+      assert.equal(res.status, 404, path);
+    }
   });
 });

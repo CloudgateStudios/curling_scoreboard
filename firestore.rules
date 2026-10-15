@@ -24,6 +24,15 @@ service cloud.firestore {
               .data.get('scoreboardUid', null) == request.auth.uid;
     }
 
+    // A club's score bug or warm room screen, signed in through one of the
+    // club's display links by the startDisplaySession function. It can read
+    // the club's display summary and nothing else.
+    function isClubDisplay(clubId) {
+      return request.auth != null
+          && request.auth.token.role == 'display'
+          && request.auth.token.clubId == clubId;
+    }
+
     function isRockColor(color) {
       return color.keys().hasOnly(['name', 'hex'])
           && color.name is string
@@ -104,6 +113,39 @@ service cloud.firestore {
                 || (request.resource.data.timeZone is string
                     && request.resource.data.timeZone.size() <= 64));
         allow delete: if isClubAdmin(clubId);
+      }
+
+      // What the club's display pages show, kept by the functions from the
+      // sheets and their completed games. Club admins can read it through
+      // the rule on private above.
+      match /private/displayState {
+        allow read: if isClubDisplay(clubId);
+      }
+
+      // The warm room screen's title and logo, set by club admins and read by
+      // the club's displays. The logo is a small image resized in the
+      // portal, kept as a data URL so the displays need nothing but
+      // Firestore. Only raster images: no SVG, which can carry scripts.
+      match /private/displayBranding {
+        allow read: if isClubDisplay(clubId);
+        allow create, update: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['title', 'logo'])
+            && (!('title' in request.resource.data)
+                || (request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 60))
+            && (!('logo' in request.resource.data)
+                || (request.resource.data.logo is string
+                    && request.resource.data.logo.size() <= 250000
+                    && request.resource.data.logo.matches('^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$')));
+        allow delete: if isClubAdmin(clubId);
+      }
+
+      // The links the club's displays sign in with. Club admins see them in
+      // the portal; the functions create and remove them, since only a hash
+      // of each token is kept and the token is shown once.
+      match /displayLinks/{linkId} {
+        allow read: if isClubAdmin(clubId);
       }
 
       match /admins/{uid} {

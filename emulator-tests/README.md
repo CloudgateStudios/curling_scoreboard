@@ -61,6 +61,10 @@ Access the app depends on:
 - a club admin creating, updating, listing and deleting leagues
 - a paired scoreboard reading and listing its club's leagues
 - anyone reading `appConfig/scoreboard` to pick up new builds
+- a display reading its club's display summary, and a club admin reading
+  it and listing the club's display links
+- a club admin setting, changing and removing the warm room's title and
+  logo, and a display reading them
 
 Access that must stay denied:
 
@@ -90,6 +94,14 @@ Access that must stay denied:
   colors or anything else in the scoreboard config, or writing other
   `config` documents
 - writing `appConfig`
+- a display reading another club's display summary, its club document, API
+  key, config or sheets, or the display links; anyone else but the club's
+  admins reading the summary; anyone writing it
+- a club admin creating a display link directly, or listing another club's
+- a club admin setting another club's warm room branding, an SVG or remote
+  logo, one over the size limit, a title over 60 characters, or anything
+  else beside them; a display reading another club's branding or changing
+  its own; a paired scoreboard reading it
 
 ### Functions
 
@@ -110,6 +122,24 @@ Access that must stay denied:
   device status out of sheet responses. It lists a club's leagues and
   returns one, only with the club's own key and only the documented fields,
   and reports the league and teams on live and completed games.
+- The display summary lists each sheet by name, with its live game cut down
+  to what a display needs; follows a renamed sheet; is not written for a
+  scoreboard's status report; keeps a finished game as the last game once
+  its live game is removed, and shows the next draw's game ahead of it
+  straight away; keeps the later game when an earlier one arrives late; and
+  drops a deleted sheet. A display shows a live game first, then the final
+  score for ten minutes, ignoring a live game abandoned for over two hours.
+- Display links can only be made by the club's admins, need a name, keep
+  only a hash of the secret, and stop at twenty a club. A link signs a
+  display in with claims that read the club's display summary but not its
+  club document, and records that it was used. Wrong, malformed and other
+  clubs' tokens are turned away. Revoking a link, used or not, stops it
+  signing in and removes its Auth user.
+- The display function serves the score bug and the warm room screen with
+  their strict security headers,
+  never cached, with the club, sheet and server time in the page; serves the
+  pages' scripts and styles; and answers 404 for malformed IDs and anything
+  else.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, the
   scoreboard PIN it was given under `private/scoreboardPin`, and a club admin

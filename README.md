@@ -155,6 +155,36 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-pins.js  # 
 
 It prints each new PIN. Clubs that already have one keep it, so it is safe to re-run. Club admins can see and change their PIN in the admin portal.
 
+### Backfilling display summaries
+
+The score bug and warm room displays read one summary document per club, which the `syncDisplaySheet` and `syncDisplayLastGame` functions keep up to date. They only see sheets that change after they are deployed, so after deploying them run the one-off backfill once per project. It reuses the functions' compiled code, so build them first:
+
+```bash
+(cd functions && npm install && npm run build)
+cd scripts
+npm install
+node backfill-display-state.js                                              # dev
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-display-state.js  # prod
+```
+
+It writes every sheet as it is now, so it is safe to re-run.
+
+---
+
+## Display links
+
+`startDisplaySession` signs display screens in with a custom token. Deployed, the Admin SDK signs those through the IAM Credentials API as the functions' runtime service account, which by default is the Compute Engine default service account. It needs the Service Account Token Creator role on itself, or the function fails with "Permission 'iam.serviceAccounts.signBlob' denied". Once per project:
+
+```bash
+gcloud services enable iamcredentials.googleapis.com --project=PROJECT_ID
+gcloud iam service-accounts add-iam-policy-binding \
+  PROJECT_NUMBER-compute@developer.gserviceaccount.com \
+  --member=serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com \
+  --role=roles/iam.serviceAccountTokenCreator --project=PROJECT_ID
+```
+
+The emulator signs nothing, so the tests do not need this.
+
 ---
 
 ## Admin accounts

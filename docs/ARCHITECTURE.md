@@ -11,8 +11,8 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 | Piece        | Runs on                                                       | Talks to                                                                                            |
 | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
-| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet` functions |
-| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                                                                |
+| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
+| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access; also serves the display pages                                  |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
 `curling-scoreboard-prod`, with the same layout. Access control lives in
@@ -51,6 +51,43 @@ clubs/{clubId}/private/webhookStatus // the last post, written by the functions
   status?: int               // the receiver's HTTP status, if it answered
   error?: string
 
+clubs/{clubId}/private/displayState  // what the display pages show, written by the functions
+  sheets: {
+    [sheetId]: {
+      name: string
+      live: {                // the live game, or null; see liveGame below
+        updatedAt: timestamp | null
+        currentEnd: int
+        numberOfEnds: int | null           // null from scoreboard builds before it was sent
+        league: { name: string } | null
+        team1: { name: string, color: { name, hex } | null, score: int,
+                 hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
+        team2: { ...the same }
+        ends: [{ endNumber: int, scoringTeamSlot: 'team1' | 'team2' | null, score: int }] | null
+      } | null
+      lastGame?: {           // the sheet's latest completed game
+        gameId: string
+        startedAt: timestamp | null
+        finishedAt: timestamp
+        numberOfEnds: int | null
+        league: { name: string } | null
+        team1: { ...as in live, with hasHammer null }
+        team2: { ...the same }
+        ends: [...as in live]
+      }
+    }
+  }
+
+clubs/{clubId}/private/displayBranding // the warm room screen's title bar; absent for the default
+  title?: string             // up to 60 characters, in place of "Live Scores"
+  logo?: string              // a PNG, JPEG or WebP data URL, up to 250,000 characters
+
+clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
+  label: string              // up to 60 characters, e.g. "Warm room TV"
+  secretHash: string         // SHA-256 of the token's secret, in hex
+  createdAt: timestamp
+  lastUsedAt?: timestamp     // when a display last started with it, at most hourly
+
 clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
   rockColors?: {             // absent means red and yellow
     team1: { name: string, hex: string }   // hex is '#RRGGBB'
@@ -85,11 +122,13 @@ clubs/{clubId}/sheets/{sheetId}
   liveGame?: {               // the game in progress, removed when it ends
     updatedAt: timestamp     // server time of the scoreboard's last write
     currentEnd: int
+    numberOfEnds?: int       // absent from builds before it was sent
     league?: { id: string, name: string }   // league games only
     team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
              hadLastStoneFirstEnd: bool,
              teamId?: string, externalId?: string }   // the last two in league games
     team2: { ...the same }
+    ends?: [...as in games below]   // the ends so far; absent from builds before it was sent
   }
   device?: {                 // what the scoreboard last said about itself
     appVersion: string
@@ -147,6 +186,7 @@ admin scripts.
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
+| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`   |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
@@ -250,6 +290,164 @@ scoreboard that is switched off or offline, readers ignore a `liveGame`
 whose `updatedAt` is more than 120 minutes old: the REST API reports it as
 null and the admin portal shows the sheet as idle. The stored field is left
 alone until that scoreboard next starts up or starts a game.
+
+## Display summary
+
+The score bug for live streams and the warm room screen show a club's sheets
+as they change. Reading the sheets themselves would cost a read per sheet
+each time a display looked, so each club has one summary document,
+`private/displayState`, that a display listens to instead: one read when it
+starts and one per change after that, however long it stays open.
+
+Two functions in `functions/src/display/triggers.ts` keep it up to date:
+
+- `syncDisplaySheet` fires on every write to a sheet and copies its name and
+  live game. A scoreboard's status report every half hour changes neither, so
+  it ends there without a read or a write. Otherwise it rebuilds the entry
+  from the sheet as it is now, in a transaction, rather than from the event:
+  events can arrive late, out of order or twice, and this way a late one
+  writes the current state again instead of an older one. A deleted sheet is
+  removed.
+- `syncDisplayLastGame` fires on each completed game and keeps it as the
+  sheet's `lastGame`, unless the one already there finished later, which
+  happens when a scoreboard that was offline delivers an old game.
+
+Each writes only its own fields of the entry, so neither undoes the other.
+The entries carry only what a display shows: league and team names, colors
+and scores, not the IDs integrations match on.
+
+What a display shows for a sheet is decided by `sheetView` in
+`functions/src/display/state.ts`. A live game comes first, so the next draw
+replaces the final score as soon as its game starts. A live game that has
+gone two hours without a write is ignored, as in the REST API. Otherwise the
+last game is shown as the final score for ten minutes after it finished, and
+after that the sheet is idle. That is worked out by the display from the
+times in the summary, so nothing has to be written when the ten minutes are
+up.
+
+Sheets that existed before the functions were deployed are added by
+`scripts/backfill-display-state.js` (see the README), or by their next
+change.
+
+## Display links
+
+A display, a warm room screen or an OBS browser source, has nobody to sign
+in, so it signs in with a link instead. A club admin makes one per screen in
+the Displays section of the portal's Settings tab, through
+`createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
+random bits in hex. Only a SHA-256 hash of the secret is stored, so the
+portal shows the token once, built into the URL of the page the admin picks:
+
+```
+https://curlingscoreboard.app/display/{clubId}/warm-room#k=<token>
+https://curlingscoreboard.app/display/{clubId}/sheets/{sheetId}/bug#k=<token>
+```
+
+One link works for every page at its club. The token goes after the `#`,
+which browsers never send to a server, so it stays out of request logs and
+`Referer` headers. The page reads it and calls `startDisplaySession`, which
+checks it in constant time and returns a custom token for the user
+`display:{clubId}:{linkId}` with the display claims. Those let the page read
+its club's display summary and nothing else. The club API key is never used:
+it would expose the whole API, and replacing it would break the club's other
+integrations.
+
+`revokeDisplayLink` deletes the link and its Auth user. No new session can
+start from it, and a screen already signed in stops within the hour, when
+its ID token expires and cannot be renewed. The rules do not look the link
+up on each read, which would cost a read every time a display listens.
+
+`lastUsedAt` is written at most once an hour, so a screen that reloads often
+does not write each time. A club can have 20 links.
+
+Minting custom tokens needs the functions' service account to be able to
+sign as itself; see "Display links" in the README.
+
+## Display pages
+
+The `display` function serves the display pages on the scoreboard's hosting
+site, under `/display/**` through a Hosting rewrite, like the API:
+
+- `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
+- `/display/{clubId}/warm-room`: every sheet, for a screen in the club
+- `/display/assets/*`: the pages' scripts and styles, from
+  `functions/src/display/assets`, which `npm run build` copies next to the
+  compiled function
+
+A page is the same for everyone and never reads Firestore on the server: the
+link's token is after the `#`, which the function never sees. The HTML only
+holds a JSON block saying which club and sheet to show, the Firebase web
+config, and the server's time. The script, `assets/display.js`, then:
+
+1. Signs in. A display already signed in as this link, from an earlier
+   load, carries on; otherwise it calls `startDisplaySession` with the token
+   and signs in with the custom token it returns. The sign-in is kept in the
+   browser's IndexedDB, so a reload does not start a new session.
+2. Listens to the club's `private/displayState` and redraws on each change.
+3. Redraws every 15 seconds as well, because a final score comes down ten
+   minutes after the game with no write to say so. `sheetView` there mirrors
+   the one in `functions/src/display/state.ts`, with the same limits passed
+   in through the page. Times are compared on the server's clock, worked out
+   from the time in the page, so a screen with its clock off still takes
+   the final score down on time.
+
+A display is left running for weeks, so everything is retried, backing off
+to five minutes: a failed sign-in, a listener the server ended, a sign-in
+that could not be renewed. A link the server refuses, or a URL with no
+token, is said on the page so it can be fixed while setting up; the page is
+otherwise silent about trouble and keeps showing the last scores.
+
+The Firebase SDK is loaded as ES modules from `www.gstatic.com`, pinned to
+the version the admin portal uses. Nothing is inline, so the
+`Content-Security-Policy` allows scripts only from the function and gstatic,
+connections only to the Firebase services the page uses, and no framing.
+Responses carry `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: no-referrer`; pages are `no-store`, since they carry the
+server's time, and assets `no-cache`.
+
+The score bug is transparent, so an OBS browser source shows only the bug.
+It shows the two teams with their rock colors and scores, the hammer in a
+live game, and the end or Final, and hides itself while the sheet is idle.
+`?scale=` (0.5 to 4) sizes it, and `?label=league` or `?label=none` changes
+the sheet name under the scores.
+
+The warm room screen shows every sheet in the summary, in name order with
+numbers in order ("Sheet 2" before "Sheet 10"), on a dark background meant
+for a TV. Each card has the sheet's name, the end or Final, the league, and
+both teams with their rock colors, scores and the hammer; an idle sheet is
+dimmed and says "No game". The page tries each number of columns and keeps
+the one that makes the cards largest, then sizes everything in a card from
+its width, so any number of sheets fills the screen without scrolling, on a
+1080p or 4K TV or one turned on its side. A clock in the corner, on the
+server's time, shows the screen is still running.
+
+A club can give the screen its own title in place of "Live Scores", and a
+logo beside it, in the Warm Room Screen section of the portal's Settings
+tab. Both are kept in `private/displayBranding`, which the page listens to
+alongside the summary: one more read when it starts, and one when the club
+changes them. The portal shrinks the logo in the browser to fit 800 by 200
+pixels and keeps it as a PNG, or WebP when a PNG would be too large, in a
+data URL. Keeping it in Firestore rather than Cloud Storage means the page
+needs nothing but Firestore, and the CSP already allows `data:` images. Any
+image the browser can show, SVG included, is redrawn as a plain image, and
+the rules accept only PNG, JPEG and WebP data URLs, so nothing that can
+carry a script is stored.
+
+`?view=full` shows each game end by end instead, like the scoreboard's own
+baseball layout: a column per end, the scoring team's points on its rock
+color and 0 for the other team, the end being played picked out, and the
+totals. It has as many columns as the game's `numberOfEnds`, or more once
+extra ends are played. Its cards are wider and shorter, so the layout asks
+for that shape. A live game from a scoreboard that does not send its ends
+yet is shown by its totals among them. `?view=cycle` shows the two in turn,
+`?every=` seconds each (20 by default).
+
+Both pages say Final, not the end, once a live game has played its ends
+and is not tied, as the scoreboard does before anyone taps Finish Game, and
+"Extra end" once a tied game goes past them.
+
+The rewrite needs the `display` function to exist, so in a new project deploy
+the functions before the scoreboard's hosting.
 
 ## Rock colors
 
@@ -391,7 +589,7 @@ Routes depend on the signed in role:
   `/leagues/:leagueId` a league.
 
 The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days, leagues, the rock colors and the API key. Only super admins can add sheets, rotate the
+last seven days, leagues, the rock colors, the API key, the display links and the warm room screen's title and logo. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)
 
@@ -408,7 +606,9 @@ under `/api/**` through a Hosting rewrite. It is read only:
 
 Live and completed games carry `league` (null for an open game) and, in a
 league game, each team's `teamId` and `externalId`, which match the teams the
-league endpoints return.
+league endpoints return. A live game also carries `numberOfEnds` and the
+`ends` played so far, in the same form as a completed game's; both are null
+for a game from a scoreboard build that predates them.
 
 Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is

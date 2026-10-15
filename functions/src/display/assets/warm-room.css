@@ -1,0 +1,345 @@
+/* The warm room screen. The page fills the screen; the cards are sized from
+   --u, a hundredth of a card's width, which warm-room.js sets to fit. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --card: #161b22;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f0f3f6;
+  --muted: rgba(240, 243, 246, 0.6);
+  --final: #ffd54f;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  overflow: hidden;
+  cursor: none;
+}
+
+#display {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2vh 2vw;
+  box-sizing: border-box;
+  gap: 2vh;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2vw;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5vw;
+  min-width: 0;
+}
+
+/* The title bar is sized by the shorter side of the screen, so it stays in
+   proportion on a TV turned on its side. */
+.top {
+  --bar: min(3.2vh, 3.2vw);
+}
+
+/* Sized by height, so a wide logo and a square one sit the same in the bar. */
+.logo {
+  height: calc(var(--bar) * 1.9);
+  max-width: 30vw;
+  object-fit: contain;
+}
+
+.title {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--bar);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.clock {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: var(--bar);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 16px;
+  --u: 4px;
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--u) * 2);
+  min-width: 0;
+  min-height: 0;
+  padding: calc(var(--u) * 4);
+  border-radius: calc(var(--u) * 2.5);
+  background: var(--card);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sheet.idle {
+  opacity: 0.45;
+}
+
+.sheet-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--u) * 3);
+}
+
+.sheet-name {
+  margin: 0;
+  font-size: calc(var(--u) * 6.5);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.state {
+  font-size: calc(var(--u) * 5);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.final .state {
+  color: var(--final);
+}
+
+.league {
+  margin: calc(var(--u) * -1.5) 0 0;
+  min-height: 1.2em;
+  font-size: calc(var(--u) * 4.2);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idle-text {
+  margin: 0;
+  font-size: calc(var(--u) * 5);
+  color: var(--muted);
+}
+
+.team {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 2) minmax(0, 1fr) auto calc(var(--u) * 17);
+  align-items: center;
+  height: calc(var(--u) * 15);
+  border-radius: calc(var(--u) * 1.5);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.swatch {
+  align-self: stretch;
+}
+
+.name {
+  padding: 0 calc(var(--u) * 3.5);
+  font-size: calc(var(--u) * 6.5);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marks the team with last stone in this end. */
+.hammer {
+  width: calc(var(--u) * 2.6);
+  height: calc(var(--u) * 2.6);
+  margin-right: calc(var(--u) * 3.5);
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.hammer.off {
+  visibility: hidden;
+}
+
+.score {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 10);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.score.changed {
+  animation: scored 2s ease-out;
+}
+
+.sheet.full .sheet-name {
+  font-size: calc(var(--u) * 5);
+}
+
+.sheet.full .state {
+  font-size: calc(var(--u) * 3.8);
+}
+
+.sheet.full .league {
+  font-size: calc(var(--u) * 3.4);
+}
+
+/* A game shown by its totals in the full view, from a scoreboard that does
+   not send its ends, sized to the full view's shorter cards. */
+.sheet.compact .sheet-name {
+  font-size: calc(var(--u) * 5);
+}
+
+.sheet.compact .state {
+  font-size: calc(var(--u) * 3.8);
+}
+
+.sheet.compact .league {
+  font-size: calc(var(--u) * 3.4);
+}
+
+.sheet.compact .team {
+  height: calc(var(--u) * 10);
+}
+
+.sheet.compact .name {
+  font-size: calc(var(--u) * 4.4);
+}
+
+.sheet.compact .score {
+  font-size: calc(var(--u) * 6.5);
+}
+
+/* The full view: the game end by end. Columns are sized from --u like
+   everything else; the team names take what is left. */
+.line-score {
+  --cell: calc(var(--u) * 5);
+  --total: calc(var(--u) * 9);
+  display: grid;
+  align-items: stretch;
+  row-gap: calc(var(--u) * 1.2);
+}
+
+.end-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--u) * 5);
+  font-size: calc(var(--u) * 3.2);
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.end-head.current {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: calc(var(--u) * 1) calc(var(--u) * 1) 0 0;
+}
+
+.team-label {
+  display: grid;
+  grid-template-columns: calc(var(--u) * 1.6) minmax(0, 1fr) auto;
+  align-items: center;
+  height: calc(var(--u) * 10);
+  min-width: 0;
+  border-radius: calc(var(--u) * 1.2) 0 0 calc(var(--u) * 1.2);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.full .name {
+  padding: 0 calc(var(--u) * 2);
+  font-size: calc(var(--u) * 4.4);
+}
+
+.full .hammer {
+  width: calc(var(--u) * 2);
+  height: calc(var(--u) * 2);
+  margin-right: calc(var(--u) * 2);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 4.2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cell.current {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cell.scored {
+  font-weight: 800;
+}
+
+.total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--u) * 6.5);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0 calc(var(--u) * 1.2) calc(var(--u) * 1.2) 0;
+}
+
+.total.changed {
+  animation: scored 2s ease-out;
+}
+
+/* Shown in place of the sheets when there is nothing else to show. */
+.status {
+  margin: auto;
+  max-width: 40em;
+  font-size: 3vh;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--muted);
+}
+
+@keyframes scored {
+  0% { filter: brightness(1.8); transform: scale(1.12); }
+  100% { filter: none; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score.changed,
+  .total.changed {
+    animation: none;
+  }
+}

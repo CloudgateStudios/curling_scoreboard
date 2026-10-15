@@ -2,7 +2,7 @@
   "name": "functions",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/display/assets', 'lib/display/assets', { recursive: true })\"",
     "lint": "oxlint src"
   },
   "engines": {

@@ -21,6 +21,10 @@
         {
           "source": "/api/**",
           "run": { "serviceId": "api", "region": "us-central1" }
+        },
+        {
+          "source": "/display/**",
+          "run": { "serviceId": "display", "region": "us-central1" }
         }
       ]
     },

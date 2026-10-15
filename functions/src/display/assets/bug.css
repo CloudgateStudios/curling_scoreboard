@@ -1,0 +1,141 @@
+/* The score bug. Everything is sized in rem, from --scale, so the scale
+   option grows the whole bug evenly. */
+
+:root {
+  --scale: 1;
+  font-size: calc(16px * var(--scale));
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  /* Transparent, so OBS shows the stream through everything but the bug. */
+  background: transparent;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 1rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.bug {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 22rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
+  animation: appear 300ms ease-out;
+}
+
+.team {
+  display: grid;
+  grid-template-columns: 0.5rem minmax(0, 1fr) auto 3.5rem;
+  align-items: center;
+  height: 2.75rem;
+}
+
+.team + .team {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stripe {
+  align-self: stretch;
+}
+
+.name {
+  padding: 0 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marks the team with last stone in this end. */
+.hammer {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.75rem;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.hammer.off {
+  visibility: hidden;
+}
+
+.score {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.score.changed {
+  animation: scored 1.5s ease-out;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.footer .label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.final .footer .end {
+  color: #ffd54f;
+}
+
+/* Shown only when the link is wrong, so it can be fixed while setting up. */
+.status {
+  display: inline-block;
+  max-width: 22rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.4rem;
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes scored {
+  0% { filter: brightness(1.8); transform: scale(1.15); }
+  100% { filter: none; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bug,
+  .score.changed {
+    animation: none;
+  }
+}
