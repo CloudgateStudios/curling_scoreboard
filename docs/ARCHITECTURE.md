@@ -442,7 +442,11 @@ The score bug is transparent, so an OBS browser source shows only the bug.
 It shows the two teams with their rock colors and scores, the hammer in a
 live game, and the end or Final, and hides itself while the sheet is idle.
 `?scale=` (0.5 to 4) sizes it, and `?label=league` or `?label=none` changes
-the sheet name under the scores.
+the sheet name under the scores. `?preview` is for setting it up: while the
+sheet has no game it shows a faded, outlined stand-in at the bug's real
+size instead of nothing, so it can be placed in OBS between draws. A link's
+own URL carries `?preview` on to the page it opens, and the portal's
+Preview button opens a link that way.
 
 The warm room screen shows every sheet in the summary, in name order with
 numbers in order ("Sheet 2" before "Sheet 10"), on a dark background meant

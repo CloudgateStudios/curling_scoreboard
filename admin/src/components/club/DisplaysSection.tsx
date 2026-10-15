@@ -3,7 +3,8 @@ import { collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase
 import { httpsCallable } from 'firebase/functions';
 import { db, functions, scoreboardSiteUrl } from '../../lib/firebase';
 import {
-  DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayUrl, settingsToSave,
+  DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayPreviewUrl, displayUrl,
+  settingsToSave,
   type BugLabel, type DisplaySettings, type DisplayView,
 } from '../../lib/displayLinks';
 import { errorMessage, formatAgo } from '../../lib/format';
@@ -226,6 +227,7 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
   const changed = trimmedLabel !== saved.label
     || JSON.stringify(toSave) !== JSON.stringify(settingsToSave(saved.settings));
   const url = token ? displayUrl(scoreboardSiteUrl, clubId, token) : null;
+  const previewUrl = token ? displayPreviewUrl(scoreboardSiteUrl, clubId, token) : null;
   // 'warmRoom', or the ID of the sheet whose score bug to show.
   const shows = settings.page === 'bug' && settings.sheetId ? settings.sheetId : 'warmRoom';
 
@@ -278,11 +280,20 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
                 <button className={common.primaryButton} onClick={handleCopy}>
                   {copied ? 'Copied' : 'Copy URL'}
                 </button>
-                <a className={common.ghostButton} href={url} target="_blank" rel="noopener noreferrer">Open</a>
+                <a
+                  className={common.ghostButton}
+                  href={previewUrl ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Preview
+                </a>
               </div>
               <p className={styles.urlHint}>
                 Put it on the screen, or add it to OBS as a Browser source. It never needs to
-                change: the screen follows whatever this link is set to show below.
+                change: the screen follows whatever this link is set to show below. Preview shows
+                a score bug outlined while its sheet has no game; adding ?preview before the # in
+                OBS does the same while you place it.
               </p>
             </div>
           ) : (

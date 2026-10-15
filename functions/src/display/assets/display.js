@@ -108,6 +108,9 @@ export const followsLink = new URLSearchParams(location.hash.slice(1)).get('link
 export function followLink(settings) {
   if (!settings) return;
   const target = linkPageUrl(settings);
+  // ?preview is for whoever is setting up this screen, whatever it shows.
+  const preview = new URLSearchParams(location.search).get('preview');
+  if (preview !== null) target.searchParams.set('preview', preview);
   if (target.pathname === location.pathname && target.search === location.search) return;
   target.hash = `k=${encodeURIComponent(linkToken())}&link=1`;
   location.replace(target.href);

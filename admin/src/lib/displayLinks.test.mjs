@@ -1,7 +1,7 @@
 // Run with `npm test`. Node strips the types from the .ts imports itself.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { describeSettings, displayUrl, settingsToSave } from './displayLinks.ts';
+import { describeSettings, displayPreviewUrl, displayUrl, settingsToSave } from './displayLinks.ts';
 
 const SITE = 'https://curlingscoreboard.app';
 const TOKEN = 'abc123.0123456789abcdef0123456789abcdef';
@@ -13,6 +13,12 @@ describe('displayUrl', () => {
 
   test('escapes the club ID so it stays one path segment', () => {
     assert.equal(displayUrl(SITE, 'a/b', TOKEN), `${SITE}/display/a%2Fb#k=${TOKEN}`);
+  });
+});
+
+describe('displayPreviewUrl', () => {
+  test('asks for preview mode before the token', () => {
+    assert.equal(displayPreviewUrl(SITE, 'windy-city', TOKEN), `${SITE}/display/windy-city?preview#k=${TOKEN}`);
   });
 });
 

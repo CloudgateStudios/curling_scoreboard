@@ -106,6 +106,21 @@ body {
   text-overflow: ellipsis;
 }
 
+/* The ?preview stand-in for an idle sheet: the bug's size and place, but
+   plainly not a game. */
+.bug.placeholder {
+  opacity: 0.6;
+  outline: 2px dashed rgba(255, 255, 255, 0.8);
+  outline-offset: -2px;
+  animation: none;
+}
+
+.placeholder .stripe,
+.placeholder .score {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .final .footer .end {
   color: #ffd54f;
 }
