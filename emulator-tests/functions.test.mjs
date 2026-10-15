@@ -9,8 +9,11 @@ import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { deleteApp, initializeApp } from 'firebase/app';
 import {
-  connectAuthEmulator, getAuth, signInAnonymously, signInWithEmailAndPassword,
+  connectAuthEmulator, getAuth, signInAnonymously, signInWithCustomToken, signInWithEmailAndPassword,
 } from 'firebase/auth';
+import {
+  connectFirestoreEmulator, doc as clientDoc, getDoc as clientGetDoc, getFirestore as getClientFirestore,
+} from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { FINAL_SHOWN_MS, sheetView } from '../functions/lib/display/state.js';
 
@@ -34,7 +37,7 @@ async function clientFor(signIn) {
   const functions = getFunctions(app, 'us-central1');
   connectFunctionsEmulator(functions, '127.0.0.1', 5001);
   if (signIn) await signIn(auth);
-  return { auth, call: (name, data) => httpsCallable(functions, name)(data) };
+  return { app, auth, call: (name, data) => httpsCallable(functions, name)(data) };
 }
 
 const anonymous = () => clientFor((auth) => signInAnonymously(auth));
@@ -1180,5 +1183,111 @@ describe('what a display shows for a sheet', () => {
 
   test('shows nothing for a sheet that has never had a game', () => {
     assert.equal(sheetView({ name: 'S', live: null }, now).kind, 'idle');
+  });
+});
+
+describe('display links', () => {
+  const clubId = 'display-links';
+  let admin;
+
+  before(async () => {
+    await db.doc(`clubs/${clubId}`).set({ name: 'Display Links' });
+    await db.doc(`clubs/${clubId}/private/displayState`).set({ sheets: { s1: { name: 'Sheet 1', live: null } } });
+    await db.doc('clubs/display-other').set({ name: 'Other Club' });
+    admin = await userWithClaims('display-admin@example.com', { role: 'clubadmin', clubId });
+  });
+
+  const createLink = async (label = 'Warm room TV') =>
+    (await admin.call('createDisplayLink', { clubId, label })).data;
+
+  test('creating a link is limited to the club\'s admins', async () => {
+    const otherAdmin = await userWithClaims('display-other-admin@example.com', { role: 'clubadmin', clubId: 'display-other' });
+    await rejectsWith(otherAdmin.call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+    await rejectsWith((await anonymous()).call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+    await rejectsWith((await clientFor()).call('createDisplayLink', { clubId, label: 'TV' }), 'functions/permission-denied');
+  });
+
+  test('a link needs a name', async () => {
+    await rejectsWith(admin.call('createDisplayLink', { clubId, label: '  ' }), 'functions/invalid-argument');
+    await rejectsWith(admin.call('createDisplayLink', { clubId, label: 'x'.repeat(61) }), 'functions/invalid-argument');
+  });
+
+  test('creates a link and keeps only a hash of its secret', async () => {
+    const { linkId, token } = await createLink(' Stream ');
+    assert.match(token, new RegExp(`^${linkId}\\.[0-9a-f]{32}$`));
+    const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
+    assert.equal(link.label, 'Stream');
+    assert.ok(link.createdAt);
+    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash']);
+    assert.ok(!JSON.stringify(link).includes(token.split('.')[1]), 'does not store the secret');
+  });
+
+  test('a link signs a display in to read its club\'s summary, and nothing else', async () => {
+    const { linkId, token } = await createLink();
+    const unsigned = await clientFor();
+    const session = await unsigned.call('startDisplaySession', { clubId, token });
+    await signInWithCustomToken(unsigned.auth, session.data.token);
+
+    const claims = (await unsigned.auth.currentUser.getIdTokenResult()).claims;
+    assert.equal(claims.role, 'display');
+    assert.equal(claims.clubId, clubId);
+    assert.equal(claims.linkId, linkId);
+
+    const firestore = getClientFirestore(unsigned.app);
+    connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+    const summary = await clientGetDoc(clientDoc(firestore, `clubs/${clubId}/private/displayState`));
+    assert.equal(summary.get('sheets.s1.name'), 'Sheet 1');
+    await assert.rejects(clientGetDoc(clientDoc(firestore, `clubs/${clubId}`)));
+
+    const link = await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get();
+    assert.ok(link.get('lastUsedAt'), 'records that the link was used');
+  });
+
+  test('turns away a wrong, malformed or other club\'s token', async () => {
+    const { linkId, token } = await createLink();
+    const caller = await clientFor();
+    const wrongSecret = `${linkId}.${'0'.repeat(32)}`;
+    for (const attempt of [
+      { clubId, token: wrongSecret },
+      { clubId, token: `nope.${'0'.repeat(32)}` },
+      { clubId, token: 'not a token' },
+      { clubId, token: token.toUpperCase() },
+      { clubId: 'display-other', token },
+    ]) {
+      await rejectsWith(caller.call('startDisplaySession', attempt), 'functions/permission-denied');
+    }
+    await rejectsWith(caller.call('startDisplaySession', { clubId: 'a/b', token }), 'functions/invalid-argument');
+  });
+
+  test('revoking a link stops it signing in and removes its user', async () => {
+    const { linkId, token } = await createLink();
+    const display = await clientFor();
+    await signInWithCustomToken(display.auth, (await display.call('startDisplaySession', { clubId, token })).data.token);
+    const uid = display.auth.currentUser.uid;
+
+    await rejectsWith((await anonymous()).call('revokeDisplayLink', { clubId, linkId }), 'functions/permission-denied');
+    await admin.call('revokeDisplayLink', { clubId, linkId });
+
+    assert.equal((await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).exists, false);
+    await assert.rejects(adminAuth.getUser(uid), (err) => err.code === 'auth/user-not-found');
+    await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
+  });
+
+  test('revokes a link that was never used', async () => {
+    const { linkId } = await createLink();
+    await admin.call('revokeDisplayLink', { clubId, linkId });
+    assert.equal((await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).exists, false);
+  });
+
+  test('limits a club to twenty links', async () => {
+    const limited = 'display-limited';
+    await db.doc(`clubs/${limited}`).set({ name: 'Limited' });
+    const batch = db.batch();
+    for (let i = 0; i < 20; i++) {
+      batch.set(db.doc(`clubs/${limited}/displayLinks/l${i}`), { label: `TV ${i}`, secretHash: 'ab' });
+    }
+    await batch.commit();
+    const caller = await superAdmin('display-super@example.com');
+    await rejectsWith(caller.call('createDisplayLink', { clubId: limited, label: 'One more' }), 'functions/resource-exhausted');
   });
 });

@@ -61,6 +61,8 @@ Access the app depends on:
 - a club admin creating, updating, listing and deleting leagues
 - a paired scoreboard reading and listing its club's leagues
 - anyone reading `appConfig/scoreboard` to pick up new builds
+- a display reading its club's display summary, and a club admin reading
+  it and listing the club's display links
 
 Access that must stay denied:
 
@@ -90,6 +92,10 @@ Access that must stay denied:
   colors or anything else in the scoreboard config, or writing other
   `config` documents
 - writing `appConfig`
+- a display reading another club's display summary, its club document, API
+  key, config or sheets, or the display links; anyone else but the club's
+  admins reading the summary; anyone writing it
+- a club admin creating a display link directly, or listing another club's
 
 ### Functions
 
@@ -117,6 +123,12 @@ Access that must stay denied:
   straight away; keeps the later game when an earlier one arrives late; and
   drops a deleted sheet. A display shows a live game first, then the final
   score for ten minutes, ignoring a live game abandoned for over two hours.
+- Display links can only be made by the club's admins, need a name, keep
+  only a hash of the secret, and stop at twenty a club. A link signs a
+  display in with claims that read the club's display summary but not its
+  club document, and records that it was used. Wrong, malformed and other
+  clubs' tokens are turned away. Revoking a link, used or not, stops it
+  signing in and removes its Auth user.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, the
   scoreboard PIN it was given under `private/scoreboardPin`, and a club admin

@@ -28,3 +28,8 @@ const app = initializeApp(isProd ? prodConfig : devConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app, "us-central1");
+
+/** Where the scoreboard web app, and the display pages with it, are served. */
+export const scoreboardSiteUrl = isProd
+  ? "https://curlingscoreboard.app"
+  : "https://curling-scoreboard-dev.web.app";

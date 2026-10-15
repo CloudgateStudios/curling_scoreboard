@@ -38,6 +38,9 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
   await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B' });
   await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
+  await setDoc(doc(db, 'clubs/club-a/private/displayState'), { sheets: {} });
+  await setDoc(doc(db, 'clubs/club-b/private/displayState'), { sheets: {} });
+  await setDoc(doc(db, 'clubs/club-a/displayLinks/link-1'), { label: 'Warm room', secretHash: 'ab' });
   await setDoc(doc(db, 'clubs/club-b/sheets/sheet-secret'), {
     name: 'Sheet Secret', scoreboardUid: 'other-device',
   });
@@ -385,6 +388,59 @@ await check('attack: paired scoreboard sets the club webhook', 'deny', () =>
 
 await check('webhook: club admin turns their club\'s webhook off', 'allow', () =>
   deleteDoc(doc(adminA, 'clubs/club-a/private/webhook')));
+
+// --- display pages and their links ---
+// What startDisplaySession signs a club's display link in with.
+const displayA = env.authenticatedContext('display:club-a:link-1',
+  { role: 'display', clubId: 'club-a', linkId: 'link-1' }).firestore();
+
+await check('display: reads its club\'s display summary', 'allow', () =>
+  getDoc(doc(displayA, 'clubs/club-a/private/displayState')));
+
+await check('club admin: reads the display summary', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/displayState')));
+
+await check('club admin: lists the club\'s display links', 'allow', () =>
+  getDocs(collection(adminA, 'clubs/club-a/displayLinks')));
+
+await check('attack: display reads another club\'s display summary', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-b/private/displayState')));
+
+await check('attack: signed in device reads a display summary', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-a/private/displayState')));
+
+await check('attack: unauthenticated read of a display summary', 'deny', () =>
+  getDoc(doc(unauthed, 'clubs/club-a/private/displayState')));
+
+await check('attack: paired scoreboard reads the display summary', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/displayState')));
+
+await check('attack: display writes the display summary', 'deny', () =>
+  setDoc(doc(displayA, 'clubs/club-a/private/displayState'), { sheets: {} }));
+
+await check('attack: club admin writes the display summary', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/displayState'), { sheets: {} }));
+
+await check('attack: display reads its club\'s API key', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-a/private/apiKey')));
+
+await check('attack: display reads its club document', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-a')));
+
+await check('attack: display reads a sheet', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-a/sheets/sheet-paired')));
+
+await check('attack: display reads its club\'s config', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-a/config/scoreboard')));
+
+await check('attack: display lists the display links', 'deny', () =>
+  getDocs(collection(displayA, 'clubs/club-a/displayLinks')));
+
+await check('attack: club admin creates a display link directly', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/displayLinks/chosen'), { label: 'Mine', secretHash: 'ab' }));
+
+await check('attack: club admin lists another club\'s display links', 'deny', () =>
+  getDocs(collection(adminA, 'clubs/club-b/displayLinks')));
 
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>

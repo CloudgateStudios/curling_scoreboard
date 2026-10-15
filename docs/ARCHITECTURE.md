@@ -11,7 +11,7 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 | Piece        | Runs on                                                       | Talks to                                                                                            |
 | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
-| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet` functions |
+| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
 | `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access                                                                |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
@@ -77,6 +77,12 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
       }
     }
   }
+
+clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
+  label: string              // up to 60 characters, e.g. "Warm room TV"
+  secretHash: string         // SHA-256 of the token's secret, in hex
+  createdAt: timestamp
+  lastUsedAt?: timestamp     // when a display last started with it, at most hourly
 
 clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
   rockColors?: {             // absent means red and yellow
@@ -174,6 +180,7 @@ admin scripts.
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
+| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`                                 |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
@@ -316,6 +323,40 @@ Sheets that existed before the functions were deployed are added by
 `scripts/backfill-display-state.js` (see the README), or by their next
 change.
 
+## Display links
+
+A display, a warm room screen or an OBS browser source, has nobody to sign
+in, so it signs in with a link instead. A club admin makes one per screen in
+the Displays section of the portal's Settings tab, through
+`createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
+random bits in hex. Only a SHA-256 hash of the secret is stored, so the
+portal shows the token once, built into the URL of the page the admin picks:
+
+```
+https://curlingscoreboard.app/display/{clubId}/warm-room#k=<token>
+https://curlingscoreboard.app/display/{clubId}/sheets/{sheetId}/bug#k=<token>
+```
+
+One link works for every page at its club. The token goes after the `#`,
+which browsers never send to a server, so it stays out of request logs and
+`Referer` headers. The page reads it and calls `startDisplaySession`, which
+checks it in constant time and returns a custom token for the user
+`display:{clubId}:{linkId}` with the display claims. Those let the page read
+its club's display summary and nothing else. The club API key is never used:
+it would expose the whole API, and replacing it would break the club's other
+integrations.
+
+`revokeDisplayLink` deletes the link and its Auth user. No new session can
+start from it, and a screen already signed in stops within the hour, when
+its ID token expires and cannot be renewed. The rules do not look the link
+up on each read, which would cost a read every time a display listens.
+
+`lastUsedAt` is written at most once an hour, so a screen that reloads often
+does not write each time. A club can have 20 links.
+
+Minting custom tokens needs the functions' service account to be able to
+sign as itself; see "Display links" in the README.
+
 ## Rock colors
 
 The scoreboard is red and yellow out of the box: those two colors are built
@@ -456,7 +497,7 @@ Routes depend on the signed in role:
   `/leagues/:leagueId` a league.
 
 The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days, leagues, the rock colors and the API key. Only super admins can add sheets, rotate the
+last seven days, leagues, the rock colors, the API key and the display links. Only super admins can add sheets, rotate the
 key or add club admins. (The rules would let a club admin write their club's
 sheets; the portal just doesn't offer it.)
 

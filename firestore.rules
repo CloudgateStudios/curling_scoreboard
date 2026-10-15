@@ -24,6 +24,15 @@ service cloud.firestore {
               .data.get('scoreboardUid', null) == request.auth.uid;
     }
 
+    // A club's score bug or warm room screen, signed in through one of the
+    // club's display links by the startDisplaySession function. It can read
+    // the club's display summary and nothing else.
+    function isClubDisplay(clubId) {
+      return request.auth != null
+          && request.auth.token.role == 'display'
+          && request.auth.token.clubId == clubId;
+    }
+
     function isRockColor(color) {
       return color.keys().hasOnly(['name', 'hex'])
           && color.name is string
@@ -104,6 +113,20 @@ service cloud.firestore {
                 || (request.resource.data.timeZone is string
                     && request.resource.data.timeZone.size() <= 64));
         allow delete: if isClubAdmin(clubId);
+      }
+
+      // What the club's display pages show, kept by the functions from the
+      // sheets and their completed games. Club admins can read it through
+      // the rule on private above.
+      match /private/displayState {
+        allow read: if isClubDisplay(clubId);
+      }
+
+      // The links the club's displays sign in with. Club admins see them in
+      // the portal; the functions create and remove them, since only a hash
+      // of each token is kept and the token is shown once.
+      match /displayLinks/{linkId} {
+        allow read: if isClubAdmin(clubId);
       }
 
       match /admins/{uid} {

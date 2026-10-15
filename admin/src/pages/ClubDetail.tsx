@@ -11,6 +11,7 @@ import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
 import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
 import { WebhookSection } from '../components/club/WebhookSection';
+import { DisplaysSection } from '../components/club/DisplaysSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import { ClubHeader } from '../components/club/ClubHeader';
@@ -146,6 +147,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
           <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
           <ScoreboardPinSection clubId={resolvedClubId} />
           <WebhookSection clubId={resolvedClubId} />
+          <DisplaysSection clubId={resolvedClubId} sheets={sheets} />
           {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
         </div>
       </div>
