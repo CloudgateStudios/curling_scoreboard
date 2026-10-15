@@ -466,18 +466,13 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
             team2HasHammer: gameObject.team2.hasHammer,
             team2HasLSFE: gameObject.team2.hadLastStoneFirstEnd,
             endNumber: gameObject.currentPlayingEndForDisplay,
+            // Only once a team has a name of its own: otherwise it would
+            // just spell out the rock colors.
+            team1Name: _hasTeamNames ? gameObject.team1.name : null,
+            team2Name: _hasTeamNames ? gameObject.team2.name : null,
+            onTeamNamePressed: _canChangeTeams ? _changeTeams : null,
           ),
         ),
-        // Only once a team has a name of its own: otherwise it would just
-        // spell out the rock colors.
-        if (_hasTeamNames)
-          Flexible(
-            child: TeamNamesRow(
-              team1: gameObject.team1,
-              team2: gameObject.team2,
-              onPressed: _canChangeTeams ? _changeTeams : null,
-            ),
-          ),
         if (gameObject.numberOfPlayersPerTeam > 0)
           Flexible(
             child: GameInfoRowWidget(
