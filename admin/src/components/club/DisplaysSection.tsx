@@ -26,7 +26,7 @@ interface LinkResult {
   token: string;
 }
 
-/** The link being edited, with its token while that can still be shown. */
+/** The link being edited, with its token when it was just made or reset. */
 interface Editing {
   link: DisplayLink;
   token?: string;
@@ -206,9 +206,12 @@ interface DialogProps {
 }
 
 /** Edits a link's name and what it shows, and shows a new link's URL while
- *  it can be: the token is not stored, so this is the only chance to copy it. */
+ *  URL to copy. */
 function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
-  const { link, token } = editing;
+  const { link } = editing;
+  // Just made or given a new URL, rather than opened from the list.
+  const fresh = editing.token !== undefined;
+  const token = editing.token ?? link.token;
   // What is stored, kept here since the dialog stays open after saving
   // while a new link's URL is on screen.
   const [saved, setSaved] = useState({ label: link.label, settings: link.settings ?? DEFAULT_SETTINGS });
@@ -238,7 +241,8 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
     try {
       await updateDoc(doc(db, 'clubs', clubId, 'displayLinks', link.id), { label: trimmedLabel, settings: toSave });
       setSaved({ label: trimmedLabel, settings: toSave });
-      if (!url) onClose();
+      // A new link's dialog stays open, so its URL can still be copied.
+      if (!fresh) onClose();
     } catch (err) {
       setError(errorMessage(err, 'Could not save the link.'));
     } finally {
@@ -257,7 +261,6 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
   }
 
   function handleClose() {
-    if (url && !copied && !confirm('Close without copying the URL? It cannot be shown again.')) return;
     if (changed && !confirm('Close without saving your changes?')) return;
     onClose();
   }
@@ -265,10 +268,11 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
   return (
     <div className={common.modal}>
       <div className={`${common.modalCard} ${common.wideModalCard}`}>
-        <h2 className={common.modalTitle}>{token && !link.createdAt ? 'New display link' : link.label}</h2>
+        <h2 className={common.modalTitle}>{fresh && !link.createdAt ? 'New display link' : link.label}</h2>
         <div className={common.form}>
-          {url && (
-            <>
+          {url ? (
+            <div className={styles.field}>
+              URL
               <code className={styles.url}>{url}</code>
               <div className={styles.urlActions}>
                 <button className={common.primaryButton} onClick={handleCopy}>
@@ -276,12 +280,16 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
                 </button>
                 <a className={common.ghostButton} href={url} target="_blank" rel="noopener noreferrer">Open</a>
               </div>
-              <p className={common.warning}>
-                Copy the URL now: it is not shown again. Put it on the screen, or add it to OBS as a
-                Browser source. It never needs to change: the screen follows whatever this link is
-                set to show below.
+              <p className={styles.urlHint}>
+                Put it on the screen, or add it to OBS as a Browser source. It never needs to
+                change: the screen follows whatever this link is set to show below.
               </p>
-            </>
+            </div>
+          ) : (
+            <p className={common.muted}>
+              This link was made before its URL was kept, so it can't be shown here. Use New URL
+              in the list to get one that can; screens on the current URL then need the new one.
+            </p>
           )}
 
           <label className={styles.field}>
@@ -357,7 +365,7 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
 
           {error && <p className={common.error}>{error}</p>}
           <div className={common.modalActions}>
-            <button className={common.ghostButton} onClick={handleClose}>{url ? 'Done' : 'Cancel'}</button>
+            <button className={common.ghostButton} onClick={handleClose}>{fresh ? 'Done' : 'Cancel'}</button>
             <button
               className={common.primaryButton}
               onClick={handleSave}

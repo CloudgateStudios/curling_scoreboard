@@ -5,12 +5,15 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 // Display links let a club's score bug and warm room screen sign in without
 // an account. A club admin creates one per screen in the admin portal and
-// gets a token, shown once, that goes in the display page's URL. The page
-// trades it with startDisplaySession for a Firebase sign-in whose claims let
-// it read the club's display summary (see ./state.ts) and nothing else.
+// gets a token that goes in the display page's URL. The page trades it with
+// startDisplaySession for a Firebase sign-in whose claims let it read the
+// club's display summary (see ./state.ts) and nothing else.
 //
-// Only a hash of each token's secret is stored, so the links listed in the
-// portal cannot be turned back into working URLs.
+// The token is kept on the link, which only the club's admins (and the
+// screen holding it) can read, so the portal can show the URL again
+// whenever it is needed, as it does the club's API key. Signing in checks it
+// against a hash of its secret, as links made before the token was kept
+// only have the hash.
 //
 // Each link also says what its screens show, in `settings`, which club admins
 // change in the portal. A screen opened at the link's own URL,
@@ -97,8 +100,7 @@ function requireClubAdmin(token: Record<string, unknown> | undefined, clubId: st
   }
 }
 
-// Creates a link and returns its token. The token is not stored, so this is
-// the only time anyone sees it.
+// Creates a link and returns its token.
 export const createDisplayLink = onCall(async (request) => {
   const data = (request.data ?? {}) as { clubId?: unknown; label?: unknown };
   const clubId = requireClubId(data.clubId);
@@ -123,13 +125,15 @@ export const createDisplayLink = onCall(async (request) => {
 
   const secret = newSecret();
   const ref = linksRef(clubId).doc();
+  const token = `${ref.id}.${secret}`;
   await ref.set({
     label,
     secretHash: hashSecret(secret),
+    token,
     settings: DEFAULT_SETTINGS,
     createdAt: FieldValue.serverTimestamp(),
   });
-  return { linkId: ref.id, token: `${ref.id}.${secret}` };
+  return { linkId: ref.id, token };
 });
 
 // Removes a link. No new sessions can start from it straight away; a screen
@@ -156,15 +160,16 @@ export const resetDisplayLink = onCall(async (request) => {
   const linkId = requireLinkId(data.linkId);
 
   const secret = newSecret();
+  const token = `${linkId}.${secret}`;
   try {
-    await linksRef(clubId).doc(linkId).update({ secretHash: hashSecret(secret) });
+    await linksRef(clubId).doc(linkId).update({ secretHash: hashSecret(secret), token });
   } catch (err) {
     // 5 is NOT_FOUND: the link was removed.
     if ((err as { code?: unknown }).code === 5) throw new HttpsError('not-found', 'Display link not found.');
     throw err;
   }
   await endSessions(clubId, linkId);
-  return { linkId, token: `${linkId}.${secret}` };
+  return { linkId, token };
 });
 
 // Called by a display page, which is not signed in, with the token from its

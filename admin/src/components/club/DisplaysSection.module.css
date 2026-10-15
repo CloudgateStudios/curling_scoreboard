@@ -44,3 +44,10 @@
   flex: 1;
   min-width: 10rem;
 }
+
+.urlHint {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #666;
+}

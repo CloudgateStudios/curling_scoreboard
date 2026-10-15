@@ -1225,15 +1225,16 @@ describe('display links', () => {
     await rejectsWith(admin.call('createDisplayLink', { clubId, label: 'x'.repeat(61) }), 'functions/invalid-argument');
   });
 
-  test('creates a link and keeps only a hash of its secret', async () => {
+  test('creates a link and keeps its token for the club\'s admins', async () => {
     const { linkId, token } = await createLink(' Stream ');
     assert.match(token, new RegExp(`^${linkId}\\.[0-9a-f]{32}$`));
     const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
     assert.equal(link.label, 'Stream');
     assert.ok(link.createdAt);
-    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash', 'settings']);
+    assert.deepEqual(Object.keys(link).sort(), ['createdAt', 'label', 'secretHash', 'settings', 'token']);
+    assert.equal(link.token, token, 'so the portal can show the URL again');
     assert.deepEqual(link.settings, { page: 'warm-room' }, 'shows the warm room until changed');
-    assert.ok(!JSON.stringify(link).includes(token.split('.')[1]), 'does not store the secret');
+    assert.notEqual(link.secretHash, token.split('.')[1], 'sign-in checks a hash of the secret');
   });
 
   test('a link signs a display in to read its club\'s summary, and nothing else', async () => {
@@ -1287,6 +1288,13 @@ describe('display links', () => {
     await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
   });
 
+  test('signs in with a link made before tokens were kept', async () => {
+    const { linkId, token } = await createLink();
+    await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).update({ token: FieldValue.delete() });
+    const display = await clientFor();
+    assert.ok((await display.call('startDisplaySession', { clubId, token })).data.token);
+  });
+
   test('a display reads its own link\'s settings, not another\'s', async () => {
     const { linkId, token } = await createLink();
     const other = await createLink('Other');
@@ -1314,6 +1322,7 @@ describe('display links', () => {
 
     const link = (await db.doc(`clubs/${clubId}/displayLinks/${linkId}`).get()).data();
     assert.deepEqual(link.settings, { page: 'bug', sheetId: 's1' });
+    assert.equal(link.token, reset.token, 'keeps the new token for the portal');
     await assert.rejects(adminAuth.getUser(uid), (err) => err.code === 'auth/user-not-found');
     await rejectsWith((await clientFor()).call('startDisplaySession', { clubId, token }), 'functions/permission-denied');
     const fresh = await clientFor();

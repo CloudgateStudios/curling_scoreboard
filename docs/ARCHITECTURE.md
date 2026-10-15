@@ -84,7 +84,8 @@ clubs/{clubId}/private/displayBranding // the warm room screen's title bar; abse
 
 clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   label: string              // up to 60 characters, e.g. "Warm room TV"
-  secretHash: string         // SHA-256 of the token's secret, in hex
+  secretHash: string         // SHA-256 of the token's secret, in hex, which sign-in checks
+  token?: string             // the token itself, for the portal to show; absent on links made before it was kept
   settings: {                // what the link's screens show
     page: 'bug' | 'warm-room'
     sheetId?: string         // the score bug's sheet
@@ -343,8 +344,8 @@ A display, a warm room screen or an OBS browser source, has nobody to sign
 in, so it signs in with a link instead. A club admin makes one per screen on
 the portal's Displays tab, through
 `createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
-random bits in hex. Only a SHA-256 hash of the secret is stored, so the
-portal shows the token once, built into the link's own URL:
+random bits in hex. The portal shows it built into the link's own URL,
+whenever a club admin opens the link:
 
 ```
 https://curlingscoreboard.app/display/{clubId}#k=<token>
@@ -361,6 +362,13 @@ with `link=1` added after the `#`. A page opened that way keeps listening
 to the link and moves again when the settings change, so a screen can be
 pointed at another sheet or view from the portal, mid-stream if need be.
 A page opened at its own URL, without `link=1`, stays where it is.
+
+The token is kept on the link as `token`, so the URL can be copied again at
+any time, the way club admins can see the API key. Only the club's admins,
+super admins and the screen holding it can read it, and only the functions
+write it. Signing in still checks a SHA-256 hash of the secret, which is
+all that links made before the token was kept have; the portal shows those
+without a URL until they are given a new one.
 
 `resetDisplayLink` gives a link a new secret, and so a new URL, for one that
 got out or was lost before it was copied. The settings stay, and screens on
