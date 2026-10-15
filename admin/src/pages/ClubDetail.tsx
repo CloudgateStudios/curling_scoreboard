@@ -22,10 +22,20 @@ import styles from './ClubDetail.module.css';
 const TABS = [
   { id: 'sheets', label: 'Sheets & Games' },
   { id: 'leagues', label: 'Leagues' },
+  { id: 'displays', label: 'Displays' },
   { id: 'settings', label: 'Settings' },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
+
+// The Settings tab shows one group at a time, so each fits on a screen.
+const SETTINGS_GROUPS = [
+  { id: 'scoreboards', label: 'Scoreboards', superAdminOnly: false },
+  { id: 'integrations', label: 'Integrations', superAdminOnly: false },
+  { id: 'admins', label: 'Club Admins', superAdminOnly: true },
+] as const;
+
+type SettingsGroup = (typeof SETTINGS_GROUPS)[number]['id'];
 
 interface Props {
   // Optional: club admin dashboard passes the club directly to avoid an extra fetch
@@ -40,10 +50,15 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   // lands on the tab it was opened from.
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: Tab = TABS.find((t) => t.id === searchParams.get('tab'))?.id ?? 'sheets';
+  const settingsGroups = SETTINGS_GROUPS.filter((g) => !g.superAdminOnly || !isClubAdmin);
+  const settingsGroup: SettingsGroup =
+    settingsGroups.find((g) => g.id === searchParams.get('section'))?.id ?? 'scoreboards';
 
   const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
+  // Reported by the Displays tab, which holds the list, for the tab's count.
+  const [displayLinkCount, setDisplayLinkCount] = useState(0);
 
   const resolvedClubId = clubProp?.id ?? clubId!;
   const club = clubProp ?? fetchedClub;
@@ -95,6 +110,10 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
     setSearchParams(next === 'sheets' ? {} : { tab: next }, { replace: true });
   }
 
+  function selectSettingsGroup(next: SettingsGroup) {
+    setSearchParams(next === 'scoreboards' ? { tab: 'settings' } : { tab: 'settings', section: next }, { replace: true });
+  }
+
   if (!club) {
     return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
   }
@@ -122,6 +141,7 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
             {t.label}
             {t.id === 'sheets' && <span className={styles.tabCount}>{sheets.length}</span>}
             {t.id === 'leagues' && <span className={styles.tabCount}>{leagues.length}</span>}
+            {t.id === 'displays' && <span className={styles.tabCount}>{displayLinkCount}</span>}
           </button>
         ))}
       </div>
@@ -142,15 +162,50 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         <LeaguesSection clubId={resolvedClubId} leagues={leagues} onOpenLeague={handleOpenLeague} />
       </div>
 
-      <div role="tabpanel" hidden={tab !== 'settings'} className={styles.settingsGrid}>
-        <RockColorsSection clubId={resolvedClubId} />
+      <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
+        <DisplaysSection clubId={resolvedClubId} sheets={sheets} onCount={setDisplayLinkCount} />
+        <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
+      </div>
+
+      {/* Every group stays mounted too, for the same reason. */}
+      <div role="tabpanel" hidden={tab !== 'settings'} className={styles.settingsLayout}>
+        <nav className={styles.settingsNav} aria-label="Settings">
+          {settingsGroups.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              aria-current={settingsGroup === g.id ? 'page' : undefined}
+              className={settingsGroup === g.id ? styles.settingsNavSelected : styles.settingsNavItem}
+              onClick={() => selectSettingsGroup(g.id)}
+            >
+              {g.label}
+              {g.superAdminOnly && <span className={common.adminTag}>Super admin</span>}
+            </button>
+          ))}
+        </nav>
+        <select
+          className={`${common.input} ${styles.settingsSelect}`}
+          aria-label="Settings"
+          value={settingsGroup}
+          onChange={(e) => selectSettingsGroup(e.target.value as SettingsGroup)}
+        >
+          {settingsGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+        </select>
+
         <div>
-          <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
-          <ScoreboardPinSection clubId={resolvedClubId} />
-          <WebhookSection clubId={resolvedClubId} />
-          <DisplaysSection clubId={resolvedClubId} sheets={sheets} />
-          <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
-          {!isClubAdmin && <AdminsSection clubId={resolvedClubId} clubName={club.name} />}
+          <div hidden={settingsGroup !== 'scoreboards'}>
+            <RockColorsSection clubId={resolvedClubId} />
+            <ScoreboardPinSection clubId={resolvedClubId} />
+          </div>
+          <div hidden={settingsGroup !== 'integrations'}>
+            <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
+            <WebhookSection clubId={resolvedClubId} />
+          </div>
+          {!isClubAdmin && (
+            <div hidden={settingsGroup !== 'admins'}>
+              <AdminsSection clubId={resolvedClubId} clubName={club.name} />
+            </div>
+          )}
         </div>
       </div>
     </div>

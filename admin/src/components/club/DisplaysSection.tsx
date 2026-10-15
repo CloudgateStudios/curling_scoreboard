@@ -14,6 +14,8 @@ import styles from './DisplaysSection.module.css';
 interface Props {
   clubId: string;
   sheets: Sheet[];
+  /** Told how many links there are, for the tab's count. */
+  onCount?: (count: number) => void;
 }
 
 // Matches the limit in the createDisplayLink function and firestore.rules.
@@ -40,7 +42,7 @@ function describeUse(link: DisplayLink, now: Date): string {
 
 /** Links for the club's score bug and warm room screens. Each screen has its
  *  own, so one can be changed or removed without affecting the others. */
-export function DisplaysSection({ clubId, sheets }: Props) {
+export function DisplaysSection({ clubId, sheets, onCount }: Props) {
   const [links, setLinks] = useState<DisplayLink[]>([]);
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -58,8 +60,9 @@ export function DisplaysSection({ clubId, sheets }: Props) {
     const q = query(collection(db, 'clubs', clubId, 'displayLinks'), orderBy('label'));
     return onSnapshot(q, (snap) => {
       setLinks(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DisplayLink, 'id'>) })));
+      onCount?.(snap.size);
     });
-  }, [clubId]);
+  }, [clubId, onCount]);
 
   const sheetName = (sheetId: string) => sheets.find((sheet) => sheet.id === sheetId)?.name;
 
@@ -116,11 +119,10 @@ export function DisplaysSection({ clubId, sheets }: Props) {
 
   return (
     <div className={common.section}>
-      <h2 className={common.sectionTitle}>Displays</h2>
+      <h2 className={common.sectionTitle}>Display Links</h2>
       <p className={common.blurb}>
-        Show live scores on a screen in the warm room, or as a score bug in an OBS live stream.
-        Make a link for each screen. What a link shows can be changed here at any time, and its
-        screens follow without anyone touching them. Anyone with a link can see the club's scores.
+        A link for each warm room screen or OBS stream. Change what it shows here and the screen
+        follows. Anyone with a link can see the club's scores.
       </p>
 
       <form className={styles.createForm} onSubmit={handleCreate}>

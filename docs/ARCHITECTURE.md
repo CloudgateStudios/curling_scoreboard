@@ -340,8 +340,8 @@ change.
 ## Display links
 
 A display, a warm room screen or an OBS browser source, has nobody to sign
-in, so it signs in with a link instead. A club admin makes one per screen in
-the Displays section of the portal's Settings tab, through
+in, so it signs in with a link instead. A club admin makes one per screen on
+the portal's Displays tab, through
 `createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
 random bits in hex. Only a SHA-256 hash of the secret is stored, so the
 portal shows the token once, built into the link's own URL:
@@ -447,8 +447,7 @@ its width, so any number of sheets fills the screen without scrolling, on a
 server's time, shows the screen is still running.
 
 A club can give the screen its own title in place of "Live Scores", and a
-logo beside it, in the Warm Room Screen section of the portal's Settings
-tab. Both are kept in `private/displayBranding`, which the page listens to
+logo beside it, on the portal's Displays tab. Both are kept in `private/displayBranding`, which the page listens to
 alongside the summary: one more read when it starts, and one when the club
 changes them. The portal shrinks the logo in the browser to fit 800 by 200
 pixels and keeps it as a PNG, or WebP when a PNG would be too large, in a
@@ -613,10 +612,24 @@ Routes depend on the signed in role:
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
   `/leagues/:leagueId` a league.
 
-The club page shows sheets with their live games, scoreboard status, pairing codes, games from the
-last seven days, leagues, the rock colors, the API key, the display links and the warm room screen's title and logo. Only super admins can add sheets, rotate the
-key or add club admins. (The rules would let a club admin write their club's
-sheets; the portal just doesn't offer it.)
+The club page has four tabs, the one open kept in the URL (`?tab=`):
+
+- **Sheets & Games**: sheets with their live games, scoreboard status and
+  pairing codes, beside the games from the last seven days.
+- **Leagues**: the club's leagues.
+- **Displays**: the display links, and the warm room screen's title and logo.
+- **Settings**, one group at a time, also kept in the URL (`?section=`), with
+  a list of groups beside it, or a dropdown on a narrow window:
+  - Scoreboards: the rock colors and the scoreboard admin PIN.
+  - Integrations: the API key and the completed game webhook, which once
+    saved is shown in short until it is edited.
+  - Club Admins: super admins only.
+
+Every tab and group stays mounted while hidden, so a half-made change
+survives moving between them. Only super admins can add sheets, rotate the
+key or add club admins, and the portal tags what only they see. (The rules
+would let a club admin write their club's sheets; the portal just doesn't
+offer it.)
 
 ## Public REST API
 
@@ -649,8 +662,8 @@ the API from a server.
 ## Completed game webhook
 
 A club can have each finished game posted to a URL, usually a Slack or
-Discord incoming webhook. A club admin or super admin sets it under Settings
-in the admin portal, along with whether to post every game or only league
+Discord incoming webhook. A club admin or super admin sets it under Settings,
+Integrations in the admin portal, along with whether to post every game or only league
 games. A league game here is one where either team has a `teamId`.
 
 `sendCompletedGameWebhook` is a Firestore trigger on new `games` documents, so
@@ -692,7 +705,7 @@ reads the first and Discord the second, followed by `event`, `club`, `sheet` and
   is written to the game's `webhook` field, which the portal shows when a
   game is expanded, and marks on the game's row when it failed. The last
   post, game or test, is also written to `private/webhookStatus` for the
-  Settings tab. That is a separate document so the rule on `private/webhook`
+  portal's settings. That is a separate document so the rule on `private/webhook`
   can allow club admins exactly the settings they choose. The REST API leaves the
   game's `webhook` field out.
 

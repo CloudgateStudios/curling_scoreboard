@@ -37,17 +37,20 @@ export function ApiKeySection({ clubId, canRegenerate }: Props) {
     <div className={common.section}>
       <h2 className={common.sectionTitle}>API Access</h2>
       <p className={common.blurb}>
-        Want to know how to use the API?{' '}
+        Read the club's live and recent games from your own website or tools.{' '}
         <a href="https://curlingscoreboard.app/api-docs/" target="_blank" rel="noopener noreferrer">
-          View the API documentation
+          API documentation
         </a>
       </p>
       <div className={styles.apiKeyRow}>
         <code className={styles.apiKey}>{apiKey || '—'}</code>
         {canRegenerate && (
-          <button className={common.ghostButton} onClick={handleRegenerate}>
-            Regenerate Key
-          </button>
+          <>
+            <button className={common.ghostButton} onClick={handleRegenerate}>
+              Regenerate Key
+            </button>
+            <span className={common.adminTag}>Super admin</span>
+          </>
         )}
       </div>
       {error && <p className={common.error}>{error}</p>}

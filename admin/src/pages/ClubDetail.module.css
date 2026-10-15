@@ -54,27 +54,81 @@
   align-items: start;
 }
 
-.settingsGrid {
+.columns > * {
+  margin-bottom: 0;
+}
+
+/* Settings: a list of groups beside the one being shown. */
+.settingsLayout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 13rem minmax(0, 1fr);
   gap: 1.5rem;
   align-items: start;
 }
 
-/* The grid display would otherwise show a hidden tab. */
-.columns[hidden],
-.settingsGrid[hidden] {
+.settingsNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.settingsNavItem,
+.settingsNavSelected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settingsNavItem:hover {
+  background: #f1f3f6;
+  color: #1a1a2e;
+}
+
+.settingsNavSelected {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+/* Takes the list's place on a narrow window. */
+.settingsSelect {
   display: none;
 }
 
-.columns > *,
-.settingsGrid > * {
-  margin-bottom: 0;
+/* The grid display would otherwise show a hidden tab. */
+.columns[hidden],
+.settingsLayout[hidden] {
+  display: none;
 }
 
 @media (max-width: 1000px) {
-  .columns,
-  .settingsGrid {
+  .columns {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .settingsLayout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .settingsNav {
+    display: none;
+  }
+
+  .settingsSelect {
+    display: block;
   }
 }
