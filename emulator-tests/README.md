@@ -100,7 +100,7 @@ Access that must stay denied:
   key, config or sheets, or the display links; anyone else but the club's
   admins reading the summary; anyone writing it
 - a club admin creating a display link directly, or listing another club's;
-  changing a link's secret, a link in another club, or its settings to a
+  changing a link's secret or token, a link in another club, or its settings to a
   score bug with no sheet, a page that does not exist, an option out of
   range or an unknown one; a display reading another link or changing its
   own
@@ -136,7 +136,9 @@ Access that must stay denied:
   drops a deleted sheet. A display shows a live game first, then the final
   score for ten minutes, ignoring a live game abandoned for over two hours.
 - Display links can only be made by the club's admins, need a name, keep
-  only a hash of the secret, and stop at twenty a club. A link signs a
+  their token for the club's admins with a hash of its secret for sign-in,
+  and stop at twenty a club. A link made before the token was kept still
+  signs in. A link signs a
   display in with claims that read the club's display summary but not its
   club document, and records that it was used. Wrong, malformed and other
   clubs' tokens are turned away. Revoking a link, used or not, stops it

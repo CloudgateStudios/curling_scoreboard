@@ -480,6 +480,9 @@ await check('attack: club admin adds an unknown option', 'deny', () =>
 await check('attack: club admin changes a link\'s secret directly', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { secretHash: 'chosen' }));
 
+await check('attack: club admin changes a link\'s token directly', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { token: 'link-2.chosen' }));
+
 await check('attack: club admin changes another club\'s link', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-b/displayLinks/any'), { label: 'Mine' }));
 

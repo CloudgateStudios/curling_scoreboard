@@ -166,11 +166,13 @@ export interface WebhookStatus {
   error?: string;
 }
 
-/** A link a club's score bug or warm room screen signs in with. Only a hash
- *  of its token is stored, so the token itself is shown once, when made. */
+/** A link a club's score bug or warm room screen signs in with. */
 export interface DisplayLink {
   id: string;
   label: string;
+  /** What goes in the link's URL. Absent on links made before it was kept,
+   *  until they are given a new URL. */
+  token?: string;
   /** What the link's screens show; the warm room's totals when absent. */
   settings?: DisplaySettings;
   createdAt?: Timestamp;
