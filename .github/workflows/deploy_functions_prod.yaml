@@ -36,4 +36,4 @@ jobs:
       # Keep the version in step with firebase-tools in emulator-tests.
       - name: Deploy Firestore and Functions
         working-directory: ${{ github.workspace }}
-        run: npx firebase-tools@15.32.0 deploy --only firestore,functions --force --project curling-scoreboard-prod
+        run: npx firebase-tools@15.33.0 deploy --only firestore,functions --force --project curling-scoreboard-prod
