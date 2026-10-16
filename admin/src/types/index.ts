@@ -144,7 +144,19 @@ export interface League {
   teams: LeagueTeam[];
 }
 
-export type UserRole = 'superadmin' | 'clubadmin' | null;
+/** Club admins manage their club. Bonspiel admins only see its sheets and
+ *  games, and its bonspiels. */
+export type ClubUserRole = 'clubadmin' | 'bonspieladmin';
+
+export type UserRole = 'superadmin' | ClubUserRole | null;
+
+/** Someone who can sign in to the portal for a club. */
+export interface ClubUser {
+  uid: string;
+  email: string;
+  displayName: string | null;
+  role: ClubUserRole;
+}
 
 export interface AuthUser {
   uid: string;

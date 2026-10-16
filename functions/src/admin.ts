@@ -33,9 +33,48 @@ function requireValidPassword(password: string) {
   }
 }
 
-// Turns a createUser failure into an error the admin portal can show as is.
-// Unknown failures get a generic message so internals don't reach the client.
-function createUserError(err: unknown): HttpsError {
+// The roles a club's portal users can have. Club admins manage the club;
+// bonspiel admins only see its sheets and games, and its bonspiels.
+const CLUB_USER_ROLES = ['clubadmin', 'bonspieladmin'] as const;
+type ClubUserRole = (typeof CLUB_USER_ROLES)[number];
+
+function isClubUserRole(role: unknown): role is ClubUserRole {
+  return (CLUB_USER_ROLES as readonly unknown[]).includes(role);
+}
+
+// An absent role means club admin, which is all there was before roles.
+function requireClubUserRole(role: unknown): ClubUserRole {
+  if (role === undefined || role === null || role === '') return 'clubadmin';
+  if (!isClubUserRole(role)) {
+    throw new HttpsError('invalid-argument', 'role must be clubadmin or bonspieladmin.');
+  }
+  return role;
+}
+
+// The person's name, or undefined when none was given.
+function optionalDisplayName(displayName: unknown): string | undefined {
+  if (displayName === undefined || displayName === null) return undefined;
+  if (typeof displayName !== 'string') {
+    throw new HttpsError('invalid-argument', 'displayName must be a string.');
+  }
+  const trimmed = displayName.trim();
+  if (trimmed.length > 80) {
+    throw new HttpsError('invalid-argument', 'The name can be at most 80 characters.');
+  }
+  return trimmed || undefined;
+}
+
+// Whether an account was made for this club by provisionClub or
+// addClubAdmin, and so is the club's to change or delete.
+function isClubUser(user: UserRecord | null, clubId: string): user is UserRecord {
+  const claims = (user?.customClaims ?? {}) as Record<string, unknown>;
+  return user !== null && isClubUserRole(claims['role']) && claims['clubId'] === clubId;
+}
+
+// Turns a createUser or updateUser failure into an error the admin portal can
+// show as is. Unknown failures get a generic message so internals don't reach
+// the client.
+function authUserError(err: unknown, failure = 'Could not create the admin account. Please try again.'): HttpsError {
   const code = (err as { code?: unknown } | null)?.code;
   switch (code) {
     case 'auth/email-already-exists':
@@ -48,8 +87,8 @@ function createUserError(err: unknown): HttpsError {
         `The password is not valid. It must be at least ${MIN_PASSWORD_LENGTH} characters.`,
       );
     default:
-      console.error('Could not create admin user', err);
-      return new HttpsError('internal', 'Could not create the admin account. Please try again.');
+      console.error('Could not create or update admin user', err);
+      return new HttpsError('internal', failure);
   }
 }
 
@@ -57,15 +96,17 @@ function createUserError(err: unknown): HttpsError {
 export const provisionClub = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubName, clubId, adminEmail, adminPassword, scoreboardPin } = (request.data ?? {}) as {
+  const { clubName, clubId, adminName, adminEmail, adminPassword, scoreboardPin } = (request.data ?? {}) as {
     clubName: string;
     clubId?: string;
+    adminName?: string;
     adminEmail: string;
     adminPassword: string;
     scoreboardPin: string;
   };
 
   requireNonEmptyStrings({ clubName, adminEmail, adminPassword });
+  const displayName = optionalDisplayName(adminName);
   requireValidPassword(adminPassword);
   // Every club starts with the PIN its scoreboards ask for to disconnect, so
   // none of them is ever stuck paired.
@@ -105,7 +146,7 @@ export const provisionClub = onCall(async (request) => {
     userRecord = await getAuth().createUser({
       email: adminEmail,
       password: adminPassword,
-      displayName: `${clubName} Admin`,
+      displayName: displayName ?? `${clubName} Admin`,
     });
   } catch (err) {
     // Roll back the club doc if user creation fails, whatever the reason
@@ -114,7 +155,7 @@ export const provisionClub = onCall(async (request) => {
       apiKeyRef(clubRef.id).delete(),
       scoreboardPinRef(clubRef.id).delete(),
     ]);
-    throw createUserError(err);
+    throw authUserError(err);
   }
 
   // Assign the clubId custom claim
@@ -126,23 +167,29 @@ export const provisionClub = onCall(async (request) => {
   await clubRef.collection('admins').doc(userRecord.uid).set({
     email: adminEmail,
     displayName: userRecord.displayName ?? null,
+    role: 'clubadmin',
   });
 
   return { clubId: clubRef.id, uid: userRecord.uid };
 });
 
-// Adds a new admin user to an existing club.
+// Adds a new portal user to an existing club: a club admin unless a
+// bonspiel admin is asked for.
 export const addClubAdmin = onCall(async (request) => {
   requireSuperAdmin(request.auth);
 
-  const { clubId, adminEmail, adminPassword } = (request.data ?? {}) as {
+  const { clubId, adminName, adminEmail, adminPassword, role: requestedRole } = (request.data ?? {}) as {
     clubId: string;
+    adminName?: string;
     adminEmail: string;
     adminPassword: string;
+    role?: string;
   };
 
   requireNonEmptyStrings({ clubId, adminEmail, adminPassword });
   requireValidPassword(adminPassword);
+  const displayName = optionalDisplayName(adminName);
+  const role = requireClubUserRole(requestedRole);
 
   const clubSnap = await getFirestore().collection('clubs').doc(clubId).get();
   if (!clubSnap.exists) {
@@ -154,26 +201,85 @@ export const addClubAdmin = onCall(async (request) => {
     userRecord = await getAuth().createUser({
       email: adminEmail,
       password: adminPassword,
-      displayName: `${(clubSnap.data() as { name: string }).name} Admin`,
+      displayName: displayName ?? `${(clubSnap.data() as { name: string }).name} Admin`,
     });
   } catch (err) {
-    throw createUserError(err);
+    throw authUserError(err);
   }
 
-  await getAuth().setCustomUserClaims(userRecord.uid, {
-    role: 'clubadmin',
-    clubId,
-  });
+  await getAuth().setCustomUserClaims(userRecord.uid, { role, clubId });
 
   await getFirestore()
     .collection('clubs').doc(clubId)
     .collection('admins').doc(userRecord.uid)
-    .set({ email: adminEmail, displayName: userRecord.displayName ?? null });
+    .set({ email: adminEmail, displayName: userRecord.displayName ?? null, role });
 
   return { uid: userRecord.uid };
 });
 
-// Takes an admin off a club. Club admin accounts are made for one club by
+// Changes a club user's name, email or role, and sets a new password when
+// one is given. Only accounts made for this club can be changed, so a super
+// admin listed on the club by hand is left alone. A change of role or
+// password signs the user out of the portal, so they sign in again with what
+// they may now do; a token issued before that keeps working with Firestore
+// until it expires, which takes at most an hour.
+export const updateClubAdmin = onCall(async (request) => {
+  requireSuperAdmin(request.auth);
+
+  const { clubId, uid, displayName: requestedName, email, password, role: requestedRole } =
+    (request.data ?? {}) as {
+      clubId: string;
+      uid: string;
+      displayName?: string;
+      email: string;
+      password?: string;
+      role?: string;
+    };
+
+  requireNonEmptyStrings({ clubId, uid, email });
+  const displayName = optionalDisplayName(requestedName);
+  const role = requireClubUserRole(requestedRole);
+  const newPassword = typeof password === 'string' && password !== '' ? password : undefined;
+  if (newPassword !== undefined) requireValidPassword(newPassword);
+
+  const adminRef = getFirestore().collection('clubs').doc(clubId).collection('admins').doc(uid);
+  if (!(await adminRef.get()).exists) {
+    throw new HttpsError('not-found', 'That user is not on this club.');
+  }
+
+  let user: UserRecord | null = null;
+  try {
+    user = await getAuth().getUser(uid);
+  } catch (err) {
+    if ((err as { code?: unknown } | null)?.code !== 'auth/user-not-found') throw err;
+  }
+  if (!isClubUser(user, clubId)) {
+    throw new HttpsError('failed-precondition', 'That account was not made for this club, so it cannot be changed here.');
+  }
+
+  try {
+    await getAuth().updateUser(uid, {
+      email,
+      displayName: displayName ?? null,
+      ...(newPassword !== undefined && { password: newPassword }),
+    });
+  } catch (err) {
+    throw authUserError(err, 'Could not update the account. Please try again.');
+  }
+
+  const roleChanged = user.customClaims?.['role'] !== role;
+  if (roleChanged) {
+    await getAuth().setCustomUserClaims(uid, { role, clubId });
+  }
+  if (roleChanged || newPassword !== undefined) {
+    await getAuth().revokeRefreshTokens(uid);
+  }
+
+  await adminRef.set({ email, displayName: displayName ?? null, role });
+  return { success: true };
+});
+
+// Takes a user off a club. Club user accounts are made for one club by
 // provisionClub or addClubAdmin, so the account itself is deleted too: that
 // signs it out everywhere and frees the email to be added again. An account
 // that is not this club's admin (say a super admin listed by hand) only
@@ -196,8 +302,7 @@ export const removeClubAdmin = onCall(async (request) => {
   } catch (err) {
     if ((err as { code?: unknown } | null)?.code !== 'auth/user-not-found') throw err;
   }
-  const claims = (user?.customClaims ?? {}) as Record<string, unknown>;
-  if (user && claims['role'] === 'clubadmin' && claims['clubId'] === clubId) {
+  if (isClubUser(user, clubId)) {
     await getAuth().deleteUser(uid);
   }
 

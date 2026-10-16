@@ -17,11 +17,13 @@ export function useAuth() {
 
       const token = await firebaseUser.getIdTokenResult();
       const claims = token.claims as Record<string, unknown>;
-      const role = (claims.role as string) === 'superadmin'
+      const role = claims.role === 'superadmin'
         ? 'superadmin'
-        : claims.clubId
-          ? 'clubadmin'
-          : null;
+        : !claims.clubId
+          ? null
+          : claims.role === 'bonspieladmin'
+            ? 'bonspieladmin'
+            : 'clubadmin';
 
       setUser({
         uid: firebaseUser.uid,

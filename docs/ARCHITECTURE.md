@@ -11,7 +11,7 @@ for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
 | Piece        | Runs on                                                       | Talks to                                                                                            |
 | ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
-| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
+| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `updateClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
 | `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access; also serves the display pages                                  |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
@@ -194,6 +194,7 @@ admin scripts.
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
+| Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history. Changes nothing               |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
 | Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`; read its own link |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
@@ -206,11 +207,14 @@ straight away, whatever its claims say.
 
 The first super admin of a project is created with
 `scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
-others. Club admins are created from the admin portal through
-`provisionClub` (a new club with its first admin and scoreboard PIN) and `addClubAdmin`, and
-taken off again with `removeClubAdmin`, which deletes the account. A token
-issued before then keeps its club admin claim until it expires, at most an
-hour later.
+others. Club and bonspiel admins are created from the admin portal through
+`provisionClub` (a new club with its first admin and scoreboard PIN) and
+`addClubAdmin`, changed with `updateClubAdmin` (name, email, role and a new
+password), and taken off again with `removeClubAdmin`, which deletes the
+account. Each is listed in the club's `admins` collection with its `role`.
+`updateClubAdmin` revokes the user's refresh tokens when it changes their role
+or password, so the portal signs them out. A token issued before a removal or
+a change of role keeps its old claims until it expires, at most an hour later.
 
 Sheets are renamed and unpaired by writing the sheet directly. Deleting one
 goes through `deleteSheet` (super admins only), which also deletes its
@@ -625,19 +629,25 @@ Routes depend on the signed in role:
   `/clubs/:clubId/leagues/:leagueId` a league.
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
   `/leagues/:leagueId` a league.
+- Bonspiel admin: the club admin's routes without the league page.
 
-The club page has four tabs, the one open kept in the URL (`?tab=`):
+The club page has five tabs, the one open kept in the URL (`?tab=`). Bonspiel
+admins only get Sheets & Games, with nothing to change and no pairing codes,
+and Bonspiels; the other tabs are not mounted for them at all.
+
 
 - **Sheets & Games**: sheets with their live games, scoreboard status and
   pairing codes, beside the games from the last seven days.
 - **Leagues**: the club's leagues.
+- **Bonspiels**: a placeholder for now.
 - **Displays**: the display links, and the warm room screen's title and logo.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
   - Scoreboards: the rock colors and the scoreboard admin PIN.
   - Integrations: the API key and the completed game webhook, which once
     saved is shown in short until it is edited.
-  - Club Admins: super admins only.
+  - Users: super admins only. Adds, edits and removes the club's club and
+    bonspiel admins.
 
 Every tab and group stays mounted while hidden, so a half-made change
 survives moving between them. Only super admins can add sheets, rotate the

@@ -677,6 +677,34 @@ describe('addClubAdmin', () => {
     assert.equal(doc.get('email'), 'second-admin@club-a.example');
   });
 
+  test('creates a bonspiel admin with the name given', async () => {
+    const caller = await superAdmin('super-add-bonspiel@example.com');
+    await caller.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminName: 'Pat Skip',
+      adminEmail: 'bonspiel@club-a.example',
+      adminPassword: 'password123',
+      role: 'bonspieladmin',
+    });
+
+    const user = await adminAuth.getUserByEmail('bonspiel@club-a.example');
+    assert.equal(user.displayName, 'Pat Skip');
+    assert.deepEqual(user.customClaims, { role: 'bonspieladmin', clubId: 'club-a' });
+    const doc = await db.doc(`clubs/club-a/admins/${user.uid}`).get();
+    assert.equal(doc.get('role'), 'bonspieladmin');
+    assert.equal(doc.get('displayName'), 'Pat Skip');
+  });
+
+  test('rejects an unknown role', async () => {
+    const caller = await superAdmin('super-add-role@example.com');
+    await rejectsWith(caller.call('addClubAdmin', {
+      clubId: 'club-a',
+      adminEmail: 'bad-role@club-a.example',
+      adminPassword: 'password123',
+      role: 'superadmin',
+    }), 'functions/invalid-argument');
+  });
+
   test('reports a taken email as already-exists', async () => {
     await adminAuth.createUser({ email: 'taken@add-admin.example', password: 'password123' });
     const caller = await superAdmin('super-add-taken@example.com');
@@ -695,6 +723,62 @@ describe('addClubAdmin', () => {
       adminEmail: 'short@add-admin.example',
       adminPassword: 'short',
     }), 'functions/invalid-argument');
+  });
+});
+
+describe('updateClubAdmin', () => {
+  test('is limited to super admins', async () => {
+    const clubAdmin = await userWithClaims('updater@club-a.example', { role: 'clubadmin', clubId: 'club-a' });
+    await rejectsWith(clubAdmin.call('updateClubAdmin', {
+      clubId: 'club-a', uid: 'anyone', email: 'updater@club-a.example', role: 'clubadmin',
+    }), 'functions/permission-denied');
+  });
+
+  test('changes the name, email, role and password', async () => {
+    const caller = await superAdmin('super-update@example.com');
+    const { data } = await caller.call('addClubAdmin', {
+      clubId: 'club-a', adminEmail: 'changing@club-a.example', adminPassword: 'password123',
+    });
+
+    await caller.call('updateClubAdmin', {
+      clubId: 'club-a',
+      uid: data.uid,
+      displayName: 'Sam Lead',
+      email: 'changed@club-a.example',
+      role: 'bonspieladmin',
+      password: 'reset-password-456',
+    });
+
+    const user = await adminAuth.getUser(data.uid);
+    assert.equal(user.displayName, 'Sam Lead');
+    assert.equal(user.email, 'changed@club-a.example');
+    assert.deepEqual(user.customClaims, { role: 'bonspieladmin', clubId: 'club-a' });
+    const listing = await db.doc(`clubs/club-a/admins/${data.uid}`).get();
+    assert.deepEqual(listing.data(), {
+      email: 'changed@club-a.example', displayName: 'Sam Lead', role: 'bonspieladmin',
+    });
+    await clientFor((auth) => signInWithEmailAndPassword(auth, 'changed@club-a.example', 'reset-password-456'));
+  });
+
+  test('rejects a short new password', async () => {
+    const caller = await superAdmin('super-update-short@example.com');
+    const { data } = await caller.call('addClubAdmin', {
+      clubId: 'club-a', adminEmail: 'short-reset@club-a.example', adminPassword: 'password123',
+    });
+    await rejectsWith(caller.call('updateClubAdmin', {
+      clubId: 'club-a', uid: data.uid, email: 'short-reset@club-a.example', password: 'short',
+    }), 'functions/invalid-argument');
+  });
+
+  test('leaves alone an account that is not this club\'s', async () => {
+    const caller = await superAdmin('super-update-other@example.com');
+    const other = await adminAuth.createUser({ email: 'listed-update@club-b.example', password: 'password123' });
+    await adminAuth.setCustomUserClaims(other.uid, { role: 'clubadmin', clubId: 'club-b' });
+    await db.doc(`clubs/club-a/admins/${other.uid}`).set({ email: 'listed-update@club-b.example' });
+
+    await rejectsWith(caller.call('updateClubAdmin', {
+      clubId: 'club-a', uid: other.uid, email: 'listed-update@club-b.example', password: 'hijacked123',
+    }), 'functions/failed-precondition');
   });
 });
 

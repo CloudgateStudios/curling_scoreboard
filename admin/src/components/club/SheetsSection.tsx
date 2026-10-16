@@ -13,12 +13,14 @@ interface Props {
   sheets: Sheet[];
   /** Super admins add and delete sheets; club admins rename and unpair them. */
   canManageSheets: boolean;
+  /** Bonspiel admins see the sheets and their games, and change nothing. */
+  readOnly: boolean;
   onViewGames: (sheetId: string) => void;
 }
 
 /** How the club's scoreboards are doing, then each sheet's live game,
  *  pairing state, scoreboard status and pairing code. */
-export function SheetsSection({ clubId, sheets, canManageSheets, onViewGames }: Props) {
+export function SheetsSection({ clubId, sheets, canManageSheets, readOnly, onViewGames }: Props) {
   const [adding, setAdding] = useState(false);
   const [newSheetName, setNewSheetName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -98,6 +100,7 @@ export function SheetsSection({ clubId, sheets, canManageSheets, onViewGames }: 
             clubId={clubId}
             sheet={sheet}
             canDelete={canManageSheets}
+            readOnly={readOnly}
             deployedBuildId={deployedBuildId}
             now={now}
             onViewGames={onViewGames}
