@@ -61,6 +61,7 @@ const claimedBoard = env.authenticatedContext('scoreboard-1',
 const replacedBoard = env.authenticatedContext('old-device',
   { role: 'scoreboard', clubId: 'club-a', sheetId: 'sheet-paired' }).firestore();
 const adminA = env.authenticatedContext('admin-a', { role: 'clubadmin', clubId: 'club-a' }).firestore();
+const bonspielA = env.authenticatedContext('bonspiel-a', { role: 'bonspieladmin', clubId: 'club-a' }).firestore();
 
 const results = [];
 async function check(name, expect, fn) {
@@ -539,6 +540,43 @@ await check('attack: paired scoreboard reads the branding', 'deny', () =>
 
 await check('club admin: removes the branding', 'allow', () =>
   deleteDoc(doc(adminA, 'clubs/club-a/private/displayBranding')));
+
+// --- bonspiel admins see the sheets and their games, and change nothing ---
+await check('bonspiel admin: read own club', 'allow', () =>
+  getDoc(doc(bonspielA, 'clubs/club-a')));
+
+await check('bonspiel admin: list own sheets', 'allow', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/sheets')));
+
+await check('bonspiel admin: read a sheet\'s games', 'allow', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/sheets/sheet-paired/games')));
+
+await check('attack: bonspiel admin reads another club\'s sheets', 'deny', () =>
+  getDocs(collection(bonspielA, 'clubs/club-b/sheets')));
+
+await check('attack: bonspiel admin renames a sheet', 'deny', () =>
+  updateDoc(doc(bonspielA, 'clubs/club-a/sheets/sheet-open'), { name: 'Renamed' }));
+
+await check('attack: bonspiel admin adds a sheet', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/sheets/sheet-new'), { name: 'New' }));
+
+await check('attack: bonspiel admin sets a pairing code', 'deny', () =>
+  updateDoc(doc(bonspielA, 'clubs/club-a/sheets/sheet-open'), { pairingCode: 'ZZZ999' }));
+
+await check('attack: bonspiel admin renames the club', 'deny', () =>
+  updateDoc(doc(bonspielA, 'clubs/club-a'), { name: 'Renamed' }));
+
+await check('attack: bonspiel admin reads the API key', 'deny', () =>
+  getDoc(doc(bonspielA, 'clubs/club-a/private/apiKey')));
+
+await check('attack: bonspiel admin reads the club\'s users', 'deny', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/admins')));
+
+await check('attack: bonspiel admin reads the leagues', 'deny', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/leagues')));
+
+await check('attack: bonspiel admin reads the display links', 'deny', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/displayLinks')));
 
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>

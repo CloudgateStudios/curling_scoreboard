@@ -29,5 +29,5 @@ export function ClubAdminDashboard({ user }: Props) {
   if (!club) return <p className={styles.error}>Club not found. Contact your administrator.</p>;
 
   // Pass club directly so ClubDetail doesn't need to re-fetch it
-  return <ClubDetail club={club} isClubAdmin />;
+  return <ClubDetail club={club} role={user.role === 'bonspieladmin' ? 'bonspieladmin' : 'clubadmin'} />;
 }

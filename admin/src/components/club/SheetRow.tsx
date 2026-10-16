@@ -15,6 +15,8 @@ interface Props {
   sheet: Sheet;
   /** Super admins only: deleting a sheet removes its game history. */
   canDelete: boolean;
+  /** Hides the pairing code and every change to the sheet. */
+  readOnly: boolean;
   deployedBuildId: string | null;
   now: Date;
   onViewGames: (sheetId: string) => void;
@@ -22,7 +24,7 @@ interface Props {
 
 /** One sheet: its live game, scoreboard and pairing code, and the editor
  *  for renaming, unpairing and deleting it. */
-export function SheetRow({ clubId, sheet, canDelete, deployedBuildId, now, onViewGames }: Props) {
+export function SheetRow({ clubId, sheet, canDelete, readOnly, deployedBuildId, now, onViewGames }: Props) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sheet.name);
   const [busy, setBusy] = useState(false);
@@ -155,7 +157,7 @@ export function SheetRow({ clubId, sheet, canDelete, deployedBuildId, now, onVie
         {error && <p className={common.error}>{error}</p>}
       </div>
       <div className={common.rowActions}>
-        {sheet.pairingCode ? (
+        {readOnly ? null : sheet.pairingCode ? (
           <div className={styles.pairingCodeRow}>
             <code className={styles.pairingCode}>{sheet.pairingCode}</code>
             <button className={common.ghostButton} onClick={handleClearPairingCode}>
@@ -167,7 +169,7 @@ export function SheetRow({ clubId, sheet, canDelete, deployedBuildId, now, onVie
             Generate Pairing Code
           </button>
         )}
-        {!editing && (
+        {!editing && !readOnly && (
           <button className={common.linkButton} onClick={openEditor}>
             Edit
           </button>

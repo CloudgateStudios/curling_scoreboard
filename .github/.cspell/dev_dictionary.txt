@@ -1,4 +1,5 @@
 appspot
+bonspieladmin
 clubadmin
 cupertino
 firebaseapp

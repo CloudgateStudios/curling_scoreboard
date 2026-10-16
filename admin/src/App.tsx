@@ -45,7 +45,9 @@ export function App() {
             <>
               <Route path="/" element={<ClubAdminDashboard user={user} />} />
               <Route path="/sheets/:sheetId/games" element={<GameHistory />} />
-              <Route path="/leagues/:leagueId" element={<LeagueDetail user={user} />} />
+              {user.role === 'clubadmin' && (
+                <Route path="/leagues/:leagueId" element={<LeagueDetail user={user} />} />
+              )}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}

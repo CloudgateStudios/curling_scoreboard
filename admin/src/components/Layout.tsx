@@ -4,6 +4,12 @@ import { confirmLeave } from "../lib/unsavedChanges";
 import type { AuthUser } from "../types";
 import styles from "./Layout.module.css";
 
+const ROLE_BADGES = {
+  superadmin: "Super Admin",
+  clubadmin: "Club Admin",
+  bonspieladmin: "Bonspiel Admin",
+};
+
 interface Props {
   user: AuthUser;
   children: React.ReactNode;
@@ -20,7 +26,7 @@ export function Layout({ user, children }: Props) {
           <span className={styles.userInfo}>
             <span className={styles.email} title={user.email ?? undefined}>{user.email}</span>
             <span className={styles.badge}>
-              {user.role === "superadmin" ? "Super Admin" : "Club Admin"}
+              {ROLE_BADGES[user.role ?? "clubadmin"]}
             </span>
           </span>
           <button className={styles.signOut} onClick={() => confirmLeave() && signOut(auth)}>

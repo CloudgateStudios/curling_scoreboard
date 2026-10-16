@@ -12,6 +12,14 @@ service cloud.firestore {
           && request.auth.token.clubId == clubId;
     }
 
+    // Someone running bonspiels at the club. They can see the club, its
+    // sheets and their games, and change none of it.
+    function isBonspielAdmin(clubId) {
+      return request.auth != null
+          && request.auth.token.role == 'bonspieladmin'
+          && request.auth.token.clubId == clubId;
+    }
+
     // A scoreboard paired with a sheet in this club. pairSheet sets the
     // claims, which only say which sheet to look at: the sheet itself has to
     // name this scoreboard, so access ends the moment it is disconnected or
@@ -91,7 +99,7 @@ service cloud.firestore {
     // up with admin access. Clients get no access to pairing codes or to the
     // clubs they do not administer.
     match /clubs/{clubId} {
-      allow read: if isClubAdmin(clubId);
+      allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
 
       // The club's API key. Club admins can see it; only super admins (via
       // the rule at the top) can change it.
@@ -206,8 +214,8 @@ service cloud.firestore {
       }
 
       match /sheets/{sheetId} {
-        // Club admins can read any sheet in their club.
-        allow read: if isClubAdmin(clubId);
+        // Club and bonspiel admins can read any sheet in their club.
+        allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
 
         // Club admins can manage sheets in their club (add pairing codes, add sheets).
         allow write: if isClubAdmin(clubId);
@@ -231,8 +239,8 @@ service cloud.firestore {
                     && request.resource.data.device.size() <= 20));
 
         match /games/{gameId} {
-          // Club admins can read game history.
-          allow read: if isClubAdmin(clubId);
+          // Club and bonspiel admins can read game history.
+          allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
 
           // Only the registered scoreboard can write game records.
           allow create: if request.auth != null

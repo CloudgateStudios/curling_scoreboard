@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { compareLeagues, leagueFrom } from '../lib/leagues';
 import { confirmLeave } from '../lib/unsavedChanges';
-import type { Club, League, Sheet } from '../types';
+import type { Club, League, Sheet, UserRole } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
@@ -15,15 +15,18 @@ import { DisplaysSection } from '../components/club/DisplaysSection';
 import { DisplayBrandingSection } from '../components/club/DisplayBrandingSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
+import { BonspielsSection } from '../components/club/BonspielsSection';
 import { ClubHeader } from '../components/club/ClubHeader';
 import common from '../styles/common.module.css';
 import styles from './ClubDetail.module.css';
 
+// Bonspiel admins only get the sheets, read only, and the bonspiels.
 const TABS = [
-  { id: 'sheets', label: 'Sheets & Games' },
-  { id: 'leagues', label: 'Leagues' },
-  { id: 'displays', label: 'Displays' },
-  { id: 'settings', label: 'Settings' },
+  { id: 'sheets', label: 'Sheets & Games', bonspielAdmin: true },
+  { id: 'leagues', label: 'Leagues', bonspielAdmin: false },
+  { id: 'bonspiels', label: 'Bonspiels', bonspielAdmin: true },
+  { id: 'displays', label: 'Displays', bonspielAdmin: false },
+  { id: 'settings', label: 'Settings', bonspielAdmin: false },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
@@ -32,7 +35,7 @@ type Tab = (typeof TABS)[number]['id'];
 const SETTINGS_GROUPS = [
   { id: 'scoreboards', label: 'Scoreboards', superAdminOnly: false },
   { id: 'integrations', label: 'Integrations', superAdminOnly: false },
-  { id: 'admins', label: 'Club Admins', superAdminOnly: true },
+  { id: 'admins', label: 'Users', superAdminOnly: true },
 ] as const;
 
 type SettingsGroup = (typeof SETTINGS_GROUPS)[number]['id'];
@@ -40,17 +43,21 @@ type SettingsGroup = (typeof SETTINGS_GROUPS)[number]['id'];
 interface Props {
   // Optional: club admin dashboard passes the club directly to avoid an extra fetch
   club?: Club;
-  isClubAdmin?: boolean;
+  /** Who is looking: super admins see everything, and come here by URL. */
+  role?: Exclude<UserRole, null>;
 }
 
-export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
+export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
+  const isSuperAdmin = role === 'superadmin';
+  const isBonspielAdmin = role === 'bonspieladmin';
   const { clubId } = useParams<{ clubId: string }>();
   const navigate = useNavigate();
   // The tab lives in the URL so going back from a league or a sheet's games
   // lands on the tab it was opened from.
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab: Tab = TABS.find((t) => t.id === searchParams.get('tab'))?.id ?? 'sheets';
-  const settingsGroups = SETTINGS_GROUPS.filter((g) => !g.superAdminOnly || !isClubAdmin);
+  const tabs = TABS.filter((t) => t.bonspielAdmin || !isBonspielAdmin);
+  const tab: Tab = tabs.find((t) => t.id === searchParams.get('tab'))?.id ?? 'sheets';
+  const settingsGroups = SETTINGS_GROUPS.filter((g) => !g.superAdminOnly || isSuperAdmin);
   const settingsGroup: SettingsGroup =
     settingsGroups.find((g) => g.id === searchParams.get('section'))?.id ?? 'scoreboards';
 
@@ -83,13 +90,15 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
   }, [resolvedClubId]);
 
   // Here rather than in the Leagues tab so the tab can show the count.
+  // Bonspiel admins have no access to leagues.
   useEffect(() => {
+    if (isBonspielAdmin) return;
     return onSnapshot(collection(db, 'clubs', resolvedClubId, 'leagues'), (snap) => {
       setLeagues(
         snap.docs.map((d) => leagueFrom(d.id, d.data())).sort(compareLeagues),
       );
     });
-  }, [resolvedClubId]);
+  }, [resolvedClubId, isBonspielAdmin]);
 
   function handleViewGames(sheetId: string) {
     if (!confirmLeave()) return;
@@ -126,10 +135,10 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         )}
       </div>
 
-      <ClubHeader club={club} canRename={!isClubAdmin} />
+      <ClubHeader club={club} canRename={isSuperAdmin} />
 
       <div className={styles.tabs} role="tablist">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -152,62 +161,73 @@ export function ClubDetail({ club: clubProp, isClubAdmin = false }: Props) {
         <SheetsSection
           clubId={resolvedClubId}
           sheets={sheets}
-          canManageSheets={!isClubAdmin}
+          canManageSheets={isSuperAdmin}
+          readOnly={isBonspielAdmin}
           onViewGames={handleViewGames}
         />
         <RecentGames clubId={resolvedClubId} clubName={club.name} sheets={sheets} />
       </div>
 
-      <div role="tabpanel" hidden={tab !== 'leagues'}>
-        <LeaguesSection clubId={resolvedClubId} leagues={leagues} onOpenLeague={handleOpenLeague} />
+      <div role="tabpanel" hidden={tab !== 'bonspiels'}>
+        <BonspielsSection />
       </div>
 
-      <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
-        <DisplaysSection clubId={resolvedClubId} sheets={sheets} onCount={setDisplayLinkCount} />
-        <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
-      </div>
+      {/* The rest is not mounted at all for bonspiel admins, whom the rules
+          keep from reading it. */}
+      {!isBonspielAdmin && (
+        <>
+          <div role="tabpanel" hidden={tab !== 'leagues'}>
+            <LeaguesSection clubId={resolvedClubId} leagues={leagues} onOpenLeague={handleOpenLeague} />
+          </div>
 
-      {/* Every group stays mounted too, for the same reason. */}
-      <div role="tabpanel" hidden={tab !== 'settings'} className={styles.settingsLayout}>
-        <nav className={styles.settingsNav} aria-label="Settings">
-          {settingsGroups.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              aria-current={settingsGroup === g.id ? 'page' : undefined}
-              className={settingsGroup === g.id ? styles.settingsNavSelected : styles.settingsNavItem}
-              onClick={() => selectSettingsGroup(g.id)}
+          <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
+            <DisplaysSection clubId={resolvedClubId} sheets={sheets} onCount={setDisplayLinkCount} />
+            <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
+          </div>
+
+          {/* Every group stays mounted too, for the same reason. */}
+          <div role="tabpanel" hidden={tab !== 'settings'} className={styles.settingsLayout}>
+            <nav className={styles.settingsNav} aria-label="Settings">
+              {settingsGroups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  aria-current={settingsGroup === g.id ? 'page' : undefined}
+                  className={settingsGroup === g.id ? styles.settingsNavSelected : styles.settingsNavItem}
+                  onClick={() => selectSettingsGroup(g.id)}
+                >
+                  {g.label}
+                  {g.superAdminOnly && <span className={common.adminTag}>Super admin</span>}
+                </button>
+              ))}
+            </nav>
+            <select
+              className={`${common.input} ${styles.settingsSelect}`}
+              aria-label="Settings"
+              value={settingsGroup}
+              onChange={(e) => selectSettingsGroup(e.target.value as SettingsGroup)}
             >
-              {g.label}
-              {g.superAdminOnly && <span className={common.adminTag}>Super admin</span>}
-            </button>
-          ))}
-        </nav>
-        <select
-          className={`${common.input} ${styles.settingsSelect}`}
-          aria-label="Settings"
-          value={settingsGroup}
-          onChange={(e) => selectSettingsGroup(e.target.value as SettingsGroup)}
-        >
-          {settingsGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
-        </select>
+              {settingsGroups.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+            </select>
 
-        <div>
-          <div hidden={settingsGroup !== 'scoreboards'}>
-            <RockColorsSection clubId={resolvedClubId} />
-            <ScoreboardPinSection clubId={resolvedClubId} />
-          </div>
-          <div hidden={settingsGroup !== 'integrations'}>
-            <ApiKeySection clubId={resolvedClubId} canRegenerate={!isClubAdmin} />
-            <WebhookSection clubId={resolvedClubId} />
-          </div>
-          {!isClubAdmin && (
-            <div hidden={settingsGroup !== 'admins'}>
-              <AdminsSection clubId={resolvedClubId} clubName={club.name} />
+            <div>
+              <div hidden={settingsGroup !== 'scoreboards'}>
+                <RockColorsSection clubId={resolvedClubId} />
+                <ScoreboardPinSection clubId={resolvedClubId} />
+              </div>
+              <div hidden={settingsGroup !== 'integrations'}>
+                <ApiKeySection clubId={resolvedClubId} canRegenerate={isSuperAdmin} />
+                <WebhookSection clubId={resolvedClubId} />
+              </div>
+              {isSuperAdmin && (
+                <div hidden={settingsGroup !== 'admins'}>
+                  <AdminsSection clubId={resolvedClubId} clubName={club.name} />
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

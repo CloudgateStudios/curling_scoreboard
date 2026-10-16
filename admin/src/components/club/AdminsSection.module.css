@@ -26,7 +26,77 @@
   color: #666;
 }
 
-.adminRow .removeButton {
+.clubRole,
+.bonspielRole {
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.clubRole {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+.bonspielRole {
+  background: #fef7e0;
+  color: #b06000;
+}
+
+.rowActions {
+  display: flex;
+  gap: 1rem;
   margin-left: auto;
+}
+
+.adminRow .removeButton {
   color: #c5221f;
+}
+
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.roleOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.roleOption:has(input:checked) {
+  border-color: #1a73e8;
+  background: #f4f8fe;
+}
+
+.roleOption input {
+  margin-top: 0.2rem;
+}
+
+.roleLabel {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.roleDescription {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b06000;
 }

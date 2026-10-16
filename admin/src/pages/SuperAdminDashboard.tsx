@@ -22,6 +22,7 @@ export function SuperAdminDashboard() {
   const [newClubName, setNewClubName] = useState('');
   const [clubId, setClubId] = useState('');
   const [clubIdEdited, setClubIdEdited] = useState(false);
+  const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [scoreboardPin, setScoreboardPin] = useState('');
@@ -65,6 +66,7 @@ export function SuperAdminDashboard() {
       await provisionClub({
         clubName: newClubName,
         clubId: clubId || undefined,
+        adminName,
         adminEmail,
         adminPassword,
         scoreboardPin,
@@ -72,6 +74,7 @@ export function SuperAdminDashboard() {
       setNewClubName('');
       setClubId('');
       setClubIdEdited(false);
+      setAdminName('');
       setAdminEmail('');
       setAdminPassword('');
       setScoreboardPin('');
@@ -117,6 +120,16 @@ export function SuperAdminDashboard() {
                   onChange={(e) => handleClubIdChange(e.target.value)}
                   pattern="[a-z0-9-]+"
                   title="Lowercase letters, numbers, and hyphens only"
+                  required
+                />
+              </label>
+              <label className={styles.label}>
+                Admin Name
+                <input
+                  className={styles.input}
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  maxLength={80}
                   required
                 />
               </label>
