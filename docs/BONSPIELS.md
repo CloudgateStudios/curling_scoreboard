@@ -74,7 +74,7 @@ clubs/{clubId}/bonspiels/{bonspielId}        // the plan
     id: string                 // "A7"; stable, as games and results refer to it
     drawId: string
     sheetId: string
-    eventId?: string
+    eventId: string            // every game is in exactly one event
     label?: string             // "A Final"
     team1: Side                // throws the first rock color
     team2: Side
@@ -245,10 +245,10 @@ Each phase can be released on its own.
    picks (wins, head to head, last stone draw); bonspiels in the REST API
    and the completed game webhook.
 
-## Open questions
+## Decided
 
-- Should a game's hammer come from the plan, for events that decide it
-  ahead, or always be set on the scoreboard as now?
-- Do any clubs need a game between teams from different events, such as a
-  final between the A and B winners? The model allows it; the bracket view
-  would show it under one of them.
+- Hammer stays a choice on the scoreboard, as in any other game. The plan
+  says nothing about it.
+- Every game belongs to one event, and no game is between the winners of
+  two events. Teams still move between events, as a loss in A drops a team
+  into B, but an event's final is always its own.
