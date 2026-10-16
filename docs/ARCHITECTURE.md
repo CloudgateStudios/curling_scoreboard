@@ -456,7 +456,9 @@ dimmed and says "No game". The page tries each number of columns and keeps
 the one that makes the cards largest, then sizes everything in a card from
 its width, so any number of sheets fills the screen without scrolling, on a
 1080p or 4K TV or one turned on its side. A clock in the corner, on the
-server's time, shows the screen is still running.
+server's time, shows the screen is still running. The mouse pointer hides
+once it has been still for three seconds and comes back when it moves, so
+a mouse left by a TV does not sit over the scores.
 
 A club can give the screen its own title in place of "Live Scores", and a
 logo beside it, on the portal's Displays tab. Both are kept in `private/displayBranding`, which the page listens to

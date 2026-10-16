@@ -234,6 +234,21 @@ connect({
 });
 
 window.addEventListener('resize', () => layout(grid.childElementCount));
+
+// Hides the pointer after it has been still for a few seconds, and shows it
+// again as soon as it moves, so it is there to use on a computer but does
+// not sit over the scores on a TV.
+const CURSOR_IDLE_MS = 3_000;
+let cursorTimer = null;
+function wakeCursor() {
+  document.documentElement.classList.remove('cursor-idle');
+  clearTimeout(cursorTimer);
+  cursorTimer = setTimeout(() => document.documentElement.classList.add('cursor-idle'), CURSOR_IDLE_MS);
+}
+for (const type of ['pointermove', 'pointerdown', 'keydown']) {
+  window.addEventListener(type, wakeCursor, { passive: true });
+}
+wakeCursor();
 // Keeps the clock right, and takes a final score down ten minutes after the
 // game with no write to say so.
 setInterval(render, 15_000);

@@ -19,6 +19,12 @@ body {
   color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   overflow: hidden;
+}
+
+/* A mouse left over a TV would sit on the scores for good, so the pointer
+   hides once it has been still for a while, and comes back when it moves. */
+html.cursor-idle,
+html.cursor-idle body {
   cursor: none;
 }
 
