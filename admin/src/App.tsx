@@ -6,6 +6,7 @@ import { ClubAdminDashboard } from './pages/ClubAdminDashboard';
 import { ClubDetail } from './pages/ClubDetail';
 import { GameHistory } from './pages/GameHistory';
 import { LeagueDetail } from './pages/LeagueDetail';
+import { BonspielDetail } from './pages/BonspielDetail';
 import { Layout } from './components/Layout';
 
 export function App() {
@@ -39,6 +40,7 @@ export function App() {
               <Route path="/clubs/:clubId" element={<ClubDetail />} />
               <Route path="/clubs/:clubId/sheets/:sheetId/games" element={<GameHistory />} />
               <Route path="/clubs/:clubId/leagues/:leagueId" element={<LeagueDetail user={user} />} />
+              <Route path="/clubs/:clubId/bonspiels/:bonspielId" element={<BonspielDetail user={user} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           ) : (
@@ -48,6 +50,7 @@ export function App() {
               {user.role === 'clubadmin' && (
                 <Route path="/leagues/:leagueId" element={<LeagueDetail user={user} />} />
               )}
+              <Route path="/bonspiels/:bonspielId" element={<BonspielDetail user={user} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}

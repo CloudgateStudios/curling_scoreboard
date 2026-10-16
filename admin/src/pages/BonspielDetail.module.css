@@ -1,0 +1,88 @@
+/* Below the portal's top bar, which is 56px and sticky too. On a phone the
+   header would take too much of the screen, so it scrolls away there. */
+.stickyHeader {
+  position: sticky;
+  top: 56px;
+  z-index: 10;
+  background: #f4f6f9;
+  padding: 0.5rem 0 0.25rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 700px) {
+  .stickyHeader {
+    position: static;
+  }
+}
+
+.stickyHeader > :global(*) {
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.problems {
+  margin: 0.35rem 0 0 1.1rem;
+}
+
+.fieldRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.fieldRow > label {
+  flex: 1;
+}
+
+.endsInput {
+  max-width: 9rem;
+  min-width: 7rem;
+}
+
+.winner {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #137333;
+  align-self: center;
+}
+
+.paste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.pasteInput {
+  font-family: inherit;
+  resize: vertical;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.columns > *,
+.column > :last-child {
+  margin-bottom: 1.5rem;
+}
+
+.column > :last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 1000px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

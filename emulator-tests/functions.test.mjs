@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { FINAL_SHOWN_MS, sheetView } from '../functions/lib/display/state.js';
+import { resolveBonspiel } from '../functions/lib/bonspiels/state.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -1525,5 +1526,218 @@ describe('display pages', () => {
       const res = await fetch(`${PAGES_URL}${path}`);
       assert.equal(res.status, 404, path);
     }
+  });
+});
+
+describe('working out a bonspiel', () => {
+  // Four teams, two A event semis feeding the A final, and their losers
+  // dropping into a one game B event.
+  const plan = {
+    events: [{ id: 'a', name: 'A Event' }, { id: 'b', name: 'B Event' }],
+    teams: [
+      { id: 't1', name: 'Smith' }, { id: 't2', name: 'Jones' },
+      { id: 't3', name: 'Brown' }, { id: 't4', name: 'Lee' },
+    ],
+    games: [
+      { id: 'a1', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+      { id: 'a2', eventId: 'a', team1: { teamId: 't3' }, team2: { teamId: 't4' } },
+      {
+        id: 'a3', eventId: 'a',
+        team1: { from: 'a1', result: 'winner' }, team2: { from: 'a2', result: 'winner' },
+      },
+      {
+        id: 'b1', eventId: 'b',
+        team1: { from: 'a1', result: 'loser' }, team2: { from: 'a2', result: 'loser' },
+      },
+    ],
+  };
+  const withResults = (results) => ({
+    ...plan,
+    games: plan.games.map((g) => (results[g.id] ? { ...g, result: results[g.id] } : g)),
+  });
+  const recorded = (team1, score1, team2, score2) => ({
+    sheetId: 's1', sheetGameId: 'g1', finishedAt: Timestamp.now(),
+    team1: { ...team1, score: score1 }, team2: { ...team2, score: score2 },
+  });
+
+  test('leaves games that come from others waiting until those have results', () => {
+    const { games, events } = resolveBonspiel(plan, {});
+    assert.equal(games.a1.status, 'ready');
+    assert.deepEqual(games.a1.team1, { teamId: 't1', name: 'Smith' });
+    assert.equal(games.a3.status, 'waiting');
+    assert.equal(games.a3.team1, null);
+    assert.deepEqual(events, { a: { finalGameId: 'a3' }, b: { finalGameId: 'b1' } });
+  });
+
+  test('sends winners and losers on once the coordinator gives results', () => {
+    const { games } = resolveBonspiel(withResults({ a1: { winner: 'team2' }, a2: { winner: 'team1' } }), {});
+    assert.deepEqual([games.a3.team1?.name, games.a3.team2?.name], ['Jones', 'Brown']);
+    assert.deepEqual([games.b1.team1?.name, games.b1.team2?.name], ['Smith', 'Lee']);
+    assert.equal(games.a3.status, 'ready');
+    assert.equal(games.a1.resultFrom, 'coordinator');
+  });
+
+  test('names each event\'s winner from its final', () => {
+    const { events } = resolveBonspiel(withResults({
+      a1: { winner: 'team1' }, a2: { winner: 'team1' }, a3: { winner: 'team2', team1Score: 3, team2Score: 6 },
+      b1: { winner: 'team1' },
+    }), {});
+    assert.deepEqual(events.a, { finalGameId: 'a3', winner: { teamId: 't3', name: 'Brown' } });
+    assert.deepEqual(events.b, { finalGameId: 'b1', winner: { teamId: 't2', name: 'Jones' } });
+  });
+
+  test('takes a scoreboard\'s result, and who actually played', () => {
+    const { games } = resolveBonspiel(plan, {
+      // Lee played in place of Jones.
+      a1: recorded({ teamId: 't1', name: 'Smith' }, 7, { teamId: 't4', name: 'Lee' }, 4),
+    });
+    assert.equal(games.a1.status, 'final');
+    assert.equal(games.a1.resultFrom, 'scoreboard');
+    assert.deepEqual([games.a1.team1Score, games.a1.team2Score, games.a1.winner], [7, 4, 'team1']);
+    assert.deepEqual(games.a1.team2, { teamId: 't4', name: 'Lee' });
+    assert.deepEqual(games.b1.team1, { teamId: 't4', name: 'Lee' });
+  });
+
+  test('lets the coordinator\'s result win over a scoreboard\'s', () => {
+    const { games } = resolveBonspiel(withResults({ a1: { winner: 'team2' } }), {
+      a1: recorded({ teamId: 't1', name: 'Smith' }, 7, { teamId: 't2', name: 'Jones' }, 4),
+    });
+    assert.equal(games.a1.winner, 'team2');
+    assert.equal(games.a1.resultFrom, 'coordinator');
+    assert.equal(games.a3.team1?.name, 'Jones');
+  });
+
+  test('keeps a scoreboard\'s scores when the coordinator only settles a tie', () => {
+    const { games } = resolveBonspiel(withResults({ a1: { winner: 'team2' } }), {
+      a1: recorded({ teamId: 't1', name: 'Smith' }, 5, { teamId: 't2', name: 'Jones' }, 5),
+    });
+    assert.deepEqual([games.a1.team1Score, games.a1.team2Score, games.a1.winner], [5, 5, 'team2']);
+    assert.equal(games.a1.tied, undefined);
+    assert.equal(games.a3.team1?.name, 'Jones');
+  });
+
+  test('sends nobody on from a tied game', () => {
+    const { games } = resolveBonspiel(plan, {
+      a1: recorded({ teamId: 't1', name: 'Smith' }, 5, { teamId: 't2', name: 'Jones' }, 5),
+    });
+    assert.equal(games.a1.status, 'final');
+    assert.equal(games.a1.tied, true);
+    assert.equal(games.a1.winner, undefined);
+    assert.equal(games.a3.team1, null);
+  });
+
+  test('leaves a game waiting that refers to itself or to a game that is not there', () => {
+    const { games } = resolveBonspiel({
+      ...plan,
+      games: [
+        { id: 'x', eventId: 'a', team1: { from: 'x', result: 'winner' }, team2: { teamId: 't1' } },
+        { id: 'y', eventId: 'a', team1: { from: 'gone', result: 'winner' }, team2: { teamId: 'nobody' } },
+      ],
+    }, {});
+    assert.equal(games.x.status, 'waiting');
+    assert.equal(games.x.team1, null);
+    assert.deepEqual([games.y.team1, games.y.team2], [null, null]);
+  });
+
+  test('gives an event with no single final no winner', () => {
+    const { events } = resolveBonspiel({
+      ...plan,
+      games: [
+        { id: 'r1', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' }, result: { winner: 'team1' } },
+        { id: 'r2', eventId: 'a', team1: { teamId: 't3' }, team2: { teamId: 't4' }, result: { winner: 'team1' } },
+      ],
+    }, {});
+    assert.deepEqual(events.a, {});
+  });
+});
+
+describe('bonspiel state', () => {
+  const club = 'clubs/bonspiel-club';
+  const planDoc = db.doc(`${club}/bonspiels/fall`);
+  const stateDoc = db.doc(`${club}/bonspiels/fall/state/current`);
+  const plan = {
+    name: 'Fall Spiel', active: true, startDate: '2026-11-06', endDate: '2026-11-08', numberOfEnds: 8,
+    events: [{ id: 'a', name: 'A Event' }],
+    teams: [{ id: 't1', name: 'Smith' }, { id: 't2', name: 'Jones' }, { id: 't3', name: 'Brown' }],
+    draws: [{ id: 'd1', label: 'Draw 1', start: '2026-11-06T19:00' }, { id: 'd2', label: 'Draw 2', start: '2026-11-07T09:00' }],
+    games: [
+      { id: 'g1', label: 'A1', drawId: 'd1', sheetId: 's1', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+      {
+        id: 'g2', label: 'A2', drawId: 'd2', sheetId: 's1', eventId: 'a',
+        team1: { from: 'g1', result: 'winner' }, team2: { teamId: 't3' },
+      },
+    ],
+  };
+  const playedGame = (finishedAt, score1, score2, extra = {}) => ({
+    startedAt: Timestamp.fromMillis(finishedAt.toMillis() - 2 * 60 * 60 * 1000),
+    finishedAt,
+    numberOfEnds: 8,
+    bonspiel: { id: 'fall', name: 'Fall Spiel', gameId: 'g1' },
+    team1: { name: 'Smith', teamId: 't1', totalScore: score1, hadLastStoneFirstEnd: true },
+    team2: { name: 'Jones', teamId: 't2', totalScore: score2, hadLastStoneFirstEnd: false },
+    ends: [],
+    ...extra,
+  });
+
+  before(async () => {
+    await db.doc(club).set({ name: 'Bonspiel Club' });
+    await db.doc(`${club}/sheets/s1`).set({ name: 'Sheet 1' });
+  });
+
+  test('is worked out when the plan is saved', async () => {
+    await planDoc.set(plan);
+    const state = await waitFor('the state', async () => (await stateDoc.get()).data());
+    assert.equal(state.games.g1.status, 'ready');
+    assert.equal(state.games.g2.status, 'waiting');
+    assert.deepEqual(state.events.a, { finalGameId: 'g2' });
+    assert.deepEqual(state.results, {});
+  });
+
+  test('takes in a game a scoreboard played for the bonspiel', async () => {
+    await db.collection(`${club}/sheets/s1/games`).add(playedGame(Timestamp.now(), 6, 2));
+    const state = await waitFor('the result', async () => {
+      const data = (await stateDoc.get()).data();
+      return data?.games.g1.status === 'final' && data;
+    });
+    assert.equal(state.games.g1.winner, 'team1');
+    assert.equal(state.games.g1.sheetId, 's1');
+    assert.deepEqual(state.games.g2.team1, { teamId: 't1', name: 'Smith' });
+    assert.equal(state.results.g1.team1.score, 6);
+  });
+
+  test('keeps a later result over an earlier one delivered late', async () => {
+    await db.collection(`${club}/sheets/s1/games`).add(
+      playedGame(Timestamp.fromMillis(Date.now() - 60 * 60 * 1000), 1, 9),
+    );
+    // Then a game that does count, so there is something to wait for.
+    await db.collection(`${club}/sheets/s1/games`).add(playedGame(Timestamp.now(), 4, 5));
+    const state = await waitFor('the later result', async () => {
+      const data = (await stateDoc.get()).data();
+      return data?.games.g1.team2Score === 5 && data;
+    });
+    assert.equal(state.games.g1.winner, 'team2');
+    assert.deepEqual(state.games.g2.team1, { teamId: 't2', name: 'Jones' });
+  });
+
+  test('keeps the results when the plan changes', async () => {
+    await planDoc.set({ ...plan, teams: plan.teams.map((t) => (t.id === 't2' ? { ...t, name: 'Team Jones' } : t)) });
+    const state = await waitFor('the renamed team', async () => {
+      const data = (await stateDoc.get()).data();
+      return data?.games.g2.team1?.name === 'Team Jones' && data;
+    });
+    assert.equal(state.games.g1.status, 'final');
+  });
+
+  test('leaves games played for no bonspiel alone', async () => {
+    const before = (await stateDoc.get()).get('updatedAt');
+    const { bonspiel: _bonspiel, ...open } = playedGame(Timestamp.now(), 3, 3);
+    await db.collection(`${club}/sheets/s1/games`).add(open);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    assert.equal((await stateDoc.get()).get('updatedAt').toMillis(), before.toMillis());
+  });
+
+  test('is removed with the bonspiel', async () => {
+    await planDoc.delete();
+    await waitFor('the state to go', async () => !(await stateDoc.get()).exists);
   });
 });

@@ -578,6 +578,86 @@ await check('attack: bonspiel admin reads the leagues', 'deny', () =>
 await check('attack: bonspiel admin reads the display links', 'deny', () =>
   getDocs(collection(bonspielA, 'clubs/club-a/displayLinks')));
 
+// --- bonspiels, planned by club and bonspiel admins ---
+const bonspiel = {
+  name: 'Fall Spiel',
+  active: true,
+  startDate: '2026-11-06',
+  endDate: '2026-11-08',
+  numberOfEnds: 8,
+  events: [{ id: 'a', name: 'A Event' }],
+  teams: [{ id: 't1', name: 'Smith' }, { id: 't2', name: 'Jones' }],
+  draws: [{ id: 'd1', label: 'Draw 1', start: '2026-11-06T19:00' }],
+  games: [{
+    id: 'g1', label: 'A1', drawId: 'd1', sheetId: 'sheet-paired', eventId: 'a',
+    team1: { teamId: 't1' }, team2: { teamId: 't2' },
+  }],
+};
+
+await check('bonspiel admin: create a bonspiel', 'allow', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/fall'), bonspiel));
+
+await check('bonspiel admin: update a bonspiel with a result', 'allow', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/fall'), {
+    ...bonspiel, games: [{ ...bonspiel.games[0], result: { winner: 'team1' } }],
+  }));
+
+await check('bonspiel admin: list the bonspiels', 'allow', () =>
+  getDocs(collection(bonspielA, 'clubs/club-a/bonspiels')));
+
+await check('club admin: create a bonspiel', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/bonspiels/spring'), bonspiel));
+
+await check('club admin: read a bonspiel\'s state', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/bonspiels/fall/state/current')));
+
+await check('bonspiel admin: read a bonspiel\'s state', 'allow', () =>
+  getDoc(doc(bonspielA, 'clubs/club-a/bonspiels/fall/state/current')));
+
+await check('attack: bonspiel admin writes a bonspiel\'s state', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/fall/state/current'), { games: {} }));
+
+await check('attack: club admin writes a bonspiel\'s state', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/bonspiels/fall/state/current'), { games: {} }));
+
+await check('attack: bonspiel admin creates a bonspiel in another club', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-b/bonspiels/fall'), bonspiel));
+
+await check('attack: bonspiel admin reads another club\'s bonspiels', 'deny', () =>
+  getDocs(collection(bonspielA, 'clubs/club-b/bonspiels')));
+
+await check('attack: scoreboard reads a bonspiel', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/fall')));
+
+await check('attack: unpaired device reads a bonspiel', 'deny', () =>
+  getDoc(doc(anon, 'clubs/club-a/bonspiels/fall')));
+
+await check('attack: bonspiel with no name', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, name: '' }));
+
+await check('attack: bonspiel with a date that is not a date', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, startDate: 'Friday' }));
+
+await check('attack: bonspiel with no ends', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, numberOfEnds: 0 }));
+
+await check('attack: bonspiel with an unexpected field', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, owner: 'attacker' }));
+
+await check('attack: bonspiel missing its games', 'deny', () => {
+  const { games: _games, ...withoutGames } = bonspiel;
+  return setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), withoutGames);
+});
+
+await check('attack: bonspiel with far too many games', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'),
+    { ...bonspiel, games: Array.from({ length: 301 }, (_, i) => ({ ...bonspiel.games[0], id: `g${i}` })) }));
+
+await check('bonspiel admin: delete a bonspiel', 'allow', async () => {
+  await setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/temporary'), bonspiel);
+  await deleteDoc(doc(bonspielA, 'clubs/club-a/bonspiels/temporary'));
+});
+
 // --- deployment info for remote refresh ---
 await check('app config: unpaired scoreboard reads the deployed build', 'allow', () =>
   getDoc(doc(unauthed, 'appConfig/scoreboard')));

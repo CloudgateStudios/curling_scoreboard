@@ -191,3 +191,93 @@ export interface DisplayLink {
   /** Updated at most hourly, when a display starts with the link. */
   lastUsedAt?: Timestamp;
 }
+
+/** A part of a bonspiel with its own final and winner: "A Event", "Pool 2". */
+export interface BonspielEvent {
+  id: string;
+  name: string;
+  /** For this event's games, in place of the bonspiel's. */
+  numberOfEnds?: number;
+}
+
+export interface BonspielTeam {
+  /** Stable across renames, so games can refer to the team. */
+  id: string;
+  name: string;
+  externalId?: string;
+}
+
+export interface BonspielDraw {
+  id: string;
+  label: string;
+  /** `YYYY-MM-DDTHH:mm` in the club's local time, as a datetime-local input
+   *  gives it. */
+  start: string;
+}
+
+/** Where one side of a game gets its team: placed in the plan, out of an
+ *  earlier game, or not decided yet. */
+export type BonspielSide =
+  | { teamId: string }
+  | { from: string; result: 'winner' | 'loser' }
+  | null;
+
+export interface BonspielGame {
+  /** Random and never shown, so the label can change without breaking the
+   *  games that come from this one. */
+  id: string;
+  /** What everyone calls the game: "A7". */
+  label: string;
+  drawId: string;
+  sheetId: string;
+  eventId: string;
+  /** Throws the first rock color. */
+  team1: BonspielSide;
+  team2: BonspielSide;
+  /** Set by the coordinator, and wins over a scoreboard's result. */
+  result?: { winner: TeamSlot; team1Score?: number; team2Score?: number };
+}
+
+/** A bonspiel's plan, which its coordinators write. */
+export interface Bonspiel {
+  id: string;
+  name: string;
+  /** Inactive bonspiels are kept but not offered on scoreboards. */
+  active: boolean;
+  /** `YYYY-MM-DD`, inclusive. */
+  startDate: string;
+  endDate: string;
+  numberOfEnds: number;
+  events: BonspielEvent[];
+  teams: BonspielTeam[];
+  draws: BonspielDraw[];
+  games: BonspielGame[];
+}
+
+/** A team in a game of a bonspiel, as far as the functions know. */
+export interface BonspielStateTeam {
+  /** Absent when a scoreboard recorded a team the plan does not have. */
+  teamId?: string;
+  name: string;
+}
+
+/** One game as the functions work it out from the plan and the results. */
+export interface BonspielStateGame {
+  status: 'waiting' | 'ready' | 'final';
+  team1: BonspielStateTeam | null;
+  team2: BonspielStateTeam | null;
+  team1Score?: number;
+  team2Score?: number;
+  winner?: TeamSlot;
+  /** A result with no winner, which a game others come from cannot have. */
+  tied?: true;
+  resultFrom?: 'coordinator' | 'scoreboard';
+  sheetId?: string;
+  sheetGameId?: string;
+}
+
+/** A bonspiel's state/current document, written only by the functions. */
+export interface BonspielState {
+  games: Record<string, BonspielStateGame>;
+  events: Record<string, { finalGameId?: string; winner?: BonspielStateTeam }>;
+}

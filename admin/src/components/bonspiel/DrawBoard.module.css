@@ -1,0 +1,198 @@
+.scroller {
+  overflow-x: auto;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.board {
+  border-collapse: separate;
+  border-spacing: 0.5rem;
+  margin: -0.5rem 0;
+}
+
+.board th,
+.board td {
+  vertical-align: top;
+  text-align: left;
+}
+
+.board thead th {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+  min-width: 11rem;
+  padding: 0 0.25rem;
+}
+
+/* The draws stay in view while the sheets scroll past. */
+.drawHeading,
+.drawCell {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: white;
+}
+
+.board thead .drawHeading {
+  min-width: 10rem;
+}
+
+.drawCell {
+  padding: 0.25rem 0.5rem 0.25rem 0;
+}
+
+.drawFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.drawLabel,
+.drawStart {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.drawLabel {
+  font-weight: 600;
+}
+
+.drawLabel:focus,
+.drawStart:focus {
+  outline: none;
+  border-color: #1a73e8;
+}
+
+.drawWhen {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #666;
+}
+
+.removeDraw {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.75rem;
+  color: #999;
+  cursor: pointer;
+}
+
+.removeDraw:hover {
+  color: #d93025;
+  text-decoration: underline;
+}
+
+.addGame {
+  width: 100%;
+  min-height: 6rem;
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  background: transparent;
+  color: #999;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.addGame:hover {
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+.game,
+.gameFinal {
+  width: 100%;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #dfe3ea;
+  border-radius: 8px;
+  background: #fbfcfe;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.gameFinal {
+  background: white;
+  border-color: #c7d7c9;
+}
+
+.game:hover,
+.gameFinal:hover {
+  border-color: #1a73e8;
+}
+
+.gameHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.gameLabel {
+  font-weight: 700;
+}
+
+.gameEvent {
+  color: #666;
+}
+
+.side,
+.sideWon {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.sideWon {
+  font-weight: 700;
+}
+
+.sideName {
+  display: flex;
+  flex-direction: column;
+}
+
+.sideFrom {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.unknown {
+  color: #888;
+  font-style: italic;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a phone the draw column keeps to its name and time, leaving room for
+   the games. Its start time is changed on a wider screen. */
+@media (max-width: 700px) {
+  .board thead .drawHeading {
+    min-width: 6.5rem;
+  }
+
+  .drawFields {
+    width: 6.5rem;
+  }
+
+  .drawStart {
+    display: none;
+  }
+
+  .board thead th {
+    min-width: 9.5rem;
+  }
+}
