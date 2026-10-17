@@ -4,9 +4,10 @@ The plan for running bonspiels in the app: planning the draws and brackets
 in the admin portal, showing them on a monitor at the club, and letting each
 sheet's scoreboard start the right game with the right teams.
 
-The first phase is built: the plans, their state, and planning them in the
-portal. How those work is under Bonspiels in
-[ARCHITECTURE.md](ARCHITECTURE.md), along with the data model. This file is
+The first two phases are built: the plans, their state, and planning them
+in the portal, with a knockout template and a bracket view. How those work
+is under Bonspiels in [ARCHITECTURE.md](ARCHITECTURE.md), along with the
+data model. This file is
 what is still to come, and goes once it is all built.
 
 ## What a bonspiel looks like
@@ -30,20 +31,6 @@ So the app never stores a format. It stores the games, and for each side of
 each game where its team comes from. Any format can be written that way,
 and anything the links below cannot express is left for a person to fill in.
 
-## Admin portal, still to come
-
-- **Templates** fill in the games and their draws and sheets. Clubs have no
-  other software to import from, so these come next. The first is a
-  knockout: the number of teams, the number of events, and which round's
-  losers go to which event (A round 1 losers to B, round 2 to C, and so on),
-  with byes for team counts that are not a power of two. The template then
-  places the games into the draws in order, never playing a game before the
-  ones it comes from, and never giving a team two games in a row without a
-  draw off where there is room. A template is only a starting point: the plan
-  it makes is edited by hand like any other.
-- **Brackets**: each event drawn the way the display page draws it, so the
-  coordinator sees what the monitor will.
-
 ## Display page
 
 `/display/{clubId}/bonspiels/{bonspielId}`, a new display link page,
@@ -56,8 +43,8 @@ room's:
   Smith vs winner of A4").
 - **Schedule**: every draw and sheet, with the teams and results so far. It
   works for any format.
-- **Brackets**: one event at a time, its games in columns by how many games
-  each one comes after, ending at the final and its winner. A team coming in
+- **Brackets**: one event at a time, laid out as the portal's bracket view
+  is, ending at the final and its winner. A team coming in
   from another event is shown as where it came from ("Loser of A3").
 
 Live scores come from `displayState`, which the page already listens to.
@@ -90,7 +77,8 @@ Each phase can be released on its own.
 1. **Plans** (built): the data model, rules and their tests, the state
    functions, and the portal's setup, draw board, results and duplicate. A
    coordinator can run a bonspiel, entering results by hand.
-2. **Templates**: the knockout template, and the portal's bracket view.
+2. **Templates** (built): the knockout template, and the portal's bracket
+   view.
 3. **Scoreboards**: the setup screen's bonspiel game, tagging games, and
    results coming in on their own. The functions already take in tagged
    games.

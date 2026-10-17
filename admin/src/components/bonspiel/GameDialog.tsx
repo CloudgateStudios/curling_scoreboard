@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { compareNatural, describeSide, earlierGames, sortedDraws, teamsPlacedInDraw } from '../../lib/bonspiels';
 import type { Bonspiel, BonspielGame, BonspielSide, BonspielStateGame, Sheet, TeamSlot } from '../../types';
 import common from '../../styles/common.module.css';
-import styles from './GameDialog.module.css';
+import styles from './BonspielDialog.module.css';
 
 interface Props {
   bonspiel: Bonspiel;

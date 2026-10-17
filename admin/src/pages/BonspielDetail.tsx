@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
@@ -12,8 +12,10 @@ import {
 import type {
   AuthUser, Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielState, BonspielTeam, Sheet,
 } from '../types';
+import { BracketView } from '../components/bonspiel/BracketView';
 import { DrawBoard } from '../components/bonspiel/DrawBoard';
 import { GameDialog } from '../components/bonspiel/GameDialog';
+import { TemplateDialog } from '../components/bonspiel/TemplateDialog';
 import common from '../styles/common.module.css';
 import styles from './BonspielDetail.module.css';
 
@@ -55,6 +57,10 @@ function BonspielPage({ user }: Props) {
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
   const [duplicating, setDuplicating] = useState(false);
+  const [templating, setTemplating] = useState(false);
+  // The draw board or the brackets, kept in the URL so a reload stays put.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get('view') === 'brackets' ? 'brackets' : 'draws';
   useUnsavedChanges(dirty);
 
   function markDirty(value: boolean) {
@@ -420,25 +426,49 @@ function BonspielPage({ user }: Props) {
       </div>
 
       <div className={common.section}>
-        <div className={common.sectionHeader}>
-          <h2 className={common.sectionTitle}>Draws ({draws.length})</h2>
-          <button className={common.ghostButton} onClick={addDraw}>+ Add Draw</button>
+        <div className={`${common.sectionHeader} ${styles.boardHeader}`}>
+          <div className={styles.viewTabs} role="tablist" aria-label="View">
+            {(['draws', 'brackets'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                className={view === v ? styles.viewTabSelected : styles.viewTab}
+                onClick={() => setSearchParams(v === 'draws' ? {} : { view: v }, { replace: true })}
+              >
+                {v === 'draws' ? `Draws (${draws.length})` : 'Brackets'}
+              </button>
+            ))}
+          </div>
+          <div className={common.rowActions}>
+            <button className={common.ghostButton} onClick={() => setTemplating(true)} disabled={sheets.length === 0}>
+              Use a Template
+            </button>
+            {view === 'draws' && <button className={common.ghostButton} onClick={addDraw}>+ Add Draw</button>}
+          </div>
         </div>
-        <p className={common.blurb}>
-          A row for each draw and a column for each sheet. Tap a game to choose its teams, or an empty
-          cell to add one. A team can come from the winner or loser of a game in an earlier draw, and
-          fills in once that game has a result.
-        </p>
-        <DrawBoard
-          bonspiel={bonspiel}
-          draws={draws}
-          sheets={sheets}
-          state={state}
-          onEditDraw={editDraw}
-          onRemoveDraw={removeDraw}
-          onOpenGame={(game) => setEditing(game)}
-          onAddGame={newGame}
-        />
+        {view === 'draws' ? (
+          <>
+            <p className={common.blurb}>
+              A row for each draw and a column for each sheet. Tap a game to choose its teams, or an empty
+              cell to add one. A team can come from the winner or loser of a game in an earlier draw, and
+              fills in once that game has a result.
+            </p>
+            <DrawBoard
+              bonspiel={bonspiel}
+              draws={draws}
+              sheets={sheets}
+              state={state}
+              onEditDraw={editDraw}
+              onRemoveDraw={removeDraw}
+              onOpenGame={(game) => setEditing(game)}
+              onAddGame={newGame}
+            />
+          </>
+        ) : (
+          <BracketView bonspiel={bonspiel} sheets={sheets} state={state} onOpenGame={(game) => setEditing(game)} />
+        )}
       </div>
 
       {editing && (
@@ -451,6 +481,18 @@ function BonspielPage({ user }: Props) {
           onSave={saveGame}
           onRemove={removeGame}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {templating && (
+        <TemplateDialog
+          bonspiel={bonspiel}
+          sheets={sheets}
+          onApply={(plan) => {
+            edit(plan);
+            setTemplating(false);
+          }}
+          onClose={() => setTemplating(false)}
         />
       )}
 

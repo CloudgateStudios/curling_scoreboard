@@ -86,3 +86,30 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.viewTabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.viewTab,
+.viewTabSelected {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.35rem 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+}
+
+.viewTabSelected {
+  color: #1a1a2e;
+  border-bottom-color: #1a73e8;
+}
+
+.boardHeader {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
