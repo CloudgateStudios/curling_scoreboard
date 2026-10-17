@@ -83,6 +83,36 @@ service cloud.firestore {
           && league.teams.size() <= 300;
     }
 
+    // The outline of a bonspiel's plan, as for leagues: the people running
+    // it are trusted with what is in it, and the portal checks that the
+    // games make sense. This keeps the document a sensible size and shape
+    // for the functions that work out its state.
+    function isBonspiel(bonspiel) {
+      return bonspiel.keys().hasAll(['name', 'active', 'startDate', 'endDate', 'numberOfEnds',
+                                     'events', 'teams', 'draws', 'games'])
+          && bonspiel.keys().hasOnly(['name', 'active', 'startDate', 'endDate', 'numberOfEnds',
+                                      'events', 'teams', 'draws', 'games'])
+          && bonspiel.name is string
+          && bonspiel.name.size() > 0
+          && bonspiel.name.size() <= 80
+          && bonspiel.active is bool
+          && bonspiel.startDate is string
+          && bonspiel.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && bonspiel.endDate is string
+          && bonspiel.endDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && bonspiel.numberOfEnds is int
+          && bonspiel.numberOfEnds >= 1
+          && bonspiel.numberOfEnds <= 12
+          && bonspiel.events is list
+          && bonspiel.events.size() <= 16
+          && bonspiel.teams is list
+          && bonspiel.teams.size() <= 64
+          && bonspiel.draws is list
+          && bonspiel.draws.size() <= 60
+          && bonspiel.games is list
+          && bonspiel.games.size() <= 300;
+    }
+
     // Super admins can read and write everything.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
@@ -211,6 +241,19 @@ service cloud.firestore {
         allow read: if isClubAdmin(clubId) || isClubScoreboard(clubId);
         allow create, update: if isClubAdmin(clubId) && isLeague(request.resource.data);
         allow delete: if isClubAdmin(clubId);
+      }
+
+      // Bonspiels, planned by club and bonspiel admins. Each one's state,
+      // who plays in each game and how it went, is worked out from the plan
+      // and the results by the functions, which alone write it.
+      match /bonspiels/{bonspielId} {
+        allow read, delete: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
+        allow create, update: if (isClubAdmin(clubId) || isBonspielAdmin(clubId))
+            && isBonspiel(request.resource.data);
+
+        match /state/{docId} {
+          allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
+        }
       }
 
       match /sheets/{sheetId} {

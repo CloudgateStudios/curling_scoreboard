@@ -3,8 +3,9 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { compareLeagues, leagueFrom } from '../lib/leagues';
+import { bonspielFrom } from '../lib/bonspiels';
 import { confirmLeave } from '../lib/unsavedChanges';
-import type { Club, League, Sheet, UserRole } from '../types';
+import type { Bonspiel, Club, League, Sheet, UserRole } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
@@ -64,6 +65,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
   const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [bonspiels, setBonspiels] = useState<Bonspiel[]>([]);
   // Reported by the Displays tab, which holds the list, for the tab's count.
   const [displayLinkCount, setDisplayLinkCount] = useState(0);
 
@@ -100,6 +102,17 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
     });
   }, [resolvedClubId, isBonspielAdmin]);
 
+  // Here for the same reason, newest first.
+  useEffect(() => {
+    return onSnapshot(collection(db, 'clubs', resolvedClubId, 'bonspiels'), (snap) => {
+      setBonspiels(
+        snap.docs
+          .map((d) => bonspielFrom(d.id, d.data()))
+          .sort((a, b) => b.startDate.localeCompare(a.startDate) || a.name.localeCompare(b.name)),
+      );
+    });
+  }, [resolvedClubId]);
+
   function handleViewGames(sheetId: string) {
     if (!confirmLeave()) return;
     // Club admins don't have /clubs/:clubId in their routes
@@ -113,6 +126,11 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
   function handleOpenLeague(leagueId: string) {
     if (!confirmLeave()) return;
     navigate(clubProp ? `/leagues/${leagueId}` : `/clubs/${resolvedClubId}/leagues/${leagueId}`);
+  }
+
+  function handleOpenBonspiel(bonspielId: string) {
+    if (!confirmLeave()) return;
+    navigate(clubProp ? `/bonspiels/${bonspielId}` : `/clubs/${resolvedClubId}/bonspiels/${bonspielId}`);
   }
 
   function selectTab(next: Tab) {
@@ -150,6 +168,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
             {t.label}
             {t.id === 'sheets' && <span className={styles.tabCount}>{sheets.length}</span>}
             {t.id === 'leagues' && <span className={styles.tabCount}>{leagues.length}</span>}
+            {t.id === 'bonspiels' && <span className={styles.tabCount}>{bonspiels.length}</span>}
             {t.id === 'displays' && <span className={styles.tabCount}>{displayLinkCount}</span>}
           </button>
         ))}
@@ -169,7 +188,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
       </div>
 
       <div role="tabpanel" hidden={tab !== 'bonspiels'}>
-        <BonspielsSection />
+        <BonspielsSection clubId={resolvedClubId} bonspiels={bonspiels} onOpenBonspiel={handleOpenBonspiel} />
       </div>
 
       {/* The rest is not mounted at all for bonspiel admins, whom the rules

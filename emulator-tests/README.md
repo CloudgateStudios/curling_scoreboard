@@ -67,6 +67,8 @@ Access the app depends on:
   a display reading its own link's settings
 - a club admin setting, changing and removing the warm room's title and
   logo, and a display reading them
+- club and bonspiel admins creating, updating, listing and deleting their
+  club's bonspiels, and reading each one's state
 
 Access that must stay denied:
 
@@ -108,6 +110,10 @@ Access that must stay denied:
   logo, one over the size limit, a title over 60 characters, or anything
   else beside them; a display reading another club's branding or changing
   its own; a paired scoreboard reading it
+- anyone writing a bonspiel's state, which only the functions do; a
+  bonspiel admin reading or writing another club's bonspiels; a scoreboard
+  or an unpaired device reading one; a bonspiel with no name, a date that is
+  not one, no ends, a missing or unknown field, or too many games
 
 ### Functions
 
@@ -146,6 +152,16 @@ Access that must stay denied:
   a display can read its own link but not another. Resetting a link gives
   it a new token, keeps its settings, turns the old token away and removes
   its Auth user; a removed link cannot be reset.
+- A bonspiel's state is worked out when its plan is saved; takes in a game
+  a scoreboard played for it; keeps a later result over an earlier one
+  delivered late; keeps the results when the plan changes; is not written
+  for a game played for no bonspiel; and is removed with the bonspiel.
+  Working it out sends winners and losers on once a game has a result, from
+  the coordinator or a scoreboard, with the coordinator's winning; takes who
+  actually played from a scoreboard; keeps a scoreboard's scores when the
+  coordinator only settles a tie; sends nobody on from a tied game; leaves a
+  game that refers to itself or to a missing game waiting; and names an
+  event's winner only when it has one final.
 - The display function serves the score bug, the warm room screen and a
   display link's own page with
   their strict security headers,

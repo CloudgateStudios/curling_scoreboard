@@ -119,6 +119,68 @@ clubs/{clubId}/leagues/{leagueId}
     externalId?: string      // the team's ID in the club's own league software
   }]
 
+clubs/{clubId}/bonspiels/{bonspielId}  // a bonspiel's plan, written by its coordinators
+  name: string
+  active: bool
+  startDate: string          // 'YYYY-MM-DD', the club's local time, inclusive
+  endDate: string
+  numberOfEnds: int          // 1 to 12, for every game unless its event says otherwise
+  events: [{ id: string, name: string, numberOfEnds?: int }]   // "A Event"
+  teams: [{ id: string, name: string, externalId?: string }]
+  draws: [{
+    id: string
+    label: string            // "Draw 5"
+    start: string            // 'YYYY-MM-DDTHH:mm', the club's local time
+  }]
+  games: [{
+    id: string               // random; never shown, so the label can change
+    label: string            // "A7"
+    drawId: string
+    sheetId: string
+    eventId: string          // every game is in exactly one event
+    team1: Side              // throws the first rock color
+    team2: Side
+    result?: {               // the coordinator's; wins over a scoreboard's
+      winner: 'team1' | 'team2'
+      team1Score?: int
+      team2Score?: int
+    }
+  }]
+  // Side is { teamId } (placed), { from: gameId, result: 'winner' | 'loser' }
+  // (out of an earlier game), or null (to be decided).
+
+clubs/{clubId}/bonspiels/{bonspielId}/state/current   // written by the functions
+  updatedAt: timestamp
+  results: {                 // the latest game a scoreboard recorded for each game
+    [gameId]: {
+      sheetId: string
+      sheetGameId: string    // the games document under the sheet
+      finishedAt: timestamp
+      team1: { teamId?: string, name: string, score: int }
+      team2: { ...the same }
+    }
+  }
+  games: {
+    [gameId]: {
+      status: 'waiting' | 'ready' | 'final'
+      team1: { teamId?: string, name: string } | null   // null until known
+      team2: { ...the same }
+      team1Score?: int
+      team2Score?: int
+      winner?: 'team1' | 'team2'
+      tied?: true            // a result with no winner, so nobody goes on
+      resultFrom?: 'coordinator' | 'scoreboard'
+      sheetId?: string       // where a scoreboard's result came from
+      sheetGameId?: string
+    }
+  }
+  events: {
+    [eventId]: {
+      finalGameId?: string   // the event's one game whose winner goes nowhere else in it
+      winner?: { teamId?: string, name: string }
+    }
+  }
+
 clubs/{clubId}/admins/{uid}
   email: string
   displayName: string | null
@@ -194,7 +256,7 @@ admin scripts.
 | -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
-| Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history. Changes nothing               |
+| Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
 | Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`; read its own link |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
@@ -598,6 +660,54 @@ copied when the teams are picked, so the record stands by itself whatever
 happens to the league afterwards, and it is what a later score reporter needs
 to match a result to a team.
 
+## Bonspiels
+
+A bonspiel runs over a few days, with up to 32 teams. The draw times and
+sheets are known ahead, but most of the teams in a game come out of the
+games before it. The format changes from one bonspiel to the next, so none is
+stored: the plan is a list of games, and each side of a game says where its
+team comes from. A side is a team placed by the coordinator, the winner or
+loser of a game in an earlier draw, or to be decided. A knockout's A, B and C
+events, games placed by hand, and anything in between are all written that
+way. An event's final is its one game whose winner goes to no other game in
+the event, and the final's winner wins the event. Nothing has to mark it.
+
+Club admins and bonspiel admins plan bonspiels on the portal's Bonspiels tab.
+The portal saves the whole plan at once, after checking that it makes sense:
+every game is in a draw and an event and on one of the club's sheets, one
+game to a sheet in each draw, no team twice in a draw, a game only comes from
+games in earlier draws, and no game's winner or loser goes to two games.
+The rules only check the plan's outline, as they do for leagues.
+
+Each bonspiel's state, who is in each game and how it went, is kept apart
+from the plan in `state/current`, and only the functions write it. A
+coordinator saving the plan then never overwrites a result that has just
+come in, or the other way round, and the bracket is worked out in one place.
+`resolveBonspiel` in `functions/src/bonspiels/state.ts` works it out in draw
+order: a placed team is that team, and a side from another game is that
+game's winner or loser once it has one. A game's result is the coordinator's,
+if there is one, otherwise the latest game a scoreboard recorded for it. A
+scoreboard's result also says who actually played, which wins over the plan,
+so a game played by other teams after a last minute change still sends the
+right teams on. A tied game sends nobody on until the coordinator says who
+won. A game that refers to one that does not exist, or to itself, is left
+waiting rather than failing the bonspiel.
+
+Two functions in `functions/src/bonspiels/triggers.ts` rebuild the state in a
+transaction:
+
+- `syncBonspielPlan` on every write to a plan. A deleted plan takes its
+  state with it.
+- `syncBonspielResult` on each completed game that carries a bonspiel tag,
+  `bonspiel: { id, name, gameId }`, adding it to the state's `results`
+  unless a later game is already kept for that bonspiel game. Other games
+  are let go without a read.
+
+Like the display summary, both rebuild from the documents as they are, never
+from the event, so a late or repeated delivery writes the same thing again.
+No scoreboard tags its games yet; until one does, coordinators enter results
+in the portal. What is still to come is in [BONSPIELS.md](BONSPIELS.md).
+
 ## Scoreboard status
 
 So the admin portal can show what each sheet is running, a paired scoreboard
@@ -626,9 +736,10 @@ Routes depend on the signed in role:
 
 - Super admin: `/` lists every club and creates new ones; `/clubs/:clubId`
   shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
-  `/clubs/:clubId/leagues/:leagueId` a league.
+  `/clubs/:clubId/leagues/:leagueId` a league;
+  `/clubs/:clubId/bonspiels/:bonspielId` a bonspiel.
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
-  `/leagues/:leagueId` a league.
+  `/leagues/:leagueId` a league; `/bonspiels/:bonspielId` a bonspiel.
 - Bonspiel admin: the club admin's routes without the league page.
 
 The club page has five tabs, the one open kept in the URL (`?tab=`). Bonspiel
@@ -639,7 +750,13 @@ and Bonspiels; the other tabs are not mounted for them at all.
 - **Sheets & Games**: sheets with their live games, scoreboard status and
   pairing codes, beside the games from the last seven days.
 - **Leagues**: the club's leagues.
-- **Bonspiels**: a placeholder for now.
+- **Bonspiels**: the club's bonspiels, newest first. Each opens on its own
+  page: its details, events and teams (typed, or pasted one to a line), and
+  a draw board with the draws down the side and the sheets across. Tapping a
+  game sets its teams and its result; tapping an empty cell adds one. The
+  board shows each game as the functions last worked it out, with the edits
+  not yet saved laid over it. Duplicate copies a bonspiel's events, draws and
+  games to new dates, without its teams or results, to run it again.
 - **Displays**: the display links, and the warm room screen's title and logo.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
