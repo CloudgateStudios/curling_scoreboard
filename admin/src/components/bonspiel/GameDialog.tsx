@@ -16,10 +16,13 @@ interface Props {
   onClose: () => void;
 }
 
-type SideKind = 'tbd' | 'team' | 'winner' | 'loser';
+type SideKind = 'tbd' | 'team' | 'winner' | 'loser' | 'place';
 
 const kindOf = (side: BonspielSide): SideKind =>
-  side === null ? 'tbd' : 'teamId' in side ? 'team' : side.result;
+  side === null ? 'tbd' : 'teamId' in side ? 'team' : 'rank' in side ? 'place' : side.result;
+
+// The most places a pool can send on: one per team.
+const MAX_PLACE = 16;
 
 /** One game of a bonspiel: where it is played, who is in it and, once it has
  *  been, how it went. Changes go back to the page, which saves them. */
@@ -33,7 +36,9 @@ export function GameDialog({ bonspiel, game: initial, sheets, state, isNew, onSa
   const teams = [...bonspiel.teams].sort((a, b) => compareNatural(a.name, b.name));
   const recorded = state?.sheetGameId ? state : undefined;
   const recordedSheet = recorded && sheets.find((s) => s.id === recorded.sheetId)?.name;
-  const plan = { teams: bonspiel.teams, games: bonspiel.games };
+  const plan = { teams: bonspiel.teams, games: bonspiel.games, events: bonspiel.events };
+  // Events whose standings a side can come from: the others.
+  const otherEvents = bonspiel.events.filter((e) => e.id !== game.eventId);
 
   function sidePicker(slot: TeamSlot, label: string) {
     const side = game[slot];
@@ -43,6 +48,7 @@ export function GameDialog({ bonspiel, game: initial, sheets, state, isNew, onSa
     function setKind(next: SideKind) {
       if (next === 'tbd') return setSide(null);
       if (next === 'team') return setSide(teams[0] ? { teamId: teams[0].id } : null);
+      if (next === 'place') return setSide(otherEvents[0] ? { rank: 1, eventId: otherEvents[0].id } : null);
       // Keeps the game when only winner and loser are swapped.
       const from = side && 'from' in side ? side.from : sources[0]?.id;
       setSide(from ? { from, result: next } : null);
@@ -58,7 +64,23 @@ export function GameDialog({ bonspiel, game: initial, sheets, state, isNew, onSa
             <option value="team" disabled={teams.length === 0}>A team</option>
             <option value="winner" disabled={sources.length === 0}>Winner of a game</option>
             <option value="loser" disabled={sources.length === 0}>Loser of a game</option>
+            <option value="place" disabled={otherEvents.length === 0}>A place in a pool</option>
           </select>
+          {side && 'rank' in side && (
+            <>
+              <select className={common.input} aria-label={`${label}: place`} value={side.rank}
+                onChange={(e) => setSide({ ...side, rank: Number(e.target.value) })}>
+                {Array.from({ length: MAX_PLACE }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>#{n}</option>
+                ))}
+              </select>
+              <select className={common.input} aria-label={`${label}: event`} value={side.eventId}
+                onChange={(e) => setSide({ ...side, eventId: e.target.value })}>
+                {!otherEvents.some((e) => e.id === side.eventId) && <option value={side.eventId}>Removed event</option>}
+                {otherEvents.map((e) => <option key={e.id} value={e.id}>in {e.name || 'Unnamed event'}</option>)}
+              </select>
+            </>
+          )}
           {side && 'teamId' in side && (
             <select className={common.input} aria-label={`${label}: team`} value={side.teamId}
               onChange={(e) => setSide({ teamId: e.target.value })}>

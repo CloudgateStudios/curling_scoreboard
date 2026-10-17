@@ -141,7 +141,10 @@ Access that must stay denied:
   document from before the API key migration, and leaves the scoreboard's
   device status out of sheet responses. It lists a club's leagues and
   returns one, only with the club's own key and only the documented fields,
-  and reports the league and teams on live and completed games.
+  and reports the league and teams on live and completed games. It lists a
+  club's bonspiels newest first, and returns one with only the documented
+  fields: each pool's standings, and each game's teams, scores and where
+  its sides come from, worked out from the results kept.
 - The display summary lists each sheet by name, with its live game cut down
   to what a display needs; follows a renamed sheet; is not written for a
   scoreboard's status report; keeps a finished game as the last game once
@@ -169,9 +172,13 @@ Access that must stay denied:
   actually played from a scoreboard; keeps a scoreboard's scores when the
   coordinator only settles a tie; sends nobody on from a tied game; leaves a
   game that refers to itself or to a missing game waiting; and names an
-  event's winner only when it has one final.
+  event's winner only when it has one final. A pool, an event with more than
+  one final, gets standings by points, then the games between teams level
+  on points, then the coordinator's tiebreak order, with teams still level
+  sharing a place; and a place in a pool sends its team on only once the
+  pool is played and nobody shares it.
 - The bonspiel screen moves to the next draw half an hour before it starts,
-  names each side as far as it is known, gives a result only once a game has
+  names each side as far as it is known, a place in a pool among them, gives a result only once a game has
   one, and lays out an event's bracket as the portal does. The display
   summary says which bonspiel game a live or finished game is.
 - The display function serves the score bug, the warm room screen, a

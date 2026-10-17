@@ -29,6 +29,10 @@ tags:
     description: Individual sheet data with the current live game, if one is in progress.
   - name: Leagues
     description: A club's leagues and the teams in them.
+  - name: Bonspiels
+    description: >-
+      A club's bonspiels: their events, teams, draws and games, with who is in
+      each game and how it went.
   - name: Games
     description: Historical completed game records for a specific sheet.
   - name: Webhooks
@@ -128,6 +132,23 @@ components:
           type: string
           example: Monday Night
 
+    GameBonspiel:
+      type: object
+      description: >-
+        The bonspiel game a game was played as. `gameId` is a game's `id` in
+        the bonspiel's plan, as the bonspiel endpoint returns it.
+      required: [id, name, gameId]
+      properties:
+        id:
+          type: string
+          example: fall-spiel
+        name:
+          type: string
+          example: Fall Spiel
+        gameId:
+          type: string
+          example: g7Hq2
+
     LeagueDraw:
       type: object
       description: One regular time a league plays each week, in the club's local time.
@@ -196,9 +217,213 @@ components:
           items:
             $ref: '#/components/schemas/LeagueTeam'
 
+    BonspielSummary:
+      type: object
+      required: [id, name, active, startDate, endDate]
+      properties:
+        id:
+          type: string
+          example: fall-spiel
+        name:
+          type: string
+          example: Fall Spiel
+        active:
+          type: boolean
+          description: Whether scoreboards offer the bonspiel's games on its dates.
+        startDate:
+          type: [string, 'null']
+          format: date
+          example: '2026-11-06'
+        endDate:
+          type: [string, 'null']
+          format: date
+          example: '2026-11-08'
+
+    BonspielTeam:
+      type: object
+      required: [teamId, name]
+      properties:
+        teamId:
+          type: [string, 'null']
+          description: The team's `id` in the bonspiel, or null for a team a scoreboard named that is not in it.
+          example: t3
+        name:
+          type: string
+          example: Team Smith
+
+    BonspielStanding:
+      type: object
+      required: [team, place, tied, played, wins, losses, ties, points]
+      properties:
+        team:
+          $ref: '#/components/schemas/BonspielTeam'
+        place:
+          type: integer
+          minimum: 1
+          example: 1
+        tied:
+          type: boolean
+          description: Whether the team shares its place with another.
+        played:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        ties:
+          type: integer
+        points:
+          type: integer
+          description: Two for a win and one for a tie.
+
+    BonspielEvent:
+      type: object
+      required: [id, name, numberOfEnds, finalGameId, winner, standings, complete]
+      properties:
+        id:
+          type: string
+          example: a
+        name:
+          type: string
+          example: A Event
+        numberOfEnds:
+          type: [integer, 'null']
+          description: The event's number of ends, or null to use the bonspiel's.
+        finalGameId:
+          type: [string, 'null']
+          description: >-
+            The event's final: its one game whose winner goes to no other game in
+            it. Null for a pool, which has standings instead.
+        winner:
+          oneOf:
+            - $ref: '#/components/schemas/BonspielTeam'
+            - type: 'null'
+          description: The final's winner, once it is played.
+        standings:
+          type: [array, 'null']
+          items:
+            $ref: '#/components/schemas/BonspielStanding'
+          description: >-
+            A pool's standings, best first: by points, then the points from the
+            games between teams level on points, then the order the coordinator
+            gave after a last stone draw or tiebreak game. Null for an event
+            with a final.
+        complete:
+          type: [boolean, 'null']
+          description: Whether every game in a pool has a result. Null for an event with a final.
+
+    BonspielSideSource:
+      type: object
+      description: >-
+        Where a side's team comes from: a team the coordinator placed, the
+        winner or loser of another game, or a place in a pool's standings.
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [team, winner, loser, place]
+        teamId:
+          type: string
+          description: For `team`.
+        gameId:
+          type: string
+          description: For `winner` and `loser`.
+        eventId:
+          type: string
+          description: For `place`, the pool.
+        place:
+          type: integer
+          minimum: 1
+          description: For `place`.
+
+    BonspielGameSide:
+      type: object
+      required: [from, team, score]
+      properties:
+        from:
+          oneOf:
+            - $ref: '#/components/schemas/BonspielSideSource'
+            - type: 'null'
+          description: Null for a side still to be decided.
+        team:
+          oneOf:
+            - $ref: '#/components/schemas/BonspielTeam'
+            - type: 'null'
+          description: The team on this side, once it is known.
+        score:
+          type: [integer, 'null']
+
+    BonspielGame:
+      type: object
+      required: [id, label, drawId, sheetId, eventId, status, team1, team2, winner]
+      properties:
+        id:
+          type: string
+          example: g7Hq2
+        label:
+          type: string
+          example: A7
+        drawId:
+          type: string
+        sheetId:
+          type: string
+        eventId:
+          type: string
+        status:
+          type: string
+          enum: [waiting, ready, final]
+          description: >-
+            `waiting` until both teams are known, `ready` once they are, and
+            `final` once the game has a result.
+        team1:
+          $ref: '#/components/schemas/BonspielGameSide'
+        team2:
+          $ref: '#/components/schemas/BonspielGameSide'
+        winner:
+          type: [string, 'null']
+          enum: [team1, team2, null]
+          description: Null until the game has a result, and for a tied game.
+
+    Bonspiel:
+      allOf:
+        - $ref: '#/components/schemas/BonspielSummary'
+        - type: object
+          required: [numberOfEnds, events, teams, draws, games]
+          properties:
+            numberOfEnds:
+              type: [integer, 'null']
+              example: 8
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/BonspielEvent'
+            teams:
+              type: array
+              items:
+                $ref: '#/components/schemas/LeagueTeam'
+            draws:
+              type: array
+              items:
+                type: object
+                required: [id, label, start]
+                properties:
+                  id:
+                    type: string
+                  label:
+                    type: string
+                    example: Draw 5
+                  start:
+                    type: string
+                    description: "'YYYY-MM-DDTHH:mm' in the club's local time."
+                    example: '2026-11-07T09:00'
+            games:
+              type: array
+              items:
+                $ref: '#/components/schemas/BonspielGame'
+
     LiveGame:
       type: object
-      required: [updatedAt, currentEnd, numberOfEnds, league, team1, team2, ends]
+      required: [updatedAt, currentEnd, numberOfEnds, league, bonspiel, team1, team2, ends]
       properties:
         updatedAt:
           type: [string, 'null']
@@ -223,6 +448,11 @@ components:
             - $ref: '#/components/schemas/GameLeague'
             - type: 'null'
           description: Null for an open game, which is not part of a league.
+        bonspiel:
+          oneOf:
+            - $ref: '#/components/schemas/GameBonspiel'
+            - type: 'null'
+          description: Null for a game that is not part of a bonspiel.
         team1:
           $ref: '#/components/schemas/LiveGameTeam'
         team2:
@@ -343,7 +573,7 @@ components:
 
     Game:
       type: object
-      required: [id, startedAt, finishedAt, numberOfEnds, league, team1, team2, ends]
+      required: [id, startedAt, finishedAt, numberOfEnds, league, bonspiel, team1, team2, ends]
       properties:
         id:
           type: string
@@ -364,6 +594,11 @@ components:
             - $ref: '#/components/schemas/GameLeague'
             - type: 'null'
           description: Null for an open game, and for games recorded before leagues were.
+        bonspiel:
+          oneOf:
+            - $ref: '#/components/schemas/GameBonspiel'
+            - type: 'null'
+          description: Null for a game that is not part of a bonspiel.
         team1:
           $ref: '#/components/schemas/GameTeam'
         team2:
@@ -435,8 +670,8 @@ webhooks:
       description: |
         Sent to the club's webhook URL when Finish Game is tapped on one of its
         scoreboards. The club chooses in the admin portal whether every game is
-        sent or only league games, where a league team was picked for at least
-        one side.
+        sent, only league games, where a league team was picked for at least
+        one side, or only bonspiel games, which carry `game.bonspiel`.
 
         The URL must be `https` and publicly reachable. Any 2xx answer counts as
         delivered. No answer within 8 seconds, a 5xx or a 429 is tried twice
@@ -601,6 +836,106 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Club or league not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clubs/{clubId}/bonspiels:
+    get:
+      summary: List bonspiels
+      description: Returns the club's bonspiels, newest first, inactive ones included.
+      operationId: listBonspiels
+      tags: [Bonspiels]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+      responses:
+        '200':
+          description: The club's bonspiels. Empty if it has none.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bonspiels]
+                properties:
+                  bonspiels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BonspielSummary'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /clubs/{clubId}/bonspiels/{bonspielId}:
+    get:
+      summary: Get bonspiel
+      description: |
+        Returns a bonspiel with its events, teams, draws and games. Each game
+        says where each side's team comes from, the team once it is known, and
+        the score once it is played; each pool has its standings.
+      operationId: getBonspiel
+      tags: [Bonspiels]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+        - name: bonspielId
+          in: path
+          required: true
+          description: Unique identifier for the bonspiel within the club.
+          schema:
+            type: string
+          example: fall-spiel
+      responses:
+        '200':
+          description: Bonspiel found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bonspiel'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club or bonspiel not found.
           content:
             application/json:
               schema:

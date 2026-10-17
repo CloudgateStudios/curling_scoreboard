@@ -14,7 +14,7 @@ import {
   STATUS_MESSAGES, config, connect, el, endLabel, followLink, followsLink, now, sheetView, textColorOn,
 } from './display.js';
 import {
-  bracketRounds, currentDraw, drawStart, eventsWithGames, gamesIn, nextDraw, resultOf, sideOf, sortedDraws,
+  bracketRounds, currentDraw, drawStart, eventsWithGames, gamesIn, isPool, nextDraw, resultOf, sideOf, sortedDraws,
 } from './bonspiel-model.js';
 
 const VIEWS = ['now', 'schedule', 'brackets', 'cycle'];
@@ -209,9 +209,34 @@ function scheduleScreen(at) {
   return { subtitle: 'Schedule', content: table };
 }
 
+// A pool: its standings, as far as its games have been played.
+function standingsScreen(event) {
+  const eventState = bonspielState?.events?.[event.id];
+  const rows = eventState?.standings ?? [];
+  const table = el('div', 'standings');
+  table.style.setProperty('--rows', String(Math.max(rows.length, 1)));
+  for (const heading of ['', 'Team', 'Played', 'Won', 'Lost', 'Tied', 'Points']) {
+    table.append(el('span', 'standings-head', heading));
+  }
+  for (const row of rows) {
+    table.append(
+      el('span', 'standings-place', `${row.place}${row.tied ? '=' : ''}`),
+      el('span', 'standings-name', row.name),
+      el('span', 'standings-number', String(row.played)),
+      el('span', 'standings-number', String(row.wins)),
+      el('span', 'standings-number', String(row.losses)),
+      el('span', 'standings-number', String(row.ties)),
+      el('span', 'standings-points', String(row.points)),
+    );
+  }
+  const content = rows.length ? table : el('p', 'empty', 'No games played yet.');
+  return { subtitle: eventState?.complete ? `${event.name} · Final standings` : event.name, content };
+}
+
 // One event as a bracket: its rounds in columns, each as tall as the
 // screen, so later rounds sit between the games that feed them.
 function bracketScreen(event, at) {
+  if (isPool(plan, event.id)) return standingsScreen(event);
   const rounds = bracketRounds(plan, event.id);
   const live = liveGames(at);
   const draws = new Map((plan.draws ?? []).map((d) => [d.id, d]));

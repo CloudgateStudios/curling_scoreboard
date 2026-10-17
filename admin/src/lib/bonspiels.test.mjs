@@ -3,8 +3,8 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addDays, addMinutes, bonspielData, bonspielFrom, bonspielProblems, bracketRounds, daysBetween,
-  describeSide, duplicateBonspiel, earlierGames, gamesPlacing, nextDrawStart, parseTeamNames,
-  suggestedGameLabel, teamsPlacedInDraw, withoutGames, withoutTeam,
+  describeSide, duplicateBonspiel, earlierGames, gamesPlacing, isPool, nextDrawStart, parseTeamNames,
+  suggestedGameLabel, teamsPlacedInDraw, withTiebreak, withoutGames, withoutTeam,
 } from './bonspiels.ts';
 
 const sheets = new Set(['s1', 's2']);
@@ -234,5 +234,78 @@ describe('bracketRounds', () => {
     });
     assert.deepEqual(bracketRounds(p, 'a').map((r) => r.map((g) => g.label)),
       [['A1', 'A2', 'A3'], ['A5', 'A6'], ['A Final']]);
+  });
+});
+
+describe('pools', () => {
+  // A pool of three on Friday, its winner and runner up in Saturday's final.
+  function pooled(extra = {}) {
+    const p = plan();
+    return {
+      ...p,
+      events: [{ id: 'pool', name: 'Pool A' }, { id: 'a', name: 'A Event' }],
+      games: [
+        game('p1', 'P1', 'd1', 's1', 'pool', { teamId: 't1' }, { teamId: 't2' }),
+        game('p2', 'P2', 'd1', 's2', 'pool', { teamId: 't3' }, { teamId: 't4' }),
+        game('f', 'Final', 'd2', 's1', 'a', { rank: 1, eventId: 'pool' }, { rank: 2, eventId: 'pool' }),
+      ],
+      ...extra,
+    };
+  }
+
+  test('reads and stores a place in a pool, and the pool\'s tiebreak', () => {
+    const p = pooled();
+    p.events[0].tiebreak = ['t2', 't1'];
+    const stored = bonspielData(p);
+    assert.deepEqual(stored.games[2].team1, { rank: 1, eventId: 'pool' });
+    assert.deepEqual(stored.events[0].tiebreak, ['t2', 't1']);
+    assert.deepEqual(bonspielFrom('x', stored), { id: 'x', ...p });
+  });
+
+  test('names a place by its pool', () => {
+    assert.equal(describeSide({ rank: 2, eventId: 'pool' }, pooled()), 'Pool A #2');
+  });
+
+  test('accepts places from a pool played out in earlier draws', () => {
+    assert.deepEqual(bonspielProblems(pooled(), sheets), []);
+  });
+
+  test('refuses a place from a pool still playing, from its own event, or given twice', () => {
+    const p = pooled();
+    // P1 moved into Saturday's draw, beside the final.
+    p.games[0] = { ...p.games[0], drawId: 'd2', sheetId: 's2' };
+    // A game sending Pool A's winner on again, and one taking a place in
+    // its own event.
+    p.games.push(game('x', 'Extra', 'd2', 's3', 'a', { rank: 1, eventId: 'pool' }, { teamId: 't3' }));
+    p.games.push(game('y', 'Odd', 'd1', 's3', 'pool', { rank: 3, eventId: 'pool' }, { teamId: 't3' }));
+    const problems = bonspielProblems(p, new Set(['s1', 's2', 's3']));
+    assert.ok(problems.includes('Final comes from Pool A\'s standings, but Pool A still has games in its draw or later.'));
+    assert.ok(problems.includes('Pool A #1 goes to both Final and Extra.'));
+    assert.ok(problems.includes('Odd comes from the standings of its own event.'));
+  });
+
+  test('refuses a place in an event that has been removed', () => {
+    const p = pooled();
+    p.games[2] = { ...p.games[2], team2: { rank: 2, eventId: 'gone' } };
+    assert.deepEqual(bonspielProblems(p, sheets), ['Final comes from an event that has been removed.']);
+  });
+
+  test('tells a pool from a knockout', () => {
+    assert.equal(isPool(pooled(), 'pool'), true);
+    assert.equal(isPool(pooled(), 'a'), false);
+    assert.equal(isPool(plan(), 'a'), false);
+  });
+
+  test('puts a tie\'s order into the tiebreak, in place of where its teams stood', () => {
+    assert.deepEqual(withTiebreak(['t1', 't2', 't9'], ['t2', 't1']), ['t9', 't2', 't1']);
+    assert.deepEqual(withTiebreak(undefined, ['t3']), ['t3']);
+  });
+
+  test('leaves last year\'s tiebreak behind when duplicated', () => {
+    const p = pooled();
+    p.events[0].tiebreak = ['t2'];
+    const copy = duplicateBonspiel({ id: 'x', ...p }, 'Next', '2027-11-05');
+    assert.equal(copy.events[0].tiebreak, undefined);
+    assert.deepEqual(copy.games[2].team1, { rank: 1, eventId: 'pool' });
   });
 });

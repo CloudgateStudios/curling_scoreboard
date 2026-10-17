@@ -373,6 +373,9 @@ await check('attack: club admin sets another club\'s webhook', 'deny', () =>
 await check('attack: webhook URL that is not https', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, url: 'http://hooks.example.com/abc' }));
 
+await check('webhook: club admin posts only bonspiel games', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, games: 'bonspiel' }));
+
 await check('attack: webhook with an unknown games setting', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/private/webhook'), { ...webhook, games: 'some' }));
 

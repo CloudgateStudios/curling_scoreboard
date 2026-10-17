@@ -18,6 +18,10 @@ String describeBonspielSide(
           ? l10n.bonspielSideWinnerOf(label)
           : l10n.bonspielSideLoserOf(label);
     }(),
+    RankSide(:final eventId, :final rank) => l10n.bonspielSidePlace(
+      bonspiel.eventById(eventId)?.name ?? '?',
+      rank,
+    ),
     PlacedSide() || null => l10n.bonspielSideToBeDecided,
   };
 }

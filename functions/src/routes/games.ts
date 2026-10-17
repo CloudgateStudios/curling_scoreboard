@@ -39,6 +39,14 @@ gamesRouter.get('/games', async (req: Request, res: Response) => {
   }
 });
 
+/** Which bonspiel game a game was, or null: only its bonspiel's ID and name
+ *  and its game's ID in the bonspiel, which /bonspiels/{id} lists. */
+export function bonspielTag(value: unknown): { id: string; name: string; gameId: string } | null {
+  const tag = value as FirebaseFirestore.DocumentData | null | undefined;
+  if (typeof tag?.['id'] !== 'string' || typeof tag['gameId'] !== 'string') return null;
+  return { id: tag['id'], name: typeof tag['name'] === 'string' ? tag['name'] : '', gameId: tag['gameId'] };
+}
+
 // Built field by field, so anything else kept on the game document stays out
 // of the API and the completed game webhook, which sends the same shape.
 export function buildGameResponse(id: string, d: FirebaseFirestore.DocumentData): object {
@@ -48,6 +56,7 @@ export function buildGameResponse(id: string, d: FirebaseFirestore.DocumentData)
     finishedAt: (d['finishedAt'] as Timestamp).toDate().toISOString(),
     numberOfEnds: d['numberOfEnds'] as number,
     league: d['league'] ?? null,
+    bonspiel: bonspielTag(d['bonspiel']),
     team1: d['team1'],
     team2: d['team2'],
     ends: d['ends'],

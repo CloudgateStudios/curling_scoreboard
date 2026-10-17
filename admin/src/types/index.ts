@@ -166,7 +166,7 @@ export interface AuthUser {
 }
 
 /** Which completed games a club's webhook is sent. */
-export type WebhookGames = 'all' | 'league';
+export type WebhookGames = 'all' | 'league' | 'bonspiel';
 
 /** How the last post to a club's webhook went, as the functions record it. */
 export interface WebhookStatus {
@@ -198,6 +198,9 @@ export interface BonspielEvent {
   name: string;
   /** For this event's games, in place of the bonspiel's. */
   numberOfEnds?: number;
+  /** For a pool: team IDs in the order that breaks ties its games leave,
+   *  such as by a last stone draw. */
+  tiebreak?: string[];
 }
 
 export interface BonspielTeam {
@@ -220,6 +223,8 @@ export interface BonspielDraw {
 export type BonspielSide =
   | { teamId: string }
   | { from: string; result: 'winner' | 'loser' }
+  /** The team in place [rank] of a pool's standings, once its games are done. */
+  | { rank: number; eventId: string }
   | null;
 
 export interface BonspielGame {
@@ -279,5 +284,25 @@ export interface BonspielStateGame {
 /** A bonspiel's state/current document, written only by the functions. */
 export interface BonspielState {
   games: Record<string, BonspielStateGame>;
-  events: Record<string, { finalGameId?: string; winner?: BonspielStateTeam }>;
+  events: Record<string, BonspielStateEvent>;
+}
+
+export interface BonspielStateEvent {
+  finalGameId?: string;
+  winner?: BonspielStateTeam;
+  /** For an event with no single final, a pool: its teams in order. */
+  standings?: BonspielStanding[];
+  /** Whether all its games are played, so the places are final. */
+  complete?: boolean;
+}
+
+export interface BonspielStanding extends BonspielStateTeam {
+  played: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  points: number;
+  /** 1 for first; teams tied for a place share it. */
+  place: number;
+  tied: boolean;
 }

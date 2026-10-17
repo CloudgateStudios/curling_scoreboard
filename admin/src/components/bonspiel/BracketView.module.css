@@ -52,3 +52,29 @@
   justify-content: space-around;
   gap: 0.5rem;
 }
+
+.standings {
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  min-width: 22rem;
+}
+
+.standings th,
+.standings td {
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.standings th {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.poolGames {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.5rem;
+}

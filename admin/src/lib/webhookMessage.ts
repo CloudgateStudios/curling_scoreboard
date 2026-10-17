@@ -42,7 +42,15 @@ export const MESSAGE_VARIABLES: MessageVariableGroup[] = [
     title: 'League',
     variables: [
       { name: 'league', description: 'League name, blank for open games', sample: 'Monday Night' },
-      { name: 'leagueAndSheet', description: '"League, Sheet", or just the sheet for open games', sample: 'Monday Night, Sheet 2' },
+      { name: 'leagueAndSheet', description: '"League, Sheet", "Bonspiel Game, Sheet" for a bonspiel game, or just the sheet for open games', sample: 'Monday Night, Sheet 2' },
+    ],
+  },
+  {
+    title: 'Bonspiel',
+    variables: [
+      { name: 'bonspiel', description: 'Bonspiel name, blank outside bonspiels', sample: 'Fall Spiel' },
+      { name: 'bonspielGame', description: 'The game\'s name in the bonspiel', sample: 'A7' },
+      { name: 'event', description: 'The game\'s event in the bonspiel', sample: 'A Event' },
     ],
   },
   {

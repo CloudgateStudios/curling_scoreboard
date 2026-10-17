@@ -48,6 +48,7 @@ const wholeNumber = (value: unknown): number | undefined =>
 function sideFrom(value: unknown): BonspielSide {
   if (!isData(value)) return null;
   if (str(value.teamId)) return { teamId: str(value.teamId) };
+  if (str(value.eventId) && wholeNumber(value.rank)) return { rank: wholeNumber(value.rank)!, eventId: str(value.eventId) };
   if (str(value.from) && (value.result === 'winner' || value.result === 'loser')) {
     return { from: str(value.from), result: value.result };
   }
@@ -74,7 +75,12 @@ export function bonspielFrom(id: string, data: Record<string, unknown>): Bonspie
     endDate: str(data.endDate),
     numberOfEnds: wholeNumber(data.numberOfEnds) ?? 8,
     events: list(data.events, (e) => (str(e.id)
-      ? { id: str(e.id), name: str(e.name), ...(wholeNumber(e.numberOfEnds) ? { numberOfEnds: wholeNumber(e.numberOfEnds) } : {}) }
+      ? {
+        id: str(e.id),
+        name: str(e.name),
+        ...(wholeNumber(e.numberOfEnds) ? { numberOfEnds: wholeNumber(e.numberOfEnds) } : {}),
+        ...(Array.isArray(e.tiebreak) ? { tiebreak: e.tiebreak.filter((t): t is string => typeof t === 'string') } : {}),
+      }
       : null)),
     teams: list(data.teams, (t) => (str(t.id)
       ? { id: str(t.id), name: str(t.name), ...(str(t.externalId) ? { externalId: str(t.externalId) } : {}) }
@@ -128,6 +134,7 @@ export function bonspielData(bonspiel: Omit<Bonspiel, 'id'>): Record<string, unk
       id: e.id,
       name: e.name.trim(),
       ...(e.numberOfEnds ? { numberOfEnds: e.numberOfEnds } : {}),
+      ...(e.tiebreak?.length ? { tiebreak: e.tiebreak } : {}),
     })),
     teams: bonspiel.teams.map((t) => ({
       id: t.id,
@@ -247,7 +254,8 @@ export function duplicateBonspiel(bonspiel: Bonspiel, name: string, startDate: s
     startDate,
     endDate: addDays(bonspiel.endDate, days),
     numberOfEnds: bonspiel.numberOfEnds,
-    events: bonspiel.events.map((e) => ({ ...e })),
+    // Who won last year's ties has nothing to say about this year's.
+    events: bonspiel.events.map(({ tiebreak: _tiebreak, ...e }) => ({ ...e })),
     teams: [],
     draws: bonspiel.draws.map((d) => ({ ...d, start: addDays(d.start, days) })),
     games: bonspiel.games.map(({ result: _result, ...g }) => ({
@@ -258,10 +266,17 @@ export function duplicateBonspiel(bonspiel: Bonspiel, name: string, startDate: s
   };
 }
 
-/** "Smith", "Winner of A3", "Loser of A3", or "To be decided". */
-export function describeSide(side: BonspielSide, bonspiel: Pick<Bonspiel, 'teams' | 'games'>): string {
+/** "Smith", "Winner of A3", "Loser of A3", "Pool A #1", or "To be decided". */
+export function describeSide(
+  side: BonspielSide,
+  bonspiel: Pick<Bonspiel, 'teams' | 'games'> & Partial<Pick<Bonspiel, 'events'>>,
+): string {
   if (side === null) return 'To be decided';
   if ('teamId' in side) return bonspiel.teams.find((t) => t.id === side.teamId)?.name || 'Removed team';
+  if ('rank' in side) {
+    const event = bonspiel.events?.find((e) => e.id === side.eventId)?.name || 'A removed event';
+    return `${event} #${side.rank}`;
+  }
   const label = bonspiel.games.find((g) => g.id === side.from)?.label || 'a removed game';
   return `${side.result === 'winner' ? 'Winner' : 'Loser'} of ${label}`;
 }
@@ -420,6 +435,10 @@ function checkGames(
         } else placedInDraw.set(key, game.id);
         continue;
       }
+      if ('rank' in side) {
+        checkPlace(bonspiel, game, name, side, draws, add, goesOn);
+        continue;
+      }
       const source = games.get(side.from);
       if (!source) {
         add(`${name} comes from a game that has been removed.`);
@@ -439,6 +458,36 @@ function checkGames(
       add(`${name} has the same team on both sides.`);
     }
   }
+}
+
+// A side that is a place in an event's standings: the event has to be
+// another one, played out in earlier draws, and each place goes to one game.
+function checkPlace(
+  bonspiel: Omit<Bonspiel, 'id'>,
+  game: BonspielGame,
+  name: string,
+  side: { rank: number; eventId: string },
+  draws: Map<string, BonspielDraw>,
+  add: (problem: string) => void,
+  goesOn: Map<string, string>,
+) {
+  const event = bonspiel.events.find((e) => e.id === side.eventId);
+  if (!event) {
+    add(`${name} comes from an event that has been removed.`);
+    return;
+  }
+  const eventName = event.name.trim() || 'an event';
+  if (event.id === game.eventId) {
+    add(`${name} comes from the standings of its own event.`);
+    return;
+  }
+  const start = draws.get(game.drawId)?.start;
+  const late = bonspiel.games.some((g) => g.eventId === event.id && (draws.get(g.drawId)?.start ?? '') >= (start ?? ''));
+  if (start !== undefined && late) add(`${name} comes from ${eventName}'s standings, but ${eventName} still has games in its draw or later.`);
+  const key = `${event.id}#${side.rank}`;
+  const taken = goesOn.get(key);
+  if (taken !== undefined) add(`${eventName} #${side.rank} goes to both ${taken} and ${name}.`);
+  else goesOn.set(key, name);
 }
 
 /** [bonspiel] without the games in [gameIds]. Sides that came from them are
@@ -516,4 +565,20 @@ export function bracketRounds(bonspiel: Pick<Bonspiel, 'games'>, eventId: string
     (rounds[r] ??= []).push(game);
   }
   return rounds.filter((r) => r !== undefined);
+}
+
+/** Whether [eventId] is a pool: an event with games but no single final,
+ *  such as a round robin, which its standings decide. Mirrors how the
+ *  functions tell the two apart. */
+export function isPool(bonspiel: Pick<Bonspiel, 'games'>, eventId: string): boolean {
+  const games = bonspiel.games.filter((g) => g.eventId === eventId);
+  const sentOn = new Set(games.flatMap((g) => [g.team1, g.team2])
+    .flatMap((side) => (side && 'from' in side && side.result === 'winner' ? [side.from] : [])));
+  return games.filter((g) => !sentOn.has(g.id)).length > 1;
+}
+
+/** [order] of a tie's teams put into an event's tiebreak, replacing where
+ *  any of them stood before. */
+export function withTiebreak(tiebreak: string[] | undefined, order: string[]): string[] {
+  return [...(tiebreak ?? []).filter((id) => !order.includes(id)), ...order];
 }

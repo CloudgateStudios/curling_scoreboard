@@ -323,6 +323,55 @@ html.cursor-idle body {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
+/* A pool's standings, a row a team, as large as the rows allow. */
+.standings {
+  flex: 1;
+  min-height: 0;
+  align-self: center;
+  width: min(100%, 140vh);
+  display: grid;
+  grid-template-columns: 3em minmax(0, 1fr) repeat(5, 4.5em);
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: start;
+  column-gap: 1em;
+  font-size: min(4vmin, calc(70vh / (var(--rows) + 1) / 1.8));
+}
+
+.standings > span {
+  display: flex;
+  align-items: center;
+  padding: 0.3em 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.standings-head {
+  font-size: 0.6em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.standings-place,
+.standings-number,
+.standings-points {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.standings-name,
+.standings-points {
+  font-weight: 700;
+}
+
+.standings-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.standings-points {
+  color: var(--final);
+}
+
 /* Brackets: a column a round, each as tall as the screen, its games spread
    out so a later round's games sit between those that feed them. The
    size follows the round with the most games. */

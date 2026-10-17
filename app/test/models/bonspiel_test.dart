@@ -177,6 +177,37 @@ void main() {
     ]);
   });
 
+  test("reads a place in a pool, and offers the pool's teams for it", () {
+    final bonspiel = Bonspiel.tryParse('x', {
+      ..._plan,
+      'games': [
+        ...(_plan['games'] as List).take(2),
+        {
+          'id': 'p1',
+          'label': 'Playoff',
+          'drawId': 'd2',
+          'sheetId': 's1',
+          'eventId': 'b',
+          'team1': {'rank': 1, 'eventId': 'a'},
+          'team2': {'rank': 0, 'eventId': 'a'},
+        },
+      ],
+    })!;
+    final playoff = bonspiel.gameById('p1')!;
+    expect(playoff.team1, isA<RankSide>());
+    expect((playoff.team1! as RankSide).rank, 1);
+    expect(playoff.team1!.toJson(), {'rank': 1, 'eventId': 'a'});
+    // No place 0.
+    expect(playoff.team2, isNull);
+    expect(bonspiel.eventById('a')?.name, 'A Event');
+    expect(bonspiel.likelyTeams(playoff).map((t) => t.name), [
+      'Smith',
+      'Jones',
+      'Brown',
+      'Lee',
+    ]);
+  });
+
   test('round trips through the cache', () {
     final bonspiel = _bonspiel({
       'a3': {

@@ -2,8 +2,8 @@ import 'package:curling_scoreboard/models/league.dart';
 import 'package:flutter/foundation.dart';
 
 /// Where one side of a bonspiel game gets its team: placed by the
-/// coordinator, or out of an earlier game. A side still to be decided is
-/// null.
+/// coordinator, out of an earlier game, or a place in a pool's standings. A
+/// side still to be decided is null.
 @immutable
 sealed class BonspielSide {
   const BonspielSide();
@@ -12,6 +12,11 @@ sealed class BonspielSide {
     if (json is! Map) return null;
     final teamId = json['teamId'];
     if (teamId is String && teamId.isNotEmpty) return PlacedSide(teamId);
+    final eventId = json['eventId'];
+    final rank = json['rank'];
+    if (eventId is String && eventId.isNotEmpty && rank is int && rank > 0) {
+      return RankSide(eventId, rank);
+    }
     final from = json['from'];
     final result = json['result'];
     if (from is String && from.isNotEmpty && result is String) {
@@ -46,6 +51,18 @@ class LinkedSide extends BonspielSide {
     'from': from,
     'result': winner ? 'winner' : 'loser',
   };
+}
+
+/// The team finishing [rank]th in the pool [eventId], once all its games
+/// are played.
+class RankSide extends BonspielSide {
+  const RankSide(this.eventId, this.rank);
+
+  final String eventId;
+  final int rank;
+
+  @override
+  Map<String, dynamic> toJson() => {'rank': rank, 'eventId': eventId};
 }
 
 /// A part of a bonspiel with its own final: "A Event".
@@ -338,6 +355,9 @@ class Bonspiel {
   List<BonspielGame> gamesIn(BonspielDraw draw) =>
       games.where((g) => g.drawId == draw.id).toList();
 
+  BonspielEvent? eventById(String id) =>
+      events.where((e) => e.id == id).firstOrNull;
+
   BonspielGame? gameById(String id) =>
       games.where((g) => g.id == id).firstOrNull;
 
@@ -361,8 +381,9 @@ class Bonspiel {
   }
 
   /// The teams most likely to be on a side of [game] not known yet, to offer
-  /// first when picking them: those in the games it comes from, or else any
-  /// team not already in another game of its draw.
+  /// first when picking them: those in the games it comes from, or in the
+  /// pool it is a place in, or else any team not already in another game of
+  /// its draw.
   List<LeagueTeam> likelyTeams(BonspielGame game) {
     final likely = <LeagueTeam>[];
     void add(LeagueTeam? team) {
@@ -381,6 +402,12 @@ class Bonspiel {
         final (a, b) = teamsOf(source);
         add(a);
         add(b);
+      } else if (side case RankSide(:final eventId)) {
+        for (final other in games.where((g) => g.eventId == eventId)) {
+          final (a, b) = teamsOf(other);
+          add(a);
+          add(b);
+        }
       }
     }
     if (likely.length >= 2) return likely;

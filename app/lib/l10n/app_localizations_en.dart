@@ -277,6 +277,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String bonspielSidePlace(String event, int rank) {
+    return '$event #$rank';
+  }
+
+  @override
   String get bonspielSideToBeDecided => 'To be decided';
 
   @override

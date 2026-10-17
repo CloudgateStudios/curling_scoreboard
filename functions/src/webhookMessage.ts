@@ -18,6 +18,15 @@ export interface MessageContext {
   game: FirebaseFirestore.DocumentData;
   /** IANA time zone the dates and times are written in. */
   timeZone: string;
+  /** A bonspiel game's name and event, from the bonspiel's plan. */
+  bonspielGame?: BonspielGameNames;
+}
+
+export interface BonspielGameNames {
+  /** "A7" */
+  label: string;
+  /** "A Event" */
+  event: string;
 }
 
 /** The time zone, if this machine knows it, or UTC. */
@@ -50,7 +59,7 @@ function formatDuration(start: Date | null, end: Date | null): string {
 }
 
 /** Every variable a template can use and its value for this game. */
-export function messageVariables({ clubName, sheetName, game, timeZone }: MessageContext): Record<string, string> {
+export function messageVariables({ clubName, sheetName, game, timeZone, bonspielGame }: MessageContext): Record<string, string> {
   const team = (t: FirebaseFirestore.DocumentData | undefined) => ({
     name: String(t?.['name'] ?? 'Unknown'),
     score: Number(t?.['totalScore'] ?? 0),
@@ -62,6 +71,10 @@ export function messageVariables({ clubName, sheetName, game, timeZone }: Messag
 
   const leagueName = game['league']?.['name'];
   const league = typeof leagueName === 'string' ? leagueName : '';
+  const bonspielName = game['bonspiel']?.['name'];
+  const bonspiel = typeof bonspielName === 'string' ? bonspielName : '';
+  // What a game is part of: its league, or its bonspiel and game.
+  const partOf = league || [bonspiel, bonspielGame?.label].filter(Boolean).join(' ');
 
   const started = toDate(game['startedAt']);
   const finished = toDate(game['finishedAt']);
@@ -71,7 +84,10 @@ export function messageVariables({ clubName, sheetName, game, timeZone }: Messag
     club: clubName,
     sheet: sheetName,
     league,
-    leagueAndSheet: league !== '' ? `${league}, ${sheetName}` : sheetName,
+    leagueAndSheet: partOf !== '' ? `${partOf}, ${sheetName}` : sheetName,
+    bonspiel,
+    bonspielGame: bonspielGame?.label ?? '',
+    event: bonspielGame?.event ?? '',
     team1: team1.name,
     team1Score: String(team1.score),
     team2: team2.name,

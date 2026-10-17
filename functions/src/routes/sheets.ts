@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { gamesRouter } from './games';
+import { bonspielTag, gamesRouter } from './games';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
 
 // Mounted under /api/v1/clubs/:clubId with mergeParams.
@@ -66,6 +66,8 @@ export function buildSheetResponse(
           // Null for an open game, and for any game from a scoreboard build
           // that predates league games.
           league: liveGame['league'] ?? null,
+          // Null outside bonspiels, and from scoreboard builds before them.
+          bonspiel: bonspielTag(liveGame['bonspiel']),
           team1: liveGame['team1'],
           team2: liveGame['team2'],
           ends: liveGame['ends'] ?? null,

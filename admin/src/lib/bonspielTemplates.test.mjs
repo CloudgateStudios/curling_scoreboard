@@ -1,7 +1,7 @@
 // Run with `npm test`. Node strips the types from the .ts imports itself.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { knockoutPlan, shuffled } from './bonspielTemplates.ts';
+import { knockoutPlan, poolsPlan, roundRobin, shuffled } from './bonspielTemplates.ts';
 import { bonspielProblems, sortedDraws } from './bonspiels.ts';
 
 const teams = (n) => Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, name: `Team ${i + 1}` }));
@@ -168,5 +168,87 @@ describe('shuffled', () => {
     const result = shuffled(items, random);
     assert.notDeepEqual(result, items);
     assert.deepEqual([...result].sort((a, b) => a - b), items);
+  });
+});
+
+describe('roundRobin', () => {
+  test('has every team play every other once, once a round', () => {
+    for (let n = 2; n <= 9; n++) {
+      const rounds = roundRobin(n);
+      const pairs = rounds.flat().map(([a, b]) => [Math.min(a, b), Math.max(a, b)].join('-'));
+      assert.equal(pairs.length, (n * (n - 1)) / 2, `${n} teams`);
+      assert.equal(new Set(pairs).size, pairs.length, `${n} teams`);
+      for (const round of rounds) {
+        const playing = round.flat();
+        assert.equal(new Set(playing).size, playing.length, `${n} teams: a team twice in a round`);
+      }
+    }
+  });
+});
+
+describe('poolsPlan', () => {
+  function pooled(n, extra = {}) {
+    const o = { ...options({ teams: n }), pools: 4, qualifiers: 1, ...extra };
+    const plan = poolsPlan(teams(n), o, ids());
+    const draws = sortedDraws(plan.draws);
+    return {
+      name: 'Spiel', active: true, numberOfEnds: 8, teams: teams(n),
+      startDate: draws[0].start.slice(0, 10), endDate: draws[draws.length - 1].start.slice(0, 10),
+      ...plan,
+    };
+  }
+
+  test('makes plans that pass every check, whatever the size', () => {
+    for (let n = 4; n <= 32; n++) {
+      for (let pools = 1; pools <= Math.min(8, n / 2); pools++) {
+        for (const qualifiers of [0, 1, 2]) {
+          const b = pooled(n, { pools, qualifiers });
+          const where = `${n} teams, ${pools} pools, top ${qualifiers}`;
+          assert.deepEqual(bonspielProblems(b, new Set(['s1', 's2', 's3', 's4'])), [], where);
+          const placed = b.games.flatMap((g) => [g.team1, g.team2]).filter((s) => s && 'teamId' in s);
+          assert.equal(new Set(placed.map((s) => s.teamId)).size, n, where);
+        }
+      }
+    }
+  });
+
+  test('deals sixteen teams into four pools of four, and plays their winners off', () => {
+    const b = pooled(16);
+    assert.deepEqual(b.events.map((e) => e.name), ['Pool A', 'Pool B', 'Pool C', 'Pool D', 'Playoffs']);
+    const pool = (name) => b.games.filter((g) => g.eventId === b.events.find((e) => e.name === name).id);
+    // Six games a pool of four, and a semi final each for the four winners.
+    assert.deepEqual(['Pool A', 'Pool B', 'Pool C', 'Pool D', 'Playoffs'].map((e) => pool(e).length), [6, 6, 6, 6, 3]);
+    assert.deepEqual(pool('Pool A')[0].team1, { teamId: 't1' });
+    assert.deepEqual(pool('Pool B')[0].team1, { teamId: 't2' });
+    const [semi1, semi2, final] = pool('Playoffs');
+    const place = (side) => `${b.events.find((e) => e.id === side.eventId).name} #${side.rank}`;
+    assert.deepEqual([place(semi1.team1), place(semi1.team2)], ['Pool A #1', 'Pool D #1']);
+    assert.deepEqual([place(semi2.team1), place(semi2.team2)], ['Pool B #1', 'Pool C #1']);
+    assert.equal(final.label, 'Final');
+  });
+
+  test('crosses pool winners over with runners up', () => {
+    const b = pooled(8, { pools: 2, qualifiers: 2 });
+    const playoffs = b.events.find((e) => e.name === 'Playoffs').id;
+    const name = (side) => `${b.events.find((e) => e.id === side.eventId).name} #${side.rank}`;
+    const semis = b.games.filter((g) => g.eventId === playoffs).slice(0, 2);
+    assert.deepEqual(semis.map((g) => [name(g.team1), name(g.team2)]), [
+      ['Pool A #1', 'Pool B #2'], ['Pool B #1', 'Pool A #2'],
+    ]);
+  });
+
+  test('plays the playoffs only after every pool game', () => {
+    const b = pooled(16);
+    const drawIndex = new Map(sortedDraws(b.draws).map((d, i) => [d.id, i]));
+    const playoffs = b.events.find((e) => e.name === 'Playoffs').id;
+    const lastPool = Math.max(...b.games.filter((g) => g.eventId !== playoffs).map((g) => drawIndex.get(g.drawId)));
+    const firstPlayoff = Math.min(...b.games.filter((g) => g.eventId === playoffs).map((g) => drawIndex.get(g.drawId)));
+    assert.ok(firstPlayoff > lastPool);
+  });
+
+  test('leaves a single pool to its standings', () => {
+    const b = pooled(6, { pools: 1, qualifiers: 0 });
+    assert.deepEqual(b.events.map((e) => e.name), ['Pool A']);
+    assert.equal(b.games.length, 15);
   });
 });
