@@ -323,5 +323,99 @@
         "example": "15"
       }
     }
+  },
+  "leagueChooserBonspielButtonLabel": "Back to {name}",
+  "@leagueChooserBonspielButtonLabel": {
+    "description": "Button on the league chooser, during a bonspiel, to go back to offering the bonspiel's games.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Fall Spiel"
+      }
+    }
+  },
+  "matchupPickerAllTeamsButtonLabel": "All {count} teams",
+  "@matchupPickerAllTeamsButtonLabel": {
+    "description": "Button on the team picker showing every team, beside the few most likely to be in the game.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "32"
+      }
+    }
+  },
+  "matchupPickerLikelyTeamsButtonLabel": "Likely teams",
+  "@matchupPickerLikelyTeamsButtonLabel": {
+    "description": "Button on the team picker going back to the few teams most likely to be in the game."
+  },
+  "bonspielBarDrawLabel": "{draw} · {when}",
+  "@bonspielBarDrawLabel": {
+    "description": "Under the game's name on the bonspiel bar of the game start dialog: the draw it is in and when that starts.",
+    "placeholders": {
+      "draw": {
+        "type": "String",
+        "example": "Draw 5"
+      },
+      "when": {
+        "type": "String",
+        "example": "Sat 2:00 PM"
+      }
+    }
+  },
+  "bonspielBarChooseGame": "Choose game",
+  "@bonspielBarChooseGame": {
+    "description": "On the bonspiel bar of the game start dialog in place of a game's name, when no bonspiel game is picked."
+  },
+  "bonspielBarNoGame": "No game on this sheet",
+  "@bonspielBarNoGame": {
+    "description": "On the bonspiel bar of the game start dialog when this sheet has no game in the current draw, or an open game was chosen."
+  },
+  "bonspielBarClearTooltip": "Play an open game",
+  "@bonspielBarClearTooltip": {
+    "description": "Tooltip for the button on the bonspiel bar that sets the bonspiel game aside, to play an open game."
+  },
+  "bonspielSideWinnerOf": "Winner of {game}",
+  "@bonspielSideWinnerOf": {
+    "description": "Stands in for a team in a bonspiel game that will be the winner of an earlier game, until that game is played.",
+    "placeholders": {
+      "game": {
+        "type": "String",
+        "example": "A3"
+      }
+    }
+  },
+  "bonspielSideLoserOf": "Loser of {game}",
+  "@bonspielSideLoserOf": {
+    "description": "Stands in for a team in a bonspiel game that will be the loser of an earlier game, until that game is played.",
+    "placeholders": {
+      "game": {
+        "type": "String",
+        "example": "A3"
+      }
+    }
+  },
+  "bonspielSideToBeDecided": "To be decided",
+  "@bonspielSideToBeDecided": {
+    "description": "Stands in for a team in a bonspiel game that the organizers have not placed yet."
+  },
+  "bonspielGameChooserTitle": "Which game?",
+  "@bonspielGameChooserTitle": {
+    "description": "Title of the dialog listing a bonspiel's games to choose from."
+  },
+  "bonspielGameChooserThisSheet": "This sheet",
+  "@bonspielGameChooserThisSheet": {
+    "description": "Heading over this sheet's games in the bonspiel game chooser."
+  },
+  "bonspielGameChooserOtherSheets": "Other sheets this draw",
+  "@bonspielGameChooserOtherSheets": {
+    "description": "Heading over the games on other sheets in the current draw, in the bonspiel game chooser."
+  },
+  "bonspielGameChooserLeagueButton": "League game",
+  "@bonspielGameChooserLeagueButton": {
+    "description": "Button in the bonspiel game chooser to start a league game instead."
+  },
+  "bonspielGameChooserPlayed": "Played",
+  "@bonspielGameChooserPlayed": {
+    "description": "Marks a bonspiel game that already has a result, in the bonspiel game chooser."
   }
 }

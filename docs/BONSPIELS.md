@@ -4,8 +4,9 @@ The plan for running bonspiels in the app: planning the draws and brackets
 in the admin portal, showing them on a monitor at the club, and letting each
 sheet's scoreboard start the right game with the right teams.
 
-The first two phases are built: the plans, their state, and planning them
-in the portal, with a knockout template and a bracket view. How those work
+The first three phases are built: the plans, their state, planning them in
+the portal with a knockout template and a bracket view, and the scoreboards
+starting each sheet's game and sending in its result. How those work
 is under Bonspiels in [ARCHITECTURE.md](ARCHITECTURE.md), along with the
 data model. This file is
 what is still to come, and goes once it is all built.
@@ -48,27 +49,9 @@ room's:
   from another event is shown as where it came from ("Loser of A3").
 
 Live scores come from `displayState`, which the page already listens to.
-`syncDisplaySheet` only has to pass the live game's `bonspiel.gameId` along.
-
-## Scoreboard
-
-Scoreboards will read the club's bonspiels and their state, with the same
-check on the sheet as for leagues, and displays will read them and nothing
-else of them. Neither can yet.
-
-- `BonspielService` follows the club's active bonspiels and their state, and
-  keeps the last it saw so a scoreboard that starts offline still has them,
-  like `LeagueService`.
-- On a bonspiel's dates it takes over the setup screen's league bar. The
-  current draw is the one starting next, from 30 minutes before its start
-  time until the next draw's. The bar offers this sheet's game in it:
-  "Draw 5 · A7: Smith vs Jones", started with one tap, or "Winner of A3 vs
-  Winner of A4", which fills in as those games finish. Leagues are still
-  there through the league chooser.
-- A game with a side still to be decided opens the team picker with the
-  likely teams first: those not already in a game this draw and not out of
-  every event. All of the teams are a tap away.
-- The game takes its number of ends from its event, or the bonspiel.
+`syncDisplaySheet` only has to pass the live game's `bonspiel.gameId` along,
+which scoreboards already send. Displays will read the club's bonspiels and
+their state, and nothing else of them.
 
 ## Phases
 
@@ -79,9 +62,8 @@ Each phase can be released on its own.
    coordinator can run a bonspiel, entering results by hand.
 2. **Templates** (built): the knockout template, and the portal's bracket
    view.
-3. **Scoreboards**: the setup screen's bonspiel game, tagging games, and
-   results coming in on their own. The functions already take in tagged
-   games.
+3. **Scoreboards** (built): the setup screen's bonspiel game, tagging
+   games, and results coming in on their own.
 4. **Display**: the display page, its link settings, and live scores from
    `displayState`.
 5. **Later**: pools, with `rank` sides and a standings order the coordinator

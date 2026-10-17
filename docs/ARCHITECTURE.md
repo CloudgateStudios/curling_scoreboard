@@ -195,6 +195,7 @@ clubs/{clubId}/sheets/{sheetId}
     currentEnd: int
     numberOfEnds?: int       // absent from builds before it was sent
     league?: { id: string, name: string }   // league games only
+    bonspiel?: { id: string, name: string, gameId: string }   // bonspiel games only
     team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
              hadLastStoneFirstEnd: bool,
              teamId?: string, externalId?: string }   // the last two in league games
@@ -223,6 +224,7 @@ clubs/{clubId}/sheets/{sheetId}/games/{gameId}
   finishedAt: timestamp
   numberOfEnds: int
   league?: { id: string, name: string }     // league games only
+  bonspiel?: { id: string, name: string, gameId: string }   // bonspiel games only; gameId is in its plan
   team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool,
            teamId?: string, externalId?: string }     // the last two in league games
   team2: { ...the same }
@@ -257,7 +259,7 @@ admin scripts.
 | Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else |
-| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config` and `leagues` |
+| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config`, `leagues`, and `bonspiels` with their state |
 | Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`; read its own link |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
@@ -705,8 +707,38 @@ transaction:
 
 Like the display summary, both rebuild from the documents as they are, never
 from the event, so a late or repeated delivery writes the same thing again.
-No scoreboard tags its games yet; until one does, coordinators enter results
-in the portal. What is still to come is in [BONSPIELS.md](BONSPIELS.md).
+What is still to come is in [BONSPIELS.md](BONSPIELS.md).
+
+### On the scoreboard
+
+`BonspielService` follows the paired club's active bonspiels and, for each,
+the games of its state: one listener on the bonspiels and one per bonspiel,
+like `LeagueService`. It keeps the last it saw in shared preferences, so a
+scoreboard that starts offline on a bonspiel weekend still has them.
+
+On a bonspiel's dates, the setup screen's league bar gives way to a
+bonspiel bar offering this sheet's game in the current draw. A draw is
+current from 30 minutes before it starts, the league lead time, until the
+same time before the next; before the first draw it is the first. The game's
+teams are those the state has worked out, or those the coordinator placed,
+and a side still to come shows where it comes from ("Winner of A3"), filling
+in as the state changes. Start Game starts it, to its event's number of ends
+unless others are picked. A bonspiel game's result only counts with its
+teams, so a game with a side not known yet asks for the teams first, in the
+league team picker: the teams of the games it comes from first, or else
+those not in another game of the draw, and every team behind a button.
+
+The bar's left side opens a chooser with this sheet's games from the draw
+before the current one on, the current draw's games on other sheets, for a
+game moved at the last minute, and a way to league games, whose chooser
+leads back. Its cross sets the game aside for an open game.
+
+The game carries `bonspiel: { id, name, gameId }` and each team's `teamId`
+and `externalId` in `liveGame` and its completed game, which is what
+`syncBonspielResult` reads. During the game the Teams button picks its
+teams again, offering its own and those free in its draw first. The REST
+API and the displays do not show the tag yet, and the completed game webhook
+counts a bonspiel game among league games, since its teams have IDs.
 
 ## Scoreboard status
 

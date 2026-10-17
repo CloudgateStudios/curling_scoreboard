@@ -19,14 +19,24 @@ class LeagueMatchup {
 
 /// Asks which of the club's [leagues] a game is in, listing the ones in a
 /// draw at [now] first. Completes with null if dismissed.
+///
+/// During a bonspiel, [bonspielName] adds a way back to its games, which
+/// calls [onBonspiel] and completes with null.
 Future<League?> showLeagueChooser(
   BuildContext context, {
   required List<League> leagues,
   required DateTime now,
+  String? bonspielName,
+  VoidCallback? onBonspiel,
 }) {
   return showDialog<League>(
     context: context,
-    builder: (_) => _LeagueChooser(leagues: leagues, now: now),
+    builder: (_) => _LeagueChooser(
+      leagues: leagues,
+      now: now,
+      bonspielName: bonspielName,
+      onBonspiel: onBonspiel,
+    ),
   );
 }
 
@@ -34,10 +44,17 @@ Future<League?> showLeagueChooser(
 /// or so, so they go two across once there are more than a few, and the
 /// rows share the height instead of scrolling: every league is on screen.
 class _LeagueChooser extends StatelessWidget {
-  const _LeagueChooser({required this.leagues, required this.now});
+  const _LeagueChooser({
+    required this.leagues,
+    required this.now,
+    this.bonspielName,
+    this.onBonspiel,
+  });
 
   final List<League> leagues;
   final DateTime now;
+  final String? bonspielName;
+  final VoidCallback? onBonspiel;
 
   static const _rowHeight = 96.0;
   static const _spacing = 12.0;
@@ -105,15 +122,36 @@ class _LeagueChooser extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    l10n.matchupPickerCancelButtonLabel,
-                    style: const TextStyle(fontSize: 32),
+              Row(
+                children: [
+                  if (bonspielName case final name?)
+                    // A long name shrinks rather than pushing Cancel off a
+                    // chooser sized for one league.
+                    Flexible(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          onBonspiel?.call();
+                        },
+                        icon: const Icon(Icons.arrow_back, size: 32),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            l10n.leagueChooserBonspielButtonLabel(name),
+                            style: const TextStyle(fontSize: 32),
+                          ),
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      l10n.matchupPickerCancelButtonLabel,
+                      style: const TextStyle(fontSize: 32),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -183,14 +221,27 @@ class LeagueMatchupPicker extends StatefulWidget {
     required this.league,
     required this.rockColors,
     this.initial,
+    this.initialTeam1,
+    this.initialTeam2,
+    this.moreTeams = const [],
     super.key,
   });
 
+  /// Its teams are the ones offered first.
   final League league;
   final RockColors rockColors;
 
   /// The teams to start from, when changing a matchup already picked.
   final LeagueMatchup? initial;
+
+  /// Teams already known for one color or the other, when [initial] is not
+  /// given: a bonspiel game whose other team is still to come.
+  final LeagueTeam? initialTeam1;
+  final LeagueTeam? initialTeam2;
+
+  /// Teams kept behind a "show all" button: in a bonspiel, all those not
+  /// likely to be in the game, which can be up to 64.
+  final List<LeagueTeam> moreTeams;
 
   @override
   State<LeagueMatchupPicker> createState() => _LeagueMatchupPickerState();
@@ -199,12 +250,15 @@ class LeagueMatchupPicker extends StatefulWidget {
 class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
   LeagueTeam? _team1;
   LeagueTeam? _team2;
+  late bool _showAll;
 
   @override
   void initState() {
     super.initState();
-    _team1 = widget.initial?.team1;
-    _team2 = widget.initial?.team2;
+    _team1 = widget.initial?.team1 ?? widget.initialTeam1;
+    _team2 = widget.initial?.team2 ?? widget.initialTeam2;
+    // With nobody likely, there is nothing else to show first.
+    _showAll = widget.league.teams.isEmpty;
   }
 
   /// The first tap fills the first color, the second tap the other. Tapping
@@ -276,7 +330,10 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
             Expanded(
               child: _TileGrid(
                 children: [
-                  for (final team in widget.league.teams)
+                  for (final team in [
+                    ...widget.league.teams,
+                    if (_showAll) ...widget.moreTeams,
+                  ])
                     _Tile(
                       label: team.name,
                       color: team.id == team1?.id
@@ -294,6 +351,21 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (widget.moreTeams.isNotEmpty &&
+                    widget.league.teams.isNotEmpty)
+                  TextButton(
+                    onPressed: () => setState(() => _showAll = !_showAll),
+                    child: Text(
+                      _showAll
+                          ? l10n.matchupPickerLikelyTeamsButtonLabel
+                          : l10n.matchupPickerAllTeamsButtonLabel(
+                              widget.league.teams.length +
+                                  widget.moreTeams.length,
+                            ),
+                      style: const TextStyle(fontSize: 32),
+                    ),
+                  ),
+                const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(

@@ -493,6 +493,25 @@ void main() {
       });
     });
 
+    test('makes the game a bonspiel game, in place of a league game', () {
+      fakeAsync((async) {
+        const bonspiel = GameBonspiel(
+          id: 'fall',
+          name: 'Fall Spiel',
+          gameId: 'a7',
+        );
+        controller
+          ..startGame(_game())
+          ..changeTeams(league: _league, team1: _rockets, team2: _comets)
+          ..changeTeams(bonspiel: bonspiel, team1: _comets, team2: _rockets);
+
+        expect(controller.game.league, isNull);
+        expect(controller.game.bonspiel?.gameId, 'a7');
+        expect(controller.game.team1.teamId, 'comets');
+        expect(sync.liveGamePushes.last['bonspiel'], bonspiel.toJson());
+      });
+    });
+
     test('replaces teams picked before, external IDs included', () {
       fakeAsync((async) {
         controller

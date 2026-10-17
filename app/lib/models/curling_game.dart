@@ -11,6 +11,7 @@ class CurlingGame {
     this.scoreboardStyle = ScoreboardStyle.baseball,
     this.currentPlayingEnd = 1,
     this.league,
+    this.bonspiel,
     DateTime? startedAt,
   }) : startedAt = startedAt ?? DateTime.now();
 
@@ -29,6 +30,9 @@ class CurlingGame {
     league: json['league'] == null
         ? null
         : GameLeague.fromJson(json['league'] as Map<String, dynamic>),
+    bonspiel: json['bonspiel'] == null
+        ? null
+        : GameBonspiel.fromJson(json['bonspiel'] as Map<String, dynamic>),
     startedAt: json['startedAt'] == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(json['startedAt'] as int),
@@ -44,6 +48,9 @@ class CurlingGame {
 
   /// The league this game is part of. Null for an open game.
   GameLeague? league;
+
+  /// The bonspiel game this game is. Null outside bonspiels.
+  GameBonspiel? bonspiel;
   DateTime startedAt;
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +61,7 @@ class CurlingGame {
     'scoreboardStyle': scoreboardStyle.name,
     'currentPlayingEnd': currentPlayingEnd,
     'league': ?league?.toJson(),
+    'bonspiel': ?bonspiel?.toJson(),
     'ends': ends.map((e) => e.toJson()).toList(),
     'startedAt': startedAt.millisecondsSinceEpoch,
   };

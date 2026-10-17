@@ -83,6 +83,9 @@ class SyncService {
     'currentEnd': game.currentPlayingEnd,
     'numberOfEnds': game.numberOfEnds,
     'league': ?game.league?.toJson(),
+    // Which game of a bonspiel this is, so the displays can show it in the
+    // bracket while it is played.
+    'bonspiel': ?game.bonspiel?.toJson(),
     'team1': _liveTeam(game.team1, game.team1TotalScore),
     'team2': _liveTeam(game.team2, game.team2TotalScore),
     // The ends so far, as the completed game records them, so the warm room
@@ -126,6 +129,8 @@ class SyncService {
           'finishedAt': Timestamp.now(),
           'numberOfEnds': game.numberOfEnds,
           'league': ?game.league?.toJson(),
+          // The functions put the result into the bonspiel's brackets.
+          'bonspiel': ?game.bonspiel?.toJson(),
           'team1': {
             'name': game.team1.name,
             'color': _colorOf(game.team1),
