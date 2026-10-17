@@ -1,10 +1,10 @@
-## [0.0.56](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.55...0.0.56) (2026-10-16)
+## [0.0.57](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.0.56...0.0.57) (2026-10-17)
 
 ### Features
 
-* name, edit and role club users, and add a bonspiel admin role ([#345](https://github.com/CloudgateStudios/curling_scoreboard/issues/345)) ([7754cbd](https://github.com/CloudgateStudios/curling_scoreboard/commit/7754cbd6cc2b3fc3480773bc4439bfb6d59529f8))
-
-### Bug Fixes
-
-* show the mouse pointer on the warm room screen until it is still ([#341](https://github.com/CloudgateStudios/curling_scoreboard/issues/341)) ([3b66ccd](https://github.com/CloudgateStudios/curling_scoreboard/commit/3b66ccdb98c1f0404230b477f0431aac65b793e3))
+* a bonspiel screen for the club's TV ([#349](https://github.com/CloudgateStudios/curling_scoreboard/issues/349)) ([bf6de15](https://github.com/CloudgateStudios/curling_scoreboard/commit/bf6de158e0c6ad66b3e48b3a4d998e772474d29c))
+* bonspiel pools with standings, in the API and webhook ([#350](https://github.com/CloudgateStudios/curling_scoreboard/issues/350)) ([3e684c7](https://github.com/CloudgateStudios/curling_scoreboard/commit/3e684c768285b9495cbf2aec79ee8423f3a1744a))
+* fill in a bonspiel from a knockout template, and see its brackets ([#347](https://github.com/CloudgateStudios/curling_scoreboard/issues/347)) ([9823a72](https://github.com/CloudgateStudios/curling_scoreboard/commit/9823a72a5064d3d38883cfd7efa2a0eee7a4d03a))
+* plan bonspiels in the admin portal ([#346](https://github.com/CloudgateStudios/curling_scoreboard/issues/346)) ([df1a6e1](https://github.com/CloudgateStudios/curling_scoreboard/commit/df1a6e1fd7bbc682745a439d3051d277a7b0e912))
+* start each sheet's bonspiel game from the scoreboard ([#348](https://github.com/CloudgateStudios/curling_scoreboard/issues/348)) ([10712a5](https://github.com/CloudgateStudios/curling_scoreboard/commit/10712a515ba4c51045544e3624e3f84c7d1d78ca))
 
