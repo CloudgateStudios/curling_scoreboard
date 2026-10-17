@@ -46,6 +46,10 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/displayLinks/link-2'), {
     label: 'Stream', secretHash: 'cd', settings: { page: 'warm-room' },
   });
+  // Read by scoreboards while the paired sheet is still paired, before the
+  // bonspiel admin checks further down make their own.
+  await setDoc(doc(db, 'clubs/club-a/bonspiels/seeded'), { name: 'Seeded Spiel', active: true });
+  await setDoc(doc(db, 'clubs/club-a/bonspiels/seeded/state/current'), { games: {} });
   await setDoc(doc(db, 'clubs/club-b/sheets/sheet-secret'), {
     name: 'Sheet Secret', scoreboardUid: 'other-device',
   });
@@ -265,6 +269,15 @@ await check('scoreboard: read a league in its club', 'allow', () =>
 // What the scoreboard app runs to offer teams.
 await check('scoreboard: list the active leagues in its club', 'allow', () =>
   getDocs(query(collection(claimedBoard, 'clubs/club-a/leagues'), where('active', '==', true))));
+
+await check('scoreboard: read a bonspiel in its club', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/seeded')));
+
+await check('scoreboard: list the active bonspiels in its club', 'allow', () =>
+  getDocs(query(collection(claimedBoard, 'clubs/club-a/bonspiels'), where('active', '==', true))));
+
+await check('scoreboard: read a bonspiel\'s state', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/seeded/state/current')));
 
 await check('attack: scoreboard lists another club leagues', 'deny', () =>
   getDocs(collection(claimedBoard, 'clubs/club-b/leagues')));
@@ -626,8 +639,20 @@ await check('attack: bonspiel admin creates a bonspiel in another club', 'deny',
 await check('attack: bonspiel admin reads another club\'s bonspiels', 'deny', () =>
   getDocs(collection(bonspielA, 'clubs/club-b/bonspiels')));
 
-await check('attack: scoreboard reads a bonspiel', 'deny', () =>
-  getDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/fall')));
+await check('attack: scoreboard lists another club\'s bonspiels', 'deny', () =>
+  getDocs(collection(claimedBoard, 'clubs/club-b/bonspiels')));
+
+await check('attack: scoreboard without claims reads a bonspiel', 'deny', () =>
+  getDoc(doc(board, 'clubs/club-a/bonspiels/fall')));
+
+await check('attack: replaced scoreboard reads a bonspiel\'s state with its old claims', 'deny', () =>
+  getDoc(doc(replacedBoard, 'clubs/club-a/bonspiels/fall/state/current')));
+
+await check('attack: scoreboard changes a bonspiel', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/fall'), { ...bonspiel, name: 'Renamed' }));
+
+await check('attack: scoreboard writes a bonspiel\'s state', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/bonspiels/fall/state/current'), { games: {} }));
 
 await check('attack: unpaired device reads a bonspiel', 'deny', () =>
   getDoc(doc(anon, 'clubs/club-a/bonspiels/fall')));

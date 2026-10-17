@@ -6,6 +6,7 @@ import 'package:curling_scoreboard/firebase_options_dev.dart' as dev;
 import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
+import 'package:curling_scoreboard/services/bonspiel_service.dart';
 import 'package:curling_scoreboard/services/device_status_service.dart';
 import 'package:curling_scoreboard/services/league_service.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
@@ -38,6 +39,7 @@ Future<void> main() async {
       registrationService: registrationService,
       rockColorsService: RockColorsService(prefs, registrationService)..start(),
       leagueService: LeagueService(prefs, registrationService)..start(),
+      bonspielService: BonspielService(prefs, registrationService)..start(),
       updateService: UpdateService.forCurrentPlatform(prefs)?..start(),
     ),
   );
@@ -48,6 +50,7 @@ class CurlingScoreboardApp extends StatelessWidget {
     required this.registrationService,
     this.rockColorsService,
     this.leagueService,
+    this.bonspielService,
     this.updateService,
     super.key,
   });
@@ -55,6 +58,7 @@ class CurlingScoreboardApp extends StatelessWidget {
   final RegistrationService registrationService;
   final RockColorsService? rockColorsService;
   final LeagueService? leagueService;
+  final BonspielService? bonspielService;
   final UpdateService? updateService;
 
   @override
@@ -70,6 +74,7 @@ class CurlingScoreboardApp extends StatelessWidget {
         registrationService: registrationService,
         rockColorsService: rockColorsService,
         leagueService: leagueService,
+        bonspielService: bonspielService,
         updateService: updateService,
       ),
     );
@@ -81,6 +86,7 @@ class CurlingScoreboardScreen extends StatefulWidget {
     required this.registrationService,
     this.rockColorsService,
     this.leagueService,
+    this.bonspielService,
     this.updateService,
     super.key,
   });
@@ -93,6 +99,10 @@ class CurlingScoreboardScreen extends StatefulWidget {
 
   /// The paired club's leagues. Without it only open games can be started.
   final LeagueService? leagueService;
+
+  /// The paired club's bonspiels, whose games the setup screen offers on
+  /// their dates.
+  final BonspielService? bonspielService;
   final UpdateService? updateService;
 
   @override
@@ -195,18 +205,23 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
         // not stop the system back button, so block popping outright too.
         final rockColors = widget.rockColorsService;
         final leagues = widget.leagueService;
+        final bonspiels = widget.bonspielService;
         // The dialog can sit open for days between games, so it follows the
-        // club's colors and leagues. Once a game starts they are fixed.
+        // club's colors, leagues and bonspiels. Once a game starts they are
+        // fixed.
         return PopScope(
           canPop: false,
           child: ListenableBuilder(
             listenable: Listenable.merge([
               rockColors?.clubColors,
               leagues?.leagues,
+              bonspiels?.bonspiels,
             ]),
             builder: (context, _) => GameStartDialog(
               rockColors: rockColors?.clubColors.value,
               leagues: leagues?.leagues.value ?? const [],
+              bonspiels: bonspiels?.bonspiels.value ?? const [],
+              sheetId: widget.registrationService.sheetId,
               connection: ConnectionStatus(
                 registrationService: widget.registrationService,
                 onChanged: _onConnectionChanged,
@@ -236,6 +251,7 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     _deviceStatus.reportNow();
     widget.rockColorsService?.start();
     widget.leagueService?.start();
+    widget.bonspielService?.start();
   }
 
   Future<void> enterScore(CurlingEnd curlingEnd) async {
@@ -263,15 +279,28 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     });
   }
 
-  /// Teams are league teams, so they can only be picked when the club has
-  /// leagues.
+  /// Teams are league or bonspiel teams, so they can only be picked when the
+  /// club has leagues, or in a bonspiel game.
   bool get _canChangeTeams =>
-      widget.leagueService?.leagues.value.isNotEmpty ?? false;
+      _bonspielOfGame() != null ||
+      (widget.leagueService?.leagues.value.isNotEmpty ?? false);
+
+  /// The bonspiel the game is a game of, while the scoreboard still has it.
+  Bonspiel? _bonspielOfGame() {
+    final id = gameObject.bonspiel?.id;
+    if (id == null) return null;
+    return widget.bonspielService?.bonspiels.value
+        .where((b) => b.id == id)
+        .firstOrNull;
+  }
 
   /// Picks the game's teams again: the same league's teams for a league
   /// game, or a league and its teams for an open game. The rock colors stay
   /// as they are; the picker decides which team throws which.
   Future<void> _changeTeams() async {
+    if (_bonspielOfGame() case final bonspiel?) {
+      return await _changeBonspielTeams(bonspiel);
+    }
     final leagues = widget.leagueService?.leagues.value ?? const <League>[];
     final gameLeague = gameObject.league;
     final league =
@@ -298,6 +327,48 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
 
     _gameController.changeTeams(
       league: GameLeague(id: picked.league.id, name: picked.league.name),
+      team1: picked.team1,
+      team2: picked.team2,
+    );
+  }
+
+  /// Picks a bonspiel game's teams again, with those likely to be in it
+  /// first: teams turn up for the wrong game, or the bracket was not up to
+  /// date when the game started.
+  Future<void> _changeBonspielTeams(Bonspiel bonspiel) async {
+    final tag = gameObject.bonspiel!;
+    final game = bonspiel.gameById(tag.gameId);
+    // The game's own teams, and any team that could have turned up in place
+    // of one: those not playing elsewhere in the draw.
+    final likely = game == null
+        ? bonspiel.teams
+        : {
+            ...switch (bonspiel.teamsOf(game)) {
+              (final a, final b) => [?a, ?b],
+            },
+            ...bonspiel.freeTeams(game),
+          }.toList();
+    final picked = await showDialog<LeagueMatchup>(
+      context: context,
+      builder: (_) => LeagueMatchupPicker(
+        league: League(id: bonspiel.id, name: bonspiel.name, teams: likely),
+        moreTeams: [
+          for (final team in bonspiel.teams)
+            if (!likely.any((t) => t.id == team.id)) team,
+        ],
+        rockColors: _gameRockColors,
+        initialTeam1: bonspiel.teams
+            .where((t) => t.id == gameObject.team1.teamId)
+            .firstOrNull,
+        initialTeam2: bonspiel.teams
+            .where((t) => t.id == gameObject.team2.teamId)
+            .firstOrNull,
+      ),
+    );
+    if (picked == null) return;
+
+    _gameController.changeTeams(
+      bonspiel: tag,
       team1: picked.team1,
       team2: picked.team2,
     );
@@ -404,10 +475,14 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
           ),
         ),
         actions: <Widget>[
-          // Shows up once the club's leagues load, and goes if they all end.
-          if (widget.leagueService case final leagueService?)
+          // Shows up once the club's leagues load, and goes if they all end;
+          // and for a bonspiel game.
+          if (widget.leagueService != null || widget.bonspielService != null)
             ListenableBuilder(
-              listenable: leagueService.leagues,
+              listenable: Listenable.merge([
+                widget.leagueService?.leagues,
+                widget.bonspielService?.bonspiels,
+              ]),
               builder: (context, _) => _canChangeTeams
                   ? AppBarActionButton(
                       icon: Icons.groups,

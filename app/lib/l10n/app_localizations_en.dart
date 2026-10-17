@@ -238,4 +238,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String updateCountdownMessage(int seconds) {
     return 'Updating to the latest version in $seconds seconds. Tap anywhere to wait.';
   }
+
+  @override
+  String leagueChooserBonspielButtonLabel(String name) {
+    return 'Back to $name';
+  }
+
+  @override
+  String matchupPickerAllTeamsButtonLabel(int count) {
+    return 'All $count teams';
+  }
+
+  @override
+  String get matchupPickerLikelyTeamsButtonLabel => 'Likely teams';
+
+  @override
+  String bonspielBarDrawLabel(String draw, String when) {
+    return '$draw · $when';
+  }
+
+  @override
+  String get bonspielBarChooseGame => 'Choose game';
+
+  @override
+  String get bonspielBarNoGame => 'No game on this sheet';
+
+  @override
+  String get bonspielBarClearTooltip => 'Play an open game';
+
+  @override
+  String bonspielSideWinnerOf(String game) {
+    return 'Winner of $game';
+  }
+
+  @override
+  String bonspielSideLoserOf(String game) {
+    return 'Loser of $game';
+  }
+
+  @override
+  String get bonspielSideToBeDecided => 'To be decided';
+
+  @override
+  String get bonspielGameChooserTitle => 'Which game?';
+
+  @override
+  String get bonspielGameChooserThisSheet => 'This sheet';
+
+  @override
+  String get bonspielGameChooserOtherSheets => 'Other sheets this draw';
+
+  @override
+  String get bonspielGameChooserLeagueButton => 'League game';
+
+  @override
+  String get bonspielGameChooserPlayed => 'Played';
 }

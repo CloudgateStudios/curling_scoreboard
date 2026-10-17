@@ -167,17 +167,23 @@ class GameController extends ChangeNotifier {
     unawaited(_syncService.pushLiveGame(_game));
   }
 
-  /// Puts league teams on the game, replacing whichever teams it started
-  /// with. [team1] throws the first rock color and [team2] the second.
+  /// Puts league or bonspiel teams on the game, replacing whichever teams it
+  /// started with. [team1] throws the first rock color and [team2] the
+  /// second.
   ///
   /// Teams forget to pick their names, or pick the wrong ones, so this works
-  /// at any point during the game. An open game becomes a game in [league].
+  /// at any point during the game. The game becomes a game in [league], or
+  /// the bonspiel game [bonspiel]: one of the two.
   void changeTeams({
-    required GameLeague league,
     required LeagueTeam team1,
     required LeagueTeam team2,
+    GameLeague? league,
+    GameBonspiel? bonspiel,
   }) {
-    _game.league = league;
+    assert((league == null) != (bonspiel == null), 'A league or a bonspiel');
+    _game
+      ..league = league
+      ..bonspiel = bonspiel;
     for (final (team, leagueTeam) in [
       (_game.team1, team1),
       (_game.team2, team2),

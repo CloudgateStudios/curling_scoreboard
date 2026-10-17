@@ -128,6 +128,33 @@ void main() {
       expect((fields['team2'] as Map)['teamId'], 't2');
     });
 
+    test('a bonspiel game says which game it is, with its team IDs', () {
+      final played =
+          game(
+              league: const GameLeague(id: 'unused', name: 'Unused'),
+            )
+            ..league = null
+            ..bonspiel = const GameBonspiel(
+              id: 'fall',
+              name: 'Fall Spiel',
+              gameId: 'a7',
+            );
+      final fields = SyncService.liveGameFields(played);
+      expect(fields.containsKey('league'), isFalse);
+      expect(fields['bonspiel'], {
+        'id': 'fall',
+        'name': 'Fall Spiel',
+        'gameId': 'a7',
+      });
+      expect((fields['team1'] as Map)['teamId'], 't1');
+    });
+
+    test('an open game says nothing of leagues or bonspiels', () {
+      final fields = SyncService.liveGameFields(game());
+      expect(fields.containsKey('league'), isFalse);
+      expect(fields.containsKey('bonspiel'), isFalse);
+    });
+
     test('last stone in the first end stays put as the hammer moves', () {
       final played = game()
         ..team1.hasHammer = true

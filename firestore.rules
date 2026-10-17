@@ -245,14 +245,18 @@ service cloud.firestore {
 
       // Bonspiels, planned by club and bonspiel admins. Each one's state,
       // who plays in each game and how it went, is worked out from the plan
-      // and the results by the functions, which alone write it.
+      // and the results by the functions, which alone write it. The club's
+      // paired scoreboards read both, to offer each sheet its next game.
       match /bonspiels/{bonspielId} {
-        allow read, delete: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
+        allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId)
+            || isClubScoreboard(clubId);
+        allow delete: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
         allow create, update: if (isClubAdmin(clubId) || isBonspielAdmin(clubId))
             && isBonspiel(request.resource.data);
 
         match /state/{docId} {
-          allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId);
+          allow read: if isClubAdmin(clubId) || isBonspielAdmin(clubId)
+              || isClubScoreboard(clubId);
         }
       }
 

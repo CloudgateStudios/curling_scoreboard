@@ -69,6 +69,8 @@ Access the app depends on:
   logo, and a display reading them
 - club and bonspiel admins creating, updating, listing and deleting their
   club's bonspiels, and reading each one's state
+- a paired scoreboard reading and listing its club's bonspiels, and reading
+  their state
 
 Access that must stay denied:
 
@@ -111,8 +113,9 @@ Access that must stay denied:
   else beside them; a display reading another club's branding or changing
   its own; a paired scoreboard reading it
 - anyone writing a bonspiel's state, which only the functions do; a
-  bonspiel admin reading or writing another club's bonspiels; a scoreboard
-  or an unpaired device reading one; a bonspiel with no name, a date that is
+  bonspiel admin reading or writing another club's bonspiels; an unpaired
+  device, a scoreboard without claims or one that has been replaced reading
+  one, a scoreboard reading another club's or changing one; a bonspiel with no name, a date that is
   not one, no ends, a missing or unknown field, or too many games
 
 ### Functions

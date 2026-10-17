@@ -498,6 +498,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Updating to the latest version in {seconds} seconds. Tap anywhere to wait.'**
   String updateCountdownMessage(int seconds);
+
+  /// Button on the league chooser, during a bonspiel, to go back to offering the bonspiel's games.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {name}'**
+  String leagueChooserBonspielButtonLabel(String name);
+
+  /// Button on the team picker showing every team, beside the few most likely to be in the game.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} teams'**
+  String matchupPickerAllTeamsButtonLabel(int count);
+
+  /// Button on the team picker going back to the few teams most likely to be in the game.
+  ///
+  /// In en, this message translates to:
+  /// **'Likely teams'**
+  String get matchupPickerLikelyTeamsButtonLabel;
+
+  /// Under the game's name on the bonspiel bar of the game start dialog: the draw it is in and when that starts.
+  ///
+  /// In en, this message translates to:
+  /// **'{draw} · {when}'**
+  String bonspielBarDrawLabel(String draw, String when);
+
+  /// On the bonspiel bar of the game start dialog in place of a game's name, when no bonspiel game is picked.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose game'**
+  String get bonspielBarChooseGame;
+
+  /// On the bonspiel bar of the game start dialog when this sheet has no game in the current draw, or an open game was chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'No game on this sheet'**
+  String get bonspielBarNoGame;
+
+  /// Tooltip for the button on the bonspiel bar that sets the bonspiel game aside, to play an open game.
+  ///
+  /// In en, this message translates to:
+  /// **'Play an open game'**
+  String get bonspielBarClearTooltip;
+
+  /// Stands in for a team in a bonspiel game that will be the winner of an earlier game, until that game is played.
+  ///
+  /// In en, this message translates to:
+  /// **'Winner of {game}'**
+  String bonspielSideWinnerOf(String game);
+
+  /// Stands in for a team in a bonspiel game that will be the loser of an earlier game, until that game is played.
+  ///
+  /// In en, this message translates to:
+  /// **'Loser of {game}'**
+  String bonspielSideLoserOf(String game);
+
+  /// Stands in for a team in a bonspiel game that the organizers have not placed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'To be decided'**
+  String get bonspielSideToBeDecided;
+
+  /// Title of the dialog listing a bonspiel's games to choose from.
+  ///
+  /// In en, this message translates to:
+  /// **'Which game?'**
+  String get bonspielGameChooserTitle;
+
+  /// Heading over this sheet's games in the bonspiel game chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'This sheet'**
+  String get bonspielGameChooserThisSheet;
+
+  /// Heading over the games on other sheets in the current draw, in the bonspiel game chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Other sheets this draw'**
+  String get bonspielGameChooserOtherSheets;
+
+  /// Button in the bonspiel game chooser to start a league game instead.
+  ///
+  /// In en, this message translates to:
+  /// **'League game'**
+  String get bonspielGameChooserLeagueButton;
+
+  /// Marks a bonspiel game that already has a result, in the bonspiel game chooser.
+  ///
+  /// In en, this message translates to:
+  /// **'Played'**
+  String get bonspielGameChooserPlayed;
 }
 
 class _AppLocalizationsDelegate

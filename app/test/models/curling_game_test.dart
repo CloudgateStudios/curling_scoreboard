@@ -1,4 +1,5 @@
 import 'package:curling_scoreboard/constants.dart';
+import 'package:curling_scoreboard/models/bonspiel.dart';
 import 'package:curling_scoreboard/models/curling_end.dart';
 import 'package:curling_scoreboard/models/curling_game.dart';
 import 'package:curling_scoreboard/models/curling_team.dart';
@@ -28,6 +29,21 @@ void main() {
         team2: team2,
         numberOfEnds: 8,
         numberOfPlayersPerTeam: 4,
+      );
+    });
+
+    test('keeps its bonspiel game through JSON', () {
+      game.bonspiel = const GameBonspiel(
+        id: 'fall',
+        name: 'Fall Spiel',
+        gameId: 'a7',
+      );
+      final copy = CurlingGame.fromJson(game.toJson());
+      expect(copy.bonspiel?.gameId, 'a7');
+      expect(copy.league, isNull);
+      expect(
+        CurlingGame.fromJson((game..bonspiel = null).toJson()).bonspiel,
+        isNull,
       );
     });
 
