@@ -57,8 +57,12 @@ function gameById(plan, id) {
   return (plan?.games ?? []).find((game) => game.id === id);
 }
 
-/** "Winner of A3", "Loser of A3", or "To be decided". */
+/** "Winner of A3", "Loser of A3", "Pool A #1", or "To be decided". */
 export function describeSide(plan, side) {
+  if (side?.eventId && side.rank) {
+    const event = (plan?.events ?? []).find((e) => e.id === side.eventId)?.name || 'An event';
+    return `${event} #${side.rank}`;
+  }
   if (side?.from) {
     const label = gameById(plan, side.from)?.label || 'a game';
     return `${side.result === 'loser' ? 'Loser' : 'Winner'} of ${label}`;
@@ -133,6 +137,16 @@ export function bracketRounds(plan, eventId) {
   const rounds = [];
   for (const game of order) (rounds[round(game)] ??= []).push(game);
   return rounds.filter(Boolean);
+}
+
+/** Whether an event is a pool: games but no single final, so its standings
+ *  decide it. Mirrors isPool in admin/src/lib/bonspiels.ts. */
+export function isPool(plan, eventId) {
+  const games = (plan?.games ?? []).filter((game) => game.eventId === eventId);
+  const sentOn = new Set(games.flatMap((game) => [game.team1, game.team2])
+    .filter((side) => side?.from && side.result === 'winner')
+    .map((side) => side.from));
+  return games.filter((game) => !sentOn.has(game.id)).length > 1;
 }
 
 /** The events that have games, in the plan's order. */

@@ -553,6 +553,12 @@ abstract class AppLocalizations {
   /// **'Loser of {game}'**
   String bonspielSideLoserOf(String game);
 
+  /// Stands in for a team in a bonspiel game that will be the team finishing in a place in a pool, until the pool's games are played.
+  ///
+  /// In en, this message translates to:
+  /// **'{event} #{rank}'**
+  String bonspielSidePlace(String event, int rank);
+
   /// Stands in for a team in a bonspiel game that the organizers have not placed yet.
   ///
   /// In en, this message translates to:

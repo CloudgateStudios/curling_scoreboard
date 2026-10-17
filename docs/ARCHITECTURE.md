@@ -40,7 +40,7 @@ clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
 
 clubs/{clubId}/private/webhook       // absent means no webhook
   url: string                // https, where completed games are posted
-  games: 'all' | 'league'    // every game, or only ones with a league team
+  games: 'all' | 'league' | 'bonspiel'   // every game, only league games, or only bonspiel games
   template?: string          // the club's message, up to 1000 characters; absent for the default
   timeZone?: string          // IANA zone for dates in the message; absent means UTC
 
@@ -129,7 +129,12 @@ clubs/{clubId}/bonspiels/{bonspielId}  // a bonspiel's plan, written by its coor
   startDate: string          // 'YYYY-MM-DD', the club's local time, inclusive
   endDate: string
   numberOfEnds: int          // 1 to 12, for every game unless its event says otherwise
-  events: [{ id: string, name: string, numberOfEnds?: int }]   // "A Event"
+  events: [{
+    id: string
+    name: string             // "A Event"
+    numberOfEnds?: int
+    tiebreak?: string[]      // a pool's team IDs, in the order that breaks its ties
+  }]
   teams: [{ id: string, name: string, externalId?: string }]
   draws: [{
     id: string
@@ -151,7 +156,8 @@ clubs/{clubId}/bonspiels/{bonspielId}  // a bonspiel's plan, written by its coor
     }
   }]
   // Side is { teamId } (placed), { from: gameId, result: 'winner' | 'loser' }
-  // (out of an earlier game), or null (to be decided).
+  // (out of an earlier game), { rank: int, eventId } (a place in a pool's
+  // standings, from 1), or null (to be decided).
 
 clubs/{clubId}/bonspiels/{bonspielId}/state/current   // written by the functions
   updatedAt: timestamp
@@ -182,6 +188,18 @@ clubs/{clubId}/bonspiels/{bonspielId}/state/current   // written by the function
     [eventId]: {
       finalGameId?: string   // the event's one game whose winner goes nowhere else in it
       winner?: { teamId?: string, name: string }
+      standings?: [{         // a pool's, best first
+        teamId?: string
+        name: string
+        played: int
+        wins: int
+        losses: int
+        ties: int
+        points: int          // 2 a win, 1 a tie
+        place: int           // from 1; teams sharing one have the same
+        tied: bool           // shares its place
+      }]
+      complete?: bool        // a pool's: every game has a result
     }
   }
 
@@ -577,7 +595,7 @@ sized to the screen:
   When there are more draws than fit, they start from the one before it.
 - `?view=brackets`: each event as the portal's bracket view lays it out, one
   at a time, sized so its biggest round fits; the subtitle names the winner
-  once there is one.
+  once there is one. A pool shows its standings instead.
 - `?view=cycle`: all of them in turn.
 
 With more than one screen, each shows for `?every=` seconds (20 by default).
@@ -704,11 +722,23 @@ events, games placed by hand, and anything in between are all written that
 way. An event's final is its one game whose winner goes to no other game in
 the event, and the final's winner wins the event. Nothing has to mark it.
 
+An event with more than one such game is a pool, played as a round robin
+or any other way, and its standings decide it. A side can be a place in a
+pool's standings, `{ rank, eventId }`, which is how pools send their top
+teams on to a playoff. Teams are ranked by points, two for a win and one for
+a tie; teams level on points by the points from the games between them;
+and teams level still by the event's `tiebreak`, an order of team IDs the
+coordinator sets after a last stone draw or a tiebreak game. Teams the
+tiebreak does not order share a place. A place only sends its team on once
+every game in the pool has a result and nobody shares it.
+
 Club admins and bonspiel admins plan bonspiels on the portal's Bonspiels tab.
 The portal saves the whole plan at once, after checking that it makes sense:
 every game is in a draw and an event and on one of the club's sheets, one
 game to a sheet in each draw, no team twice in a draw, a game only comes from
-games in earlier draws, and no game's winner or loser goes to two games.
+games in earlier draws, and no game's winner or loser, or pool's place, goes
+to two games. A place in a pool comes from a pool whose games are all in
+earlier draws.
 The rules only check the plan's outline, as they do for leagues.
 
 Each bonspiel's state, who is in each game and how it went, is kept apart
@@ -716,8 +746,9 @@ from the plan in `state/current`, and only the functions write it. A
 coordinator saving the plan then never overwrites a result that has just
 come in, or the other way round, and the bracket is worked out in one place.
 `resolveBonspiel` in `functions/src/bonspiels/state.ts` works it out in draw
-order: a placed team is that team, and a side from another game is that
-game's winner or loser once it has one. A game's result is the coordinator's,
+order: a placed team is that team, a side from another game is that
+game's winner or loser once it has one, and a place in a pool is the team
+in it once the pool is played. A game's result is the coordinator's,
 if there is one, otherwise the latest game a scoreboard recorded for it. A
 scoreboard's result also says who actually played, which wins over the plan,
 so a game played by other teams after a last minute change still sends the
@@ -737,7 +768,9 @@ transaction:
 
 Like the display summary, both rebuild from the documents as they are, never
 from the event, so a late or repeated delivery writes the same thing again.
-What is still to come is in [BONSPIELS.md](BONSPIELS.md).
+
+Hammer is not part of a plan: it stays a choice on the scoreboard, as in any
+other game.
 
 ### On the scoreboard
 
@@ -751,11 +784,12 @@ bonspiel bar offering this sheet's game in the current draw. A draw is
 current from 30 minutes before it starts, the league lead time, until the
 same time before the next; before the first draw it is the first. The game's
 teams are those the state has worked out, or those the coordinator placed,
-and a side still to come shows where it comes from ("Winner of A3"), filling
+and a side still to come shows where it comes from ("Winner of A3", "Pool
+A #1"), filling
 in as the state changes. Start Game starts it, to its event's number of ends
 unless others are picked. A bonspiel game's result only counts with its
 teams, so a game with a side not known yet asks for the teams first, in the
-league team picker: the teams of the games it comes from first, or else
+league team picker: the teams of the games or pool it comes from first, or else
 those not in another game of the draw, and every team behind a button.
 
 The bar's left side opens a chooser with this sheet's games from the draw
@@ -767,8 +801,9 @@ The game carries `bonspiel: { id, name, gameId }` and each team's `teamId`
 and `externalId` in `liveGame` and its completed game, which is what
 `syncBonspielResult` reads. During the game the Teams button picks its
 teams again, offering its own and those free in its draw first. The REST
-API and the displays do not show the tag yet, and the completed game webhook
-counts a bonspiel game among league games, since its teams have IDs.
+API returns the tag as each game's `bonspiel`, and the completed game
+webhook does not count a bonspiel game among league games, although its
+teams have IDs.
 
 ## Scoreboard status
 
@@ -819,7 +854,10 @@ and Bonspiels; the other tabs are not mounted for them at all.
   board shows each game as the functions last worked it out, with the edits
   not yet saved laid over it. Beside it, Brackets shows each event in
   rounds, a game's round being one past the latest game in the event its
-  winners come from, ending at the final and the event's winner. Duplicate
+  winners come from, ending at the final and the event's winner. A pool
+  shows its standings and its games instead, and where teams share a place
+  the coordinator orders them with Move up, which saves as the event's
+  `tiebreak`. Duplicate
   copies a bonspiel's events, draws and games to new dates, without its teams
   or results, to run it again.
 
@@ -830,9 +868,14 @@ and Bonspiels; the other tabs are not mounted for them at all.
   with byes for the teams listed first once no more are coming, so no team
   has two. `knockoutPlan` in `admin/src/lib/bonspielTemplates.ts` then places
   the games in draws, those whose teams have waited longest first, never
-  before the games they come from and, where other games can fill the draw,
-  not in the draw right after them. What it makes is an ordinary plan, edited
-  like any other.
+  before the games they come from, never with a team twice in a draw and,
+  where other games can fill the draw, not in the draw right after them.
+
+  The pools template, `poolsPlan`, splits the teams into up to eight pools,
+  each a round robin, and sends the top one to three of each pool to a
+  knockout playoff ending in one final: first places meet the other pools'
+  lowest qualifiers, and the best seeds get any byes. What either template
+  makes is an ordinary plan, edited like any other.
 - **Displays**: the display links, and the warm room screen's title and logo.
   A link can show the warm room, a sheet's score bug or one of the club's
   bonspiels.
@@ -860,10 +903,15 @@ under `/api/**` through a Hosting rewrite. It is read only:
 - `GET /api/v1/clubs/{clubId}/sheets/{sheetId}/games?limit=`
 - `GET /api/v1/clubs/{clubId}/leagues`
 - `GET /api/v1/clubs/{clubId}/leagues/{leagueId}`
+- `GET /api/v1/clubs/{clubId}/bonspiels`
+- `GET /api/v1/clubs/{clubId}/bonspiels/{bonspielId}`
 
 Live and completed games carry `league` (null for an open game) and, in a
 league game, each team's `teamId` and `externalId`, which match the teams the
-league endpoints return. A live game also carries `numberOfEnds` and the
+league endpoints return. A bonspiel game carries `bonspiel`, naming the game
+in its bonspiel's plan, which the bonspiel endpoint returns with each
+game's teams worked out, its score and where each side comes from, and each
+pool's standings. A live game also carries `numberOfEnds` and the
 `ends` played so far, in the same form as a completed game's; both are null
 for a game from a scoreboard build that predates them.
 
@@ -882,8 +930,9 @@ the API from a server.
 
 A club can have each finished game posted to a URL, usually a Slack or
 Discord incoming webhook. A club admin or super admin sets it under Settings,
-Integrations in the admin portal, along with whether to post every game or only league
-games. A league game here is one where either team has a `teamId`.
+Integrations in the admin portal, along with whether to post every game, only league
+games or only bonspiel games. A league game here is one where either team has a
+`teamId` and that is not a bonspiel game.
 
 `sendCompletedGameWebhook` is a Firestore trigger on new `games` documents, so
 it fires on the Finish Game write and nothing in the scoreboard app knows
@@ -903,7 +952,9 @@ reads the first and Discord the second, followed by `event`, `club`, `sheet` and
 - **Message.** The club can write its own message in the portal, with
   variables in braces such as `{team1}`, `{league}` or `{date}`, filled in by
   `functions/src/webhookMessage.ts`. Without one it is the result on one line
-  ("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"). Dates and times are
+  ("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"), or for a bonspiel
+  game its bonspiel and game ("Fall Spiel A7, Sheet 2: ..."). `{bonspiel}`,
+  `{bonspielGame}` and `{event}` come from the bonspiel's plan. Dates and times are
   written in the time zone saved with the template, which the portal
   defaults to the admin's own. `{date}`, `{shortDate}` and `{weekday}` are
   the day the game started, so a late draw that runs past midnight keeps

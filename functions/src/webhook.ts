@@ -4,13 +4,13 @@ import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/fire
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { buildGameResponse } from './routes/games';
-import { gameMessage, validTimeZone } from './webhookMessage';
+import { BonspielGameNames, gameMessage, validTimeZone } from './webhookMessage';
 
 // A club's completed game webhook: a URL the club gives us, usually a Slack
 // or Discord incoming webhook, that each finished game is posted to.
 
 /** Which completed games a club wants posted. */
-type WebhookGames = 'all' | 'league';
+type WebhookGames = 'all' | 'league' | 'bonspiel';
 
 interface WebhookSettings {
   url: string;
@@ -51,18 +51,41 @@ async function readSettings(clubId: string): Promise<WebhookSettings | null> {
   const template = data?.['template'];
   return {
     url,
-    games: data?.['games'] === 'league' ? 'league' : 'all',
+    games: data?.['games'] === 'league' || data?.['games'] === 'bonspiel' ? data['games'] : 'all',
     ...(typeof template === 'string' && template.trim() !== '' && { template }),
     timeZone: validTimeZone(data?.['timeZone']),
   };
 }
 
 // A league game is one where a league team was picked for either color. Open
-// games only carry the names of the rock colors.
+// games only carry the names of the rock colors. Bonspiel games have teams
+// too, but are not league games.
 export function isLeagueGame(game: FirebaseFirestore.DocumentData): boolean {
+  if (isBonspielGame(game)) return false;
   return [game['team1'], game['team2']].some(
     (team) => typeof team?.['teamId'] === 'string' && team['teamId'] !== '',
   );
+}
+
+export function isBonspielGame(game: FirebaseFirestore.DocumentData): boolean {
+  return typeof game['bonspiel']?.['id'] === 'string';
+}
+
+/** The bonspiel game's name and event, from its plan, for the message. */
+async function bonspielGameOf(clubId: string, game: FirebaseFirestore.DocumentData): Promise<BonspielGameNames | undefined> {
+  if (!isBonspielGame(game)) return undefined;
+  const plan = await getFirestore()
+    .collection('clubs').doc(clubId)
+    .collection('bonspiels').doc(game['bonspiel']['id'] as string)
+    .get();
+  const games = (plan.get('games') as FirebaseFirestore.DocumentData[] | undefined) ?? [];
+  const events = (plan.get('events') as FirebaseFirestore.DocumentData[] | undefined) ?? [];
+  const planned = games.find((g) => g?.['id'] === game['bonspiel']['gameId']);
+  const event = events.find((e) => e?.['id'] === planned?.['eventId']);
+  return {
+    label: typeof planned?.['label'] === 'string' ? planned['label'] : '',
+    event: typeof event?.['name'] === 'string' ? event['name'] : '',
+  };
 }
 
 // What the test message shows the club's template filled in with.
@@ -206,6 +229,7 @@ export const sendCompletedGameWebhook = onDocumentCreated(
     const settings = await readSettings(clubId);
     if (!settings) return;
     if (settings.games === 'league' && !isLeagueGame(game)) return;
+    if (settings.games === 'bonspiel' && !isBonspielGame(game)) return;
 
     // Events can be delivered more than once. Whichever delivery marks the
     // game first posts it; the mark is made before posting, so a failed post
@@ -221,14 +245,15 @@ export const sendCompletedGameWebhook = onDocumentCreated(
     if (!claimed) return;
 
     const clubRef = db.collection('clubs').doc(clubId);
-    const [clubSnap, sheetSnap] = await Promise.all([
+    const [clubSnap, sheetSnap, bonspielGame] = await Promise.all([
       clubRef.get(),
       clubRef.collection('sheets').doc(sheetId).get(),
+      bonspielGameOf(clubId, game),
     ]);
     const sheetName = (sheetSnap.get('name') as string | undefined) ?? sheetId;
     const clubName = (clubSnap.get('name') as string | undefined) ?? clubId;
     const text = gameMessage(settings.template, {
-      clubName, sheetName, game, timeZone: settings.timeZone,
+      clubName, sheetName, game, timeZone: settings.timeZone, bonspielGame,
     });
 
     const result = await deliver(settings.url, withMessage(text, {

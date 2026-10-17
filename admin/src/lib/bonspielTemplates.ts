@@ -16,12 +16,16 @@ import type { Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielSide,
  */
 export type LoserRule = 'byRound' | 'dropOne';
 
-export interface KnockoutOptions {
+export interface KnockoutOptions extends ScheduleOptions {
   /** How many teams start in the A event. */
   teams: number;
   /** 1 to 4: A, B, C and D. */
   events: number;
   losers: LoserRule;
+}
+
+/** Where and when a template's games are played. */
+export interface ScheduleOptions {
   /** The sheets to play on, in the order games fill them. */
   sheetIds: string[];
   /** `YYYY-MM-DDTHH:mm` */
@@ -51,6 +55,9 @@ interface Built {
   game: BonspielGame;
   event: number;
   round: number;
+  /** The teams in the game when the template knows them, a pool's members
+   *  whether placed yet or not, so no team plays twice at once. */
+  players?: string[];
 }
 
 const largestPowerOfTwo = (n: number) => 2 ** Math.floor(Math.log2(n));
@@ -167,26 +174,45 @@ export function knockoutPlan(
  * ones its teams come from, and with [KnockoutOptions.drawOff] not in the
  * draw right after them, unless that would leave the draw empty.
  */
-function schedule(built: Built[], options: KnockoutOptions, newId: () => string): BonspielDraw[] {
+function schedule(built: Built[], options: ScheduleOptions, newId: () => string): BonspielDraw[] {
   const sheets = options.sheetIds.length > 0 ? options.sheetIds : [''];
   const drawOf = new Map<string, number>();
+  // A place in a pool's standings comes after every game in the pool.
+  const inEvent = new Map<string, string[]>();
+  for (const b of built) inEvent.set(b.game.eventId, [...(inEvent.get(b.game.eventId) ?? []), b.game.id]);
   const sources = (game: BonspielGame) =>
-    [game.team1, game.team2].flatMap((side) => (side && 'from' in side ? [side.from] : []));
+    [game.team1, game.team2].flatMap((side) => {
+      if (side && 'from' in side) return [side.from];
+      if (side && 'rank' in side) return inEvent.get(side.eventId) ?? [];
+      return [];
+    });
   let remaining = [...built].sort((a, b) => a.round - b.round || a.event - b.event);
   const draws: BonspielDraw[] = [];
   // The draw a game's teams are last busy in, so the games whose teams have
   // waited longest go first. Otherwise a big A event's later rounds would
   // keep the first round's losers waiting a day for their B game.
-  const freedAfter = (b: Built) => Math.max(-1, ...sources(b.game).map((id) => drawOf.get(id)!));
+  // The last draw each known player played in.
+  const playedIn = new Map<string, number>();
+  const lastDraws = (b: Built) => [
+    ...sources(b.game).map((id) => drawOf.get(id)!),
+    ...(b.players ?? []).flatMap((p) => (playedIn.has(p) ? [playedIn.get(p)!] : [])),
+  ];
+  const freedAfter = (b: Built) => Math.max(-1, ...lastDraws(b));
 
   for (let d = 0; remaining.length > 0; d++) {
     const ready = remaining
       .filter((b) => sources(b.game).every((id) => (drawOf.get(id) ?? Infinity) < d))
       .sort((a, b) => freedAfter(a) - freedAfter(b) || a.round - b.round || a.event - b.event);
-    const rested = options.drawOff
-      ? ready.filter((b) => sources(b.game).every((id) => drawOf.get(id)! < d - 1))
-      : ready;
-    const chosen = (rested.length > 0 ? rested : ready).slice(0, sheets.length);
+    const rested = options.drawOff ? ready.filter((b) => lastDraws(b).every((at) => at < d - 1)) : ready;
+    const chosen: Built[] = [];
+    const busy = new Set<string>();
+    // Rested games first, then any others, never a player twice in a draw.
+    for (const b of [...rested, ...(rested.length > 0 ? [] : ready)]) {
+      if (chosen.length >= sheets.length) break;
+      if ((b.players ?? []).some((p) => busy.has(p))) continue;
+      chosen.push(b);
+      for (const p of b.players ?? []) busy.add(p);
+    }
     const draw: BonspielDraw = {
       id: newId(),
       label: `Draw ${d + 1}`,
@@ -197,6 +223,7 @@ function schedule(built: Built[], options: KnockoutOptions, newId: () => string)
       b.game.drawId = draw.id;
       b.game.sheetId = sheets[i];
       drawOf.set(b.game.id, d);
+      for (const p of b.players ?? []) playedIn.set(p, d);
     });
     remaining = remaining.filter((b) => !chosen.includes(b));
   }
@@ -205,11 +232,109 @@ function schedule(built: Built[], options: KnockoutOptions, newId: () => string)
 
 /** When the draw after one starting at [start] starts: a draw's length later,
  *  or the next morning once that would be past the day's last draw. */
-function nextStart(start: string, options: KnockoutOptions): string {
+function nextStart(start: string, options: ScheduleOptions): string {
   const next = addMinutes(start, options.minutesBetweenDraws);
   if (next.slice(0, 10) === start.slice(0, 10) && next.slice(11) <= options.lastDrawStart) return next;
   const nextDay = addMinutes(`${start.slice(0, 10)}T12:00`, 24 * 60).slice(0, 10);
   return `${nextDay}T${options.dayStart}`;
+}
+
+export interface PoolsOptions extends ScheduleOptions {
+  teams: number;
+  /** How many pools the teams are split into, 1 to 8. */
+  pools: number;
+  /** How many from the top of each pool go on to the playoffs. None, with
+   *  one pool, leaves its standings to decide it. */
+  qualifiers: number;
+}
+
+export const MAX_POOLS = 8;
+
+/** The order a round robin of [n] teams plays in: rounds of pairs, by
+ *  index, each team once a round. With an odd number one sits out each
+ *  round. The circle method: one team stays put and the rest turn. */
+export function roundRobin(n: number): [number, number][][] {
+  const ids = Array.from({ length: n % 2 === 0 ? n : n + 1 }, (_, i) => i);
+  const rounds: [number, number][][] = [];
+  for (let r = 0; r < ids.length - 1; r++) {
+    const round: [number, number][] = [];
+    for (let i = 0; i < ids.length / 2; i++) {
+      const a = ids[i];
+      const b = ids[ids.length - 1 - i];
+      // The extra index is the bye.
+      if (a < n && b < n) round.push(r % 2 === 0 ? [a, b] : [b, a]);
+    }
+    rounds.push(round);
+    ids.splice(1, 0, ids.pop()!);
+  }
+  return rounds;
+}
+
+/**
+ * The events, games and draws of a bonspiel played in pools: the first
+ * [options.teams] of [teams] dealt into pools in turn, A, B, C and back,
+ * each a round robin. The top [options.qualifiers] of each pool go on to a
+ * knockout playoff, seeded so pool winners meet runners up from other pools
+ * first, with any byes to the best seeds. Pool games are named by their pool's
+ * letter, playoff games P1, P2 and the Final.
+ */
+export function poolsPlan(
+  teams: BonspielTeam[],
+  options: PoolsOptions,
+  newId: () => string = newBonspielId,
+): Pick<Bonspiel, 'events' | 'draws' | 'games'> {
+  const poolCount = Math.min(Math.max(options.pools, 1), MAX_POOLS, Math.floor(options.teams / 2) || 1);
+  const pools: BonspielSide[][] = Array.from({ length: poolCount }, () => []);
+  for (let i = 0; i < options.teams; i++) {
+    pools[i % poolCount].push(teams[i] ? { teamId: teams[i].id } : null);
+  }
+
+  const letters = 'ABCDEFGH';
+  const events: BonspielEvent[] = [];
+  const built: Built[] = [];
+  let lastRound = 0;
+  pools.forEach((members, p) => {
+    const event: BonspielEvent = { id: newId(), name: `Pool ${letters[p]}` };
+    events.push(event);
+    let n = 0;
+    roundRobin(members.length).forEach((pairs, r) => {
+      for (const [a, b] of pairs) {
+        const game: BonspielGame = {
+          id: newId(), label: `${letters[p]}${++n}`, drawId: '', sheetId: '', eventId: event.id,
+          team1: members[a], team2: members[b],
+        };
+        built.push({ game, event: p, round: r + 1, players: [`${p}:${a}`, `${p}:${b}`] });
+        lastRound = Math.max(lastRound, r + 1);
+      }
+    });
+  });
+
+  // Each place, best first, across the pools: every pool's winner, then
+  // every runner up, and so on.
+  const qualifiers = Math.min(Math.max(options.qualifiers, 0), Math.min(...pools.map((m) => m.length)));
+  const seeds: BonspielSide[] = [];
+  for (let place = 1; place <= qualifiers; place++) {
+    for (const event of events) seeds.push({ rank: place, eventId: event.id });
+  }
+  if (seeds.length >= 2) {
+    // Best against worst: with byes to the best, then the rest paired from
+    // the outside in, which is the order buildEvent pairs them in.
+    const byes = 2 ** Math.ceil(Math.log2(seeds.length)) - seeds.length;
+    const rest = seeds.slice(byes);
+    const order = [...seeds.slice(0, byes)];
+    for (let i = 0; i < rest.length / 2; i++) order.push(rest[i], rest[rest.length - 1 - i]);
+    const event: BonspielEvent = { id: newId(), name: 'Playoffs' };
+    events.push(event);
+    const games = buildEvent(order.map((side) => ({ side, round: lastRound + 1 })), poolCount, newId);
+    games.forEach((b, i) => {
+      b.game.eventId = event.id;
+      b.game.label = i === games.length - 1 ? 'Final' : `P${i + 1}`;
+    });
+    built.push(...games);
+  }
+
+  const draws = schedule(built, options, newId);
+  return { events, draws, games: built.map((b) => b.game) };
 }
 
 /** [items] in a random order, for drawing the first round from a hat. */

@@ -166,7 +166,7 @@ service cloud.firestore {
             && request.resource.data.url is string
             && request.resource.data.url.size() <= 500
             && request.resource.data.url.matches('^https://.+')
-            && request.resource.data.games in ['all', 'league']
+            && request.resource.data.games in ['all', 'league', 'bonspiel']
             && (!('template' in request.resource.data)
                 || (request.resource.data.template is string
                     && request.resource.data.template.size() <= 1000))

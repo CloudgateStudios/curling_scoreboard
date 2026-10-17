@@ -20,7 +20,7 @@ import {
 } from '../functions/lib/display/state.js';
 import { resolveBonspiel } from '../functions/lib/bonspiels/state.js';
 import {
-  bracketRounds, currentDraw, nextDraw, resultOf, sideOf,
+  bracketRounds, currentDraw, isPool, nextDraw, resultOf, sideOf,
 } from '../functions/lib/display/assets/bonspiel-model.js';
 
 const PROJECT_ID = 'demo-functions';
@@ -343,7 +343,7 @@ describe('REST API live games', () => {
     assert.equal(body.hasLiveGame, true);
     assert.deepEqual(body.liveGame, {
       updatedAt: updatedAt.toDate().toISOString(), currentEnd: 1, numberOfEnds: null, league: null,
-      ...teams, ends: null,
+      bonspiel: null, ...teams, ends: null,
     });
   });
 
@@ -497,6 +497,106 @@ describe('REST API leagues', () => {
     assert.equal(leagueGame.team1.externalId, '1042');
     assert.equal(openGame.league, null);
     assert.equal(openGame.team1.teamId, undefined);
+  });
+});
+
+describe('REST API bonspiels', () => {
+  const headers = { 'x-api-key': 'key-spiels' };
+  const result = (sheetGameId, [id1, name1, score1], [id2, name2, score2]) => ({
+    sheetId: 's1',
+    sheetGameId,
+    finishedAt: Timestamp.now(),
+    team1: { teamId: id1, name: name1, score: score1 },
+    team2: { teamId: id2, name: name2, score: score2 },
+  });
+
+  before(async () => {
+    await db.doc('clubs/club-spiels').set({ name: 'Club Spiels' });
+    await db.doc('clubs/club-spiels/private/apiKey').set({ key: 'key-spiels' });
+    await db.doc('clubs/club-spiels/bonspiels/older').set({
+      name: 'Spring Spiel', active: false, startDate: '2026-04-10', endDate: '2026-04-12',
+      events: [], teams: [], draws: [], games: [],
+    });
+    // A pool of three, all played, and a final between its winner and the
+    // loser of its first game.
+    await db.doc('clubs/club-spiels/bonspiels/fall').set({
+      name: 'Fall Spiel', active: true, startDate: '2026-11-06', endDate: '2026-11-08', numberOfEnds: 8,
+      internalNote: 'do not publish',
+      events: [{ id: 'p', name: 'Pool A' }, { id: 'f', name: 'Final', numberOfEnds: 6 }],
+      teams: [{ id: 't1', name: 'Smith', externalId: '1042' }, { id: 't2', name: 'Jones' }, { id: 't3', name: 'Brown' }],
+      draws: [{ id: 'd1', label: 'Draw 1', start: '2026-11-06T19:00' }],
+      games: [
+        { id: 'g1', label: 'A1', drawId: 'd1', sheetId: 's1', eventId: 'p', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+        { id: 'g2', label: 'A2', drawId: 'd1', sheetId: 's1', eventId: 'p', team1: { teamId: 't2' }, team2: { teamId: 't3' } },
+        { id: 'g3', label: 'A3', drawId: 'd1', sheetId: 's1', eventId: 'p', team1: { teamId: 't1' }, team2: { teamId: 't3' } },
+        {
+          id: 'fin', label: 'Final', drawId: 'd1', sheetId: 's2', eventId: 'f',
+          team1: { rank: 1, eventId: 'p' }, team2: { from: 'g1', result: 'loser' },
+        },
+      ],
+    });
+    // The results the functions keep. The response works the rest out again.
+    await db.doc('clubs/club-spiels/bonspiels/fall/state/current').set({
+      results: {
+        g1: result('x1', ['t1', 'Smith', 6], ['t2', 'Jones', 4]),
+        g2: result('x2', ['t2', 'Jones', 5], ['t3', 'Brown', 3]),
+        g3: result('x3', ['t1', 'Smith', 7], ['t3', 'Brown', 2]),
+      },
+    });
+  });
+
+  test('lists a club\'s bonspiels, newest first', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels`, { headers });
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), {
+      bonspiels: [
+        { id: 'fall', name: 'Fall Spiel', active: true, startDate: '2026-11-06', endDate: '2026-11-08' },
+        { id: 'older', name: 'Spring Spiel', active: false, startDate: '2026-04-10', endDate: '2026-04-12' },
+      ],
+    });
+  });
+
+  test('returns a bonspiel with its standings and who is in each game', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels/fall`, { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(Object.keys(body).sort(),
+      ['active', 'draws', 'endDate', 'events', 'games', 'id', 'name', 'numberOfEnds', 'startDate', 'teams']);
+    const [pool, final] = body.events;
+    assert.equal(pool.finalGameId, null);
+    assert.equal(pool.complete, true);
+    assert.deepEqual(pool.standings.map((r) => [r.place, r.team.name, r.points]),
+      [[1, 'Smith', 4], [2, 'Jones', 2], [3, 'Brown', 0]]);
+    assert.deepEqual(pool.standings[0],
+      { team: { teamId: 't1', name: 'Smith' }, place: 1, tied: false, played: 2, wins: 2, losses: 0, ties: 0, points: 4 });
+    assert.deepEqual(final, {
+      id: 'f', name: 'Final', numberOfEnds: 6, finalGameId: 'fin', winner: null, standings: null, complete: null,
+    });
+    assert.deepEqual(body.teams[1], { id: 't2', name: 'Jones', externalId: null });
+
+    const games = Object.fromEntries(body.games.map((g) => [g.id, g]));
+    assert.deepEqual(games.g1, {
+      id: 'g1', label: 'A1', drawId: 'd1', sheetId: 's1', eventId: 'p', status: 'final',
+      team1: { from: { type: 'team', teamId: 't1' }, team: { teamId: 't1', name: 'Smith' }, score: 6 },
+      team2: { from: { type: 'team', teamId: 't2' }, team: { teamId: 't2', name: 'Jones' }, score: 4 },
+      winner: 'team1',
+    });
+    assert.equal(games.fin.status, 'ready');
+    assert.deepEqual(games.fin.team1,
+      { from: { type: 'place', eventId: 'p', place: 1 }, team: { teamId: 't1', name: 'Smith' }, score: null });
+    assert.deepEqual(games.fin.team2,
+      { from: { type: 'loser', gameId: 'g1' }, team: { teamId: 't2', name: 'Jones' }, score: null });
+  });
+
+  test('returns 404 for an unknown bonspiel', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels/missing`, { headers });
+    assert.equal(res.status, 404);
+  });
+
+  test('needs the club\'s own key', async () => {
+    assert.equal((await fetch(`${API_URL}/clubs/club-spiels/bonspiels`)).status, 401);
+    const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 403);
   });
 });
 
@@ -893,13 +993,23 @@ describe('completed game webhook', () => {
     await new Promise((resolve) => receiver.listen(0, '127.0.0.1', resolve));
     hookUrl = `http://127.0.0.1:${receiver.address().port}`;
 
-    for (const club of ['hook-all', 'hook-league', 'hook-off', 'hook-failing', 'hook-template']) {
+    for (const club of ['hook-all', 'hook-league', 'hook-off', 'hook-failing', 'hook-template', 'hook-bonspiel']) {
       await db.doc(`clubs/${club}`).set({ name: `Club ${club}` });
       await db.doc(`clubs/${club}/sheets/s1`).set({ name: 'Sheet 1' });
     }
     await db.doc('clubs/hook-all/private/webhook').set({ url: `${hookUrl}/all`, games: 'all' });
     await db.doc('clubs/hook-league/private/webhook').set({ url: `${hookUrl}/league`, games: 'league' });
     await db.doc('clubs/hook-failing/private/webhook').set({ url: `${hookUrl}/failing`, games: 'all' });
+    await db.doc('clubs/hook-bonspiel/private/webhook').set({
+      url: `${hookUrl}/bonspiel`,
+      games: 'bonspiel',
+      template: '{leagueAndSheet} | {bonspiel} | {bonspielGame} | {event} | {result}',
+    });
+    await db.doc('clubs/hook-bonspiel/bonspiels/fall').set({
+      name: 'Fall Spiel', startDate: '2026-10-08', endDate: '2026-10-08',
+      events: [{ id: 'a', name: 'A Event' }],
+      games: [{ id: 'a3', label: 'A Final', eventId: 'a', drawId: 'd1', sheetId: 's1' }],
+    });
     await db.doc('clubs/hook-template/private/webhook').set({
       url: `${hookUrl}/template`,
       games: 'all',
@@ -925,6 +1035,13 @@ describe('completed game webhook', () => {
     team2: { ...openGame.team2, name: 'Team Jones', teamId: 't2' },
   };
 
+  const bonspielGame = {
+    ...openGame,
+    bonspiel: { id: 'fall', name: 'Fall Spiel', gameId: 'a3' },
+    team1: leagueGame.team1,
+    team2: leagueGame.team2,
+  };
+
   const postsTo = (path) => received.filter((r) => r.path === path);
 
   test('posts a completed game with a message Slack and Discord both read', async () => {
@@ -940,7 +1057,7 @@ describe('completed game webhook', () => {
     assert.deepEqual(post.body.club, { id: 'hook-all', name: 'Club hook-all' });
     assert.deepEqual(post.body.sheet, { id: 's1', name: 'Sheet 1' });
     assert.deepEqual(Object.keys(post.body.game).sort(),
-      ['ends', 'finishedAt', 'id', 'league', 'numberOfEnds', 'startedAt', 'team1', 'team2']);
+      ['bonspiel', 'ends', 'finishedAt', 'id', 'league', 'numberOfEnds', 'startedAt', 'team1', 'team2']);
     assert.equal(post.body.game.id, 'open-1');
     assert.equal(post.body.game.finishedAt, '2026-10-08T20:25:00.000Z');
     assert.equal(post.body.game.league, null);
@@ -1012,6 +1129,29 @@ describe('completed game webhook', () => {
       (await db.doc('clubs/hook-league/sheets/s1/games/open-2').get()).get('webhook'),
       undefined,
     );
+  });
+
+  test('set to league games, skips a bonspiel game', async () => {
+    const before = postsTo('/league').length;
+    await db.doc('clubs/hook-league/sheets/s1/games/spiel-1').set(bonspielGame);
+    await db.doc('clubs/hook-league/sheets/s1/games/league-3').set(leagueGame);
+
+    await waitFor('the league game', () => postsTo('/league').length > before);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    assert.deepEqual(postsTo('/league').slice(before).map((r) => r.body.game.id), ['league-3']);
+  });
+
+  test('set to bonspiel games, posts only those, naming the game and its event', async () => {
+    await db.doc('clubs/hook-bonspiel/sheets/s1/games/league-1').set(leagueGame);
+    await db.doc('clubs/hook-bonspiel/sheets/s1/games/spiel-1').set(bonspielGame);
+
+    const [post] = await waitFor('the post', () => postsTo('/bonspiel').length && postsTo('/bonspiel'));
+    assert.equal(post.body.text,
+      'Fall Spiel A Final, Sheet 1 | Fall Spiel | A Final | A Event | Team Smith beat Team Jones 7-4');
+    assert.deepEqual(post.body.game.bonspiel, { id: 'fall', name: 'Fall Spiel', gameId: 'a3' });
+    assert.equal(post.body.game.league, null);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    assert.deepEqual(postsTo('/bonspiel').map((r) => r.body.game.id), ['spiel-1']);
   });
 
   test('posts nothing for a club with no webhook', async () => {
@@ -1672,7 +1812,7 @@ describe('working out a bonspiel', () => {
     assert.deepEqual([games.y.team1, games.y.team2], [null, null]);
   });
 
-  test('gives an event with no single final no winner', () => {
+  test('gives an event with no single final standings, and no winner', () => {
     const { events } = resolveBonspiel({
       ...plan,
       games: [
@@ -1680,7 +1820,99 @@ describe('working out a bonspiel', () => {
         { id: 'r2', eventId: 'a', team1: { teamId: 't3' }, team2: { teamId: 't4' }, result: { winner: 'team1' } },
       ],
     }, {});
-    assert.deepEqual(events.a, {});
+    assert.equal(events.a.winner, undefined);
+    assert.equal(events.a.finalGameId, undefined);
+    assert.equal(events.a.complete, true);
+    assert.deepEqual(events.a.standings.map((r) => [r.name, r.place, r.tied]),
+      [['Brown', 1, true], ['Smith', 1, true], ['Jones', 3, true], ['Lee', 3, true]]);
+  });
+});
+
+describe('pools and their standings', () => {
+  // Pool A is a round robin of three; its top two play the final.
+  const g = (id, a, b, result) => ({
+    id, eventId: 'pool', team1: { teamId: a }, team2: { teamId: b }, ...(result && { result }),
+  });
+  const pool = (results, extra = {}) => ({
+    events: [{ id: 'pool', name: 'Pool A', ...extra }, { id: 'final', name: 'Final' }],
+    teams: [{ id: 'x', name: 'Smith' }, { id: 'y', name: 'Jones' }, { id: 'z', name: 'Brown' }],
+    games: [
+      g('p1', 'x', 'y', results.p1), g('p2', 'y', 'z', results.p2), g('p3', 'z', 'x', results.p3),
+      {
+        id: 'f', eventId: 'final',
+        team1: { rank: 1, eventId: 'pool' }, team2: { rank: 2, eventId: 'pool' },
+      },
+    ],
+  });
+  const won = (slot) => ({ winner: slot });
+  const places = (state) => state.events.pool.standings.map((r) => `${r.place}${r.tied ? '=' : ''} ${r.name} ${r.points}`);
+
+  test('ranks a pool by wins, and sends its top places on once it is over', () => {
+    const state = resolveBonspiel(pool({ p1: won('team1'), p2: won('team1'), p3: won('team2') }), {});
+    // Smith 2-0, Jones 1-1, Brown 0-2.
+    assert.deepEqual(places(state), ['1 Smith 4', '2 Jones 2', '3 Brown 0']);
+    assert.equal(state.events.pool.complete, true);
+    assert.deepEqual([state.games.f.team1, state.games.f.team2], [{ teamId: 'x', name: 'Smith' }, { teamId: 'y', name: 'Jones' }]);
+    // A pool is decided by its standings, so it has no final of its own.
+    assert.equal(state.events.pool.finalGameId, undefined);
+    assert.equal(state.events.final.finalGameId, 'f');
+  });
+
+  test('keeps the places open until every game in the pool is played', () => {
+    const state = resolveBonspiel(pool({ p1: won('team1'), p2: won('team1') }), {});
+    assert.equal(state.events.pool.complete, false);
+    assert.deepEqual([state.games.f.team1, state.games.f.team2], [null, null]);
+    assert.equal(state.games.f.status, 'waiting');
+  });
+
+  test('breaks a tie on points by the game between the two', () => {
+    // Four teams, so two can finish level: Smith and Jones both 2-1, and
+    // Smith beat Jones; Lee and Brown both 1-2.
+    const plan = pool({});
+    plan.teams.push({ id: 'w', name: 'Lee' });
+    plan.games = [
+      g('p1', 'x', 'y', won('team1')), g('p2', 'x', 'z', won('team2')), g('p3', 'x', 'w', won('team1')),
+      g('p4', 'y', 'z', won('team1')), g('p5', 'y', 'w', won('team1')), g('p6', 'z', 'w', won('team2')),
+      plan.games[3],
+    ];
+    const state = resolveBonspiel(plan, {});
+    // Lee beat Brown, which settles third place the same way.
+    assert.deepEqual(places(state), ['1 Smith 4', '2 Jones 4', '3 Lee 2', '4 Brown 2']);
+    assert.equal(state.games.f.team1.name, 'Smith');
+    assert.equal(state.games.f.team2.name, 'Jones');
+  });
+
+  test('leaves a place no game can settle shared, until the coordinator orders it', () => {
+    // Everyone 1-1: the games between them are level too.
+    const results = { p1: won('team1'), p2: won('team1'), p3: won('team1') };
+    let state = resolveBonspiel(pool(results), {});
+    assert.deepEqual(places(state), ['1= Brown 2', '1= Jones 2', '1= Smith 2']);
+    assert.deepEqual([state.games.f.team1, state.games.f.team2], [null, null]);
+
+    // By last stone draw: Jones, then Brown.
+    state = resolveBonspiel(pool(results, { tiebreak: ['y', 'z'] }), {});
+    assert.deepEqual(places(state), ['1 Jones 2', '2 Brown 2', '3 Smith 2']);
+    assert.equal(state.games.f.team1.name, 'Jones');
+    assert.equal(state.games.f.team2.name, 'Brown');
+  });
+
+  test('counts a tied game as a point each', () => {
+    const tie = (team1, team2) => ({
+      sheetId: 's', sheetGameId: 'g', finishedAt: Timestamp.now(),
+      team1: { ...team1, score: 4 }, team2: { ...team2, score: 4 },
+    });
+    const state = resolveBonspiel(pool({ p2: won('team1'), p3: won('team2') }), {
+      p1: tie({ teamId: 'x', name: 'Smith' }, { teamId: 'y', name: 'Jones' }),
+    });
+    const smith = state.events.pool.standings.find((r) => r.name === 'Smith');
+    assert.deepEqual([smith.wins, smith.ties, smith.points], [1, 1, 3]);
+  });
+
+  test('leaves a place in its own event unknown rather than going round in circles', () => {
+    const plan = pool({ p1: won('team1'), p2: won('team1'), p3: won('team2') });
+    plan.games.push({ id: 'loop', eventId: 'pool', team1: { rank: 1, eventId: 'pool' }, team2: { teamId: 'x' } });
+    const state = resolveBonspiel(plan, {});
+    assert.equal(state.games.loop.team1, null);
   });
 });
 
@@ -1820,6 +2052,22 @@ describe('what the bonspiel screen shows', () => {
     const state = { games: { a1: { status: 'final', team1Score: 6, team2Score: 3, winner: 'team1' }, a2: { status: 'ready' } } };
     assert.deepEqual(resultOf(state, plan.games[0]), { team1Score: 6, team2Score: 3, winner: 'team1', tied: false });
     assert.equal(resultOf(state, plan.games[1]), null);
+  });
+
+  test('names a place in a pool, and tells a pool from a knockout', () => {
+    const pooled = {
+      ...plan,
+      games: [
+        ...plan.games,
+        { id: 'p1', eventId: 'pool', team1: { teamId: 't1' }, team2: { teamId: 't3' } },
+        { id: 'p2', eventId: 'pool', team1: { teamId: 't2' }, team2: { teamId: 't4' } },
+        { id: 'x', eventId: 'b', team1: { rank: 1, eventId: 'pool' }, team2: null },
+      ],
+      events: [...plan.events, { id: 'pool', name: 'Pool A' }],
+    };
+    assert.deepEqual(sideOf(pooled, null, pooled.games[6], 'team1'), { name: 'Pool A #1', known: false });
+    assert.equal(isPool(pooled, 'pool'), true);
+    assert.equal(isPool(pooled, 'a'), false);
   });
 
   test('lays an event out as a bracket, as the portal does', () => {

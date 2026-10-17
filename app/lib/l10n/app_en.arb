@@ -394,6 +394,20 @@
       }
     }
   },
+  "bonspielSidePlace": "{event} #{rank}",
+  "@bonspielSidePlace": {
+    "description": "Stands in for a team in a bonspiel game that will be the team finishing in a place in a pool, until the pool's games are played.",
+    "placeholders": {
+      "event": {
+        "type": "String",
+        "example": "Pool A"
+      },
+      "rank": {
+        "type": "int",
+        "example": "1"
+      }
+    }
+  },
   "bonspielSideToBeDecided": "To be decided",
   "@bonspielSideToBeDecided": {
     "description": "Stands in for a team in a bonspiel game that the organizers have not placed yet."

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { formatDrawStart, newBonspielId, sortedDraws } from '../../lib/bonspiels';
 import {
-  MAX_TEMPLATE_EVENTS, MAX_TEMPLATE_TEAMS, type KnockoutOptions, type LoserRule, knockoutPlan, shuffled,
+  MAX_POOLS, MAX_TEMPLATE_EVENTS, MAX_TEMPLATE_TEAMS, type LoserRule, type ScheduleOptions, knockoutPlan, poolsPlan,
+  shuffled,
 } from '../../lib/bonspielTemplates';
 import type { Bonspiel, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
@@ -18,12 +19,18 @@ interface Props {
 const TIME = /^\d{2}:\d{2}$/;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
-/** Fills a bonspiel in as a knockout: its events, every game with where its
- *  teams come from, and the draws they are played in. */
+type Format = 'knockout' | 'pools';
+
+/** Fills a bonspiel in as a knockout, or as pools and playoffs: its events,
+ *  every game with where its teams come from, and the draws they are played
+ *  in. */
 export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
   const first = sortedDraws(bonspiel.draws)[0];
   const [teams, setTeams] = useState(String(bonspiel.teams.length >= 2 ? Math.min(bonspiel.teams.length, MAX_TEMPLATE_TEAMS) : 16));
+  const [format, setFormat] = useState<Format>('knockout');
   const [events, setEvents] = useState(4);
+  const [pools, setPools] = useState(4);
+  const [qualifiers, setQualifiers] = useState(1);
   const [losers, setLosers] = useState<LoserRule>('byRound');
   const [sheetIds, setSheetIds] = useState(() => sheets.map((s) => s.id));
   const [firstDrawStart, setFirstDrawStart] = useState(first?.start ?? `${bonspiel.startDate}T09:00`);
@@ -38,6 +45,7 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
   const problem =
     !Number.isInteger(teamCount) || teamCount < 2 || teamCount > MAX_TEMPLATE_TEAMS
       ? `Choose 2 to ${MAX_TEMPLATE_TEAMS} teams.`
+      : format === 'pools' && teamCount < pools * 2 ? `${pools} pools need at least ${pools * 2} teams.`
       : sheetIds.length === 0 ? 'Choose at least one sheet.'
         : !DATE_TIME.test(firstDrawStart) ? 'Give the first draw a start time.'
           : !TIME.test(dayStart) || !TIME.test(lastDrawStart) ? 'Give each day its first and last draw times.'
@@ -45,10 +53,7 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
               : !Number.isInteger(interval) || interval < 30 || interval > 600
                 ? 'Draws have to be 30 to 600 minutes apart.' : null;
 
-  const options: KnockoutOptions = {
-    teams: teamCount,
-    events,
-    losers,
+  const schedule: ScheduleOptions = {
     // In the order of the board, whatever order they were ticked in.
     sheetIds: sheets.map((s) => s.id).filter((id) => sheetIds.includes(id)),
     firstDrawStart,
@@ -57,14 +62,17 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
     minutesBetweenDraws: interval,
     drawOff,
   };
+  const make = (order: Bonspiel['teams'], newId: () => string) => (format === 'pools'
+    ? poolsPlan(order, { ...schedule, teams: teamCount, pools, qualifiers }, newId)
+    : knockoutPlan(order, { ...schedule, teams: teamCount, events, losers }, newId));
   // Quick enough to work out afresh as each option changes, even for 64 teams.
   let previewId = 0;
-  const preview = problem ? null : knockoutPlan(bonspiel.teams, options, () => `preview${previewId++}`);
+  const preview = problem ? null : make(bonspiel.teams, () => `preview${previewId++}`);
 
   function handleApply() {
     if (problem) return;
     const order = shuffle ? shuffled(bonspiel.teams) : bonspiel.teams;
-    const plan = knockoutPlan(order, options, newBonspielId);
+    const plan = make(order, newBonspielId);
     const draws = sortedDraws(plan.draws);
     onApply({
       ...plan,
@@ -78,20 +86,49 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
   return (
     <div className={common.modal} onClick={onClose}>
       <div className={`${common.modalCard} ${common.wideModalCard}`} onClick={(e) => e.stopPropagation()}
-        role="dialog" aria-label="Knockout template">
-        <h2 className={common.modalTitle}>Knockout template</h2>
+        role="dialog" aria-label="Template">
+        <h2 className={common.modalTitle}>Fill in from a template</h2>
         <p className={common.blurb}>
           Fills in the events, the games and the draws they are played in. Everything it makes can be
           changed on the draw board afterwards.
         </p>
 
         <div className={common.form}>
+          <div className={styles.results}>
+            <label className={common.checkboxLabel}>
+              <input type="radio" name="format" checked={format === 'knockout'} onChange={() => setFormat('knockout')} />
+              Knockout, in one to four events
+            </label>
+            <label className={common.checkboxLabel}>
+              <input type="radio" name="format" checked={format === 'pools'} onChange={() => setFormat('pools')} />
+              Pools played as round robins, then playoffs
+            </label>
+          </div>
           <div className={styles.row}>
             <label className={common.label}>
               Teams
               <input type="number" min={2} max={MAX_TEMPLATE_TEAMS} className={common.input} value={teams}
                 onChange={(e) => setTeams(e.target.value)} />
             </label>
+            {format === 'pools' ? (
+              <>
+                <label className={common.label}>
+                  Pools
+                  <select className={common.input} value={pools} onChange={(e) => setPools(Number(e.target.value))}>
+                    {Array.from({ length: MAX_POOLS }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </label>
+                <label className={common.label}>
+                  To the playoffs
+                  <select className={common.input} value={qualifiers} onChange={(e) => setQualifiers(Number(e.target.value))}>
+                    <option value={0}>None: the standings decide</option>
+                    <option value={1}>Each pool's winner</option>
+                    <option value={2}>The top two of each pool</option>
+                    <option value={3}>The top three of each pool</option>
+                  </select>
+                </label>
+              </>
+            ) : (
             <label className={common.label}>
               Events
               <select className={common.input} value={events} onChange={(e) => setEvents(Number(e.target.value))}>
@@ -100,9 +137,10 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
                 ))}
               </select>
             </label>
+            )}
           </div>
 
-          {events > 1 && (
+          {format === 'knockout' && events > 1 && (
             <fieldset className={styles.side}>
               <legend className={styles.sideLegend}>Where losers go</legend>
               <div className={styles.results}>
@@ -170,8 +208,9 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
 
           <label className={common.checkboxLabel}>
             <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} />
-            Draw the first round from a hat. Otherwise teams play in the order listed, first against second, and
-            any byes go to the teams listed first.
+            {format === 'pools'
+              ? 'Draw the pools from a hat. Otherwise teams are dealt into the pools in the order listed: the first to Pool A, the second to Pool B, and round again.'
+              : 'Draw the first round from a hat. Otherwise teams play in the order listed, first against second, and any byes go to the teams listed first.'}
           </label>
 
           {problem && <p className={common.error}>{problem}</p>}

@@ -467,7 +467,13 @@ function BonspielPage({ user }: Props) {
             />
           </>
         ) : (
-          <BracketView bonspiel={bonspiel} sheets={sheets} state={state} onOpenGame={(game) => setEditing(game)} />
+          <BracketView
+            bonspiel={bonspiel}
+            sheets={sheets}
+            state={state}
+            onOpenGame={(game) => setEditing(game)}
+            onTiebreak={(eventId, tiebreak) => editEvent(eventId, { tiebreak })}
+          />
         )}
       </div>
 

@@ -33,6 +33,7 @@ interface TestResult {
 const GAMES_CHOICES: { value: WebhookGames; label: string }[] = [
   { value: 'all', label: 'Every completed game' },
   { value: 'league', label: 'Only league games, where a team was picked' },
+  { value: 'bonspiel', label: 'Only bonspiel games' },
 ];
 
 // Matches the limit in firestore.rules.
@@ -100,7 +101,7 @@ export function WebhookSection({ clubId }: Props) {
       const next: Saved | null = typeof data?.url === 'string' && data.url
         ? {
             url: data.url,
-            games: data.games === 'league' ? 'league' : 'all',
+            games: data.games === 'league' || data.games === 'bonspiel' ? data.games : 'all',
             ...(typeof data.template === 'string' && data.template.trim() !== '' && { template: data.template }),
             ...(typeof data.timeZone === 'string' && data.timeZone !== '' && { timeZone: data.timeZone }),
           }
@@ -220,7 +221,8 @@ export function WebhookSection({ clubId }: Props) {
         <div className={styles.summary}>
           <code>{maskUrl(saved.url)}</code>
           <span className={styles.hint}>
-            {saved.games === 'league' ? 'League games only' : 'Every completed game'}
+            {saved.games === 'league' ? 'League games only'
+              : saved.games === 'bonspiel' ? 'Bonspiel games only' : 'Every completed game'}
             {' · '}
             {saved.template ? 'your own message' : 'the default message'}
             {saved.timeZone ? `, times in ${saved.timeZone}` : ', times in UTC'}
