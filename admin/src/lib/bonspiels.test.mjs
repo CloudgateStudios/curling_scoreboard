@@ -2,9 +2,9 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  addDays, addMinutes, bonspielData, bonspielFrom, bonspielProblems, daysBetween, describeSide,
-  duplicateBonspiel, earlierGames, gamesPlacing, nextDrawStart, parseTeamNames, suggestedGameLabel,
-  teamsPlacedInDraw, withoutGames, withoutTeam,
+  addDays, addMinutes, bonspielData, bonspielFrom, bonspielProblems, bracketRounds, daysBetween,
+  describeSide, duplicateBonspiel, earlierGames, gamesPlacing, nextDrawStart, parseTeamNames,
+  suggestedGameLabel, teamsPlacedInDraw, withoutGames, withoutTeam,
 } from './bonspiels.ts';
 
 const sheets = new Set(['s1', 's2']);
@@ -207,5 +207,32 @@ describe('removing from a plan', () => {
     assert.equal(p.teams.length, 3);
     assert.deepEqual([p.games[0].team1, p.games[0].team2], [{ teamId: 't1' }, null]);
     assert.deepEqual(bonspielProblems(p, sheets), []);
+  });
+});
+
+describe('bracketRounds', () => {
+  test('lays an event out in rounds, ending with its final', () => {
+    const rounds = bracketRounds(plan(), 'a');
+    assert.deepEqual(rounds.map((r) => r.map((g) => g.label)), [['A1', 'A2'], ['A3']]);
+  });
+
+  test('starts teams dropping in from another event in the first round', () => {
+    assert.deepEqual(bracketRounds(plan(), 'b').map((r) => r.map((g) => g.label)), [['B1']]);
+  });
+
+  test('keeps the games feeding one game together, and places byes by their feeders', () => {
+    // A1 and A2 feed A5, A3 feeds A6 with a bye; listed out of order.
+    const p = plan({
+      games: [
+        game('a6', 'A6', 'd2', 's2', 'a', { from: 'a3', result: 'winner' }, { teamId: 't4' }),
+        game('a3', 'A3', 'd1', 's1', 'a', { teamId: 't1' }, { teamId: 't2' }),
+        game('a5', 'A5', 'd2', 's1', 'a', { from: 'a1', result: 'winner' }, { from: 'a2', result: 'winner' }),
+        game('a1', 'A1', 'd1', 's2', 'a', { teamId: 't3' }, { teamId: 't5' }),
+        game('a2', 'A2', 'd1', 's3', 'a', { teamId: 't6' }, { teamId: 't7' }),
+        game('a7', 'A Final', 'd3', 's1', 'a', { from: 'a5', result: 'winner' }, { from: 'a6', result: 'winner' }),
+      ],
+    });
+    assert.deepEqual(bracketRounds(p, 'a').map((r) => r.map((g) => g.label)),
+      [['A1', 'A2', 'A3'], ['A5', 'A6'], ['A Final']]);
   });
 });

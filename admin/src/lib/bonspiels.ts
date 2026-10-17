@@ -469,3 +469,51 @@ export function gamesPlacing(bonspiel: Pick<Bonspiel, 'games'>, teamId: string):
   return bonspiel.games.filter((g) =>
     [g.team1, g.team2].some((side) => side && 'teamId' in side && side.teamId === teamId)).length;
 }
+
+/**
+ * An event's games as the rounds of a bracket, first round first, ending with
+ * its final. A game's round is one more than the latest of the games in the
+ * event its winners come from; teams dropping in from other events start a
+ * game in whichever round that puts it. Within a round, games are in the
+ * order the bracket draws them, so each pair feeding one game sits together.
+ */
+export function bracketRounds(bonspiel: Pick<Bonspiel, 'games'>, eventId: string): BonspielGame[][] {
+  const games = bonspiel.games.filter((g) => g.eventId === eventId);
+  const byId = new Map(games.map((g) => [g.id, g]));
+  const feeders = (game: BonspielGame) =>
+    [game.team1, game.team2].flatMap((side) =>
+      side && 'from' in side && side.result === 'winner' && byId.has(side.from) ? [byId.get(side.from)!] : []);
+
+  const roundOf = new Map<string, number>();
+  const round = (game: BonspielGame, visiting = new Set<string>()): number => {
+    const known = roundOf.get(game.id);
+    if (known !== undefined) return known;
+    // A loop the portal's checks would not let be saved, but drawn anyway.
+    if (visiting.has(game.id)) return 0;
+    visiting.add(game.id);
+    const value = Math.max(-1, ...feeders(game).map((f) => round(f, visiting))) + 1;
+    roundOf.set(game.id, value);
+    return value;
+  };
+
+  // Ordered from the finals back, so games feeding the same one are listed
+  // together; any game no final leads to comes after.
+  const fedOn = new Set(games.flatMap((g) => feeders(g).map((f) => f.id)));
+  const order: BonspielGame[] = [];
+  const seen = new Set<string>();
+  const visit = (game: BonspielGame) => {
+    if (seen.has(game.id)) return;
+    seen.add(game.id);
+    for (const feeder of feeders(game)) visit(feeder);
+    order.push(game);
+  };
+  games.filter((g) => !fedOn.has(g.id)).forEach(visit);
+  games.forEach(visit);
+
+  const rounds: BonspielGame[][] = [];
+  for (const game of order) {
+    const r = round(game);
+    (rounds[r] ??= []).push(game);
+  }
+  return rounds.filter((r) => r !== undefined);
+}

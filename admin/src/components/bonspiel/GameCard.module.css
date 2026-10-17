@@ -1,0 +1,73 @@
+.game,
+.gameFinal {
+  width: 100%;
+  min-height: 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #dfe3ea;
+  border-radius: 8px;
+  background: #fbfcfe;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.gameFinal {
+  background: white;
+  border-color: #c7d7c9;
+}
+
+.game:hover,
+.gameFinal:hover {
+  border-color: #1a73e8;
+}
+
+.gameHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.gameLabel {
+  font-weight: 700;
+}
+
+.gameEvent {
+  color: #666;
+}
+
+.side,
+.sideWon {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.sideWon {
+  font-weight: 700;
+}
+
+.sideName {
+  display: flex;
+  flex-direction: column;
+}
+
+.sideFrom {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.unknown {
+  color: #888;
+  font-style: italic;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+}

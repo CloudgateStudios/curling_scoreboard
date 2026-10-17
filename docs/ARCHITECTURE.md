@@ -755,8 +755,22 @@ and Bonspiels; the other tabs are not mounted for them at all.
   a draw board with the draws down the side and the sheets across. Tapping a
   game sets its teams and its result; tapping an empty cell adds one. The
   board shows each game as the functions last worked it out, with the edits
-  not yet saved laid over it. Duplicate copies a bonspiel's events, draws and
-  games to new dates, without its teams or results, to run it again.
+  not yet saved laid over it. Beside it, Brackets shows each event in
+  rounds, a game's round being one past the latest game in the event its
+  winners come from, ending at the final and the event's winner. Duplicate
+  copies a bonspiel's events, draws and games to new dates, without its teams
+  or results, to run it again.
+
+  The knockout template fills a bonspiel in from scratch: up to 64 teams in
+  one to four events, with the losers of each A round dropping to the next
+  event (the usual club format) or every loss dropping a team one event (a
+  triple knockout). Each event is built round by round, as teams reach it,
+  with byes for the teams listed first once no more are coming, so no team
+  has two. `knockoutPlan` in `admin/src/lib/bonspielTemplates.ts` then places
+  the games in draws, those whose teams have waited longest first, never
+  before the games they come from and, where other games can fill the draw,
+  not in the draw right after them. What it makes is an ordinary plan, edited
+  like any other.
 - **Displays**: the display links, and the warm room screen's title and logo.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
