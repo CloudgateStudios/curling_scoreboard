@@ -5,16 +5,18 @@ import { db, functions, scoreboardSiteUrl } from '../../lib/firebase';
 import {
   DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayPreviewUrl, displayUrl,
   settingsToSave,
-  type BugLabel, type DisplaySettings, type DisplayView,
+  type BonspielView, type BugLabel, type DisplaySettings, type DisplayView,
 } from '../../lib/displayLinks';
 import { errorMessage, formatAgo } from '../../lib/format';
-import type { DisplayLink, Sheet } from '../../types';
+import type { Bonspiel, DisplayLink, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './DisplaysSection.module.css';
 
 interface Props {
   clubId: string;
   sheets: Sheet[];
+  /** Which a link can show the screen of. */
+  bonspiels: Bonspiel[];
   /** Told how many links there are, for the tab's count. */
   onCount?: (count: number) => void;
 }
@@ -43,7 +45,7 @@ function describeUse(link: DisplayLink, now: Date): string {
 
 /** Links for the club's score bug and warm room screens. Each screen has its
  *  own, so one can be changed or removed without affecting the others. */
-export function DisplaysSection({ clubId, sheets, onCount }: Props) {
+export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
   const [links, setLinks] = useState<DisplayLink[]>([]);
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function DisplaysSection({ clubId, sheets, onCount }: Props) {
   }, [clubId, onCount]);
 
   const sheetName = (sheetId: string) => sheets.find((sheet) => sheet.id === sheetId)?.name;
+  const bonspielName = (bonspielId: string) => bonspiels.find((b) => b.id === bonspielId)?.name;
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -148,7 +151,7 @@ export function DisplaysSection({ clubId, sheets, onCount }: Props) {
             <div key={link.id} className={common.row}>
               <div className={common.rowInfo}>
                 <span className={common.rowName}>{link.label}</span>
-                <span className={common.rowMeta}>{describeSettings(link.settings, sheetName)}</span>
+                <span className={common.rowMeta}>{describeSettings(link.settings, sheetName, bonspielName)}</span>
                 <span className={common.rowMeta}>{describeUse(link, now)}</span>
               </div>
               <div className={common.rowActions}>
@@ -170,6 +173,7 @@ export function DisplaysSection({ clubId, sheets, onCount }: Props) {
 
       {editing && (
         <DisplayLinkDialog
+          bonspiels={bonspiels}
           clubId={clubId}
           sheets={sheets}
           editing={editing}
@@ -199,16 +203,28 @@ const VIEWS: { value: DisplayView; label: string }[] = [
   { value: 'cycle', label: 'Both, in turn' },
 ];
 
+const BONSPIEL_VIEWS: { value: BonspielView; label: string }[] = [
+  { value: 'now', label: 'The draw on now, and the next' },
+  { value: 'schedule', label: 'Every draw' },
+  { value: 'brackets', label: 'The brackets, an event at a time' },
+  { value: 'cycle', label: 'All of them, in turn' },
+];
+
+// What the Shows choice holds for a bonspiel, beside the warm room and the
+// sheets' IDs.
+const BONSPIEL_PREFIX = 'bonspiel:';
+
 interface DialogProps {
   clubId: string;
   sheets: Sheet[];
+  bonspiels: Bonspiel[];
   editing: Editing;
   onClose: () => void;
 }
 
 /** Edits a link's name and what it shows, and shows a new link's URL while
  *  URL to copy. */
-function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
+function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: DialogProps) {
   const { link } = editing;
   // Just made or given a new URL, rather than opened from the list.
   const fresh = editing.token !== undefined;
@@ -228,13 +244,19 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
     || JSON.stringify(toSave) !== JSON.stringify(settingsToSave(saved.settings));
   const url = token ? displayUrl(scoreboardSiteUrl, clubId, token) : null;
   const previewUrl = token ? displayPreviewUrl(scoreboardSiteUrl, clubId, token) : null;
-  // 'warmRoom', or the ID of the sheet whose score bug to show.
-  const shows = settings.page === 'bug' && settings.sheetId ? settings.sheetId : 'warmRoom';
+  // 'warmRoom', the ID of the sheet whose score bug to show, or a bonspiel.
+  const shows = toSave.page === 'bug' ? toSave.sheetId!
+    : toSave.page === 'bonspiel' ? `${BONSPIEL_PREFIX}${toSave.bonspielId}` : 'warmRoom';
 
   function choosePage(value: string) {
-    setSettings(value === 'warmRoom'
-      ? { ...settings, page: 'warm-room' }
-      : { ...settings, page: 'bug', sheetId: value });
+    // Each page has views of its own, so the view starts afresh.
+    if (value === 'warmRoom') {
+      setSettings({ ...settings, page: 'warm-room', view: undefined });
+    } else if (value.startsWith(BONSPIEL_PREFIX)) {
+      setSettings({ ...settings, page: 'bonspiel', bonspielId: value.slice(BONSPIEL_PREFIX.length), view: undefined });
+    } else {
+      setSettings({ ...settings, page: 'bug', sheetId: value });
+    }
   }
 
   async function handleSave() {
@@ -320,10 +342,45 @@ function DisplayLinkDialog({ clubId, sheets, editing, onClose }: DialogProps) {
               {sheets.map((sheet) => (
                 <option key={sheet.id} value={sheet.id}>Score bug for {sheet.name}</option>
               ))}
+              {/* A bonspiel no longer listed still shows as chosen. */}
+              {toSave.page === 'bonspiel' && !bonspiels.some((b) => b.id === toSave.bonspielId) && (
+                <option value={shows}>A removed bonspiel</option>
+              )}
+              {bonspiels.map((bonspiel) => (
+                <option key={bonspiel.id} value={`${BONSPIEL_PREFIX}${bonspiel.id}`}>
+                  Bonspiel: {bonspiel.name}
+                </option>
+              ))}
             </select>
           </label>
 
-          {toSave.page === 'warm-room' ? (
+          {toSave.page === 'bonspiel' ? (
+            <div className={styles.options}>
+              <label className={styles.field}>
+                View
+                <select
+                  className={common.input}
+                  value={toSave.view ?? 'now'}
+                  onChange={(e) => setSettings({ ...settings, view: e.target.value as BonspielView })}
+                >
+                  {BONSPIEL_VIEWS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
+                </select>
+              </label>
+              {(toSave.view === 'cycle' || toSave.view === 'brackets') && (
+                <label className={styles.field}>
+                  Seconds on each
+                  <input
+                    className={common.input}
+                    type="number"
+                    min={MIN_EVERY}
+                    max={MAX_EVERY}
+                    value={settings.every ?? DEFAULT_EVERY}
+                    onChange={(e) => setSettings({ ...settings, every: Number(e.target.value) || DEFAULT_EVERY })}
+                  />
+                </label>
+              )}
+            </div>
+          ) : toSave.page === 'warm-room' ? (
             <div className={styles.options}>
               <label className={styles.field}>
                 View

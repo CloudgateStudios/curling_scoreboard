@@ -1,5 +1,8 @@
 /** The warm room's views: totals, end by end, or the two in turn. */
 export type DisplayView = 'totals' | 'full' | 'cycle';
+/** A bonspiel screen's views: the draw on now and the next, every draw, each
+ *  event's bracket, or all of them in turn. */
+export type BonspielView = 'now' | 'schedule' | 'brackets' | 'cycle';
 /** What the score bug's bottom line names. */
 export type BugLabel = 'sheet' | 'league' | 'none';
 
@@ -8,12 +11,15 @@ export type BugLabel = 'sheet' | 'league' | 'none';
  * firestore.rules and linkPageUrl in functions/src/display/assets/display.js.
  */
 export interface DisplaySettings {
-  page: 'bug' | 'warm-room';
+  page: 'bug' | 'warm-room' | 'bonspiel';
   /** The score bug's sheet. */
   sheetId?: string;
-  /** The warm room's view; totals when absent. */
-  view?: DisplayView;
-  /** Seconds on each view when cycling; 20 when absent. */
+  /** The bonspiel screen's bonspiel. */
+  bonspielId?: string;
+  /** The warm room's view, totals when absent; or the bonspiel screen's, now
+   *  when absent. */
+  view?: DisplayView | BonspielView;
+  /** Seconds on each view when there are several in turn; 20 when absent. */
   every?: number;
   /** The score bug's size; 1 when absent. */
   scale?: number;
@@ -47,6 +53,18 @@ export function displayPreviewUrl(siteUrl: string, clubId: string, token: string
 
 /** The settings as they are stored: only what the page uses, defaults left out. */
 export function settingsToSave(settings: DisplaySettings): DisplaySettings {
+  const every = Math.min(Math.max(Math.round(settings.every ?? DEFAULT_EVERY), MIN_EVERY), MAX_EVERY);
+  if (settings.page === 'bonspiel' && settings.bonspielId) {
+    const view = BONSPIEL_VIEWS.includes(settings.view as BonspielView) ? settings.view as BonspielView : 'now';
+    // Brackets take turns too, an event at a time.
+    const turns = view === 'cycle' || view === 'brackets';
+    return {
+      page: 'bonspiel',
+      bonspielId: settings.bonspielId,
+      ...(view !== 'now' && { view }),
+      ...(turns && every !== DEFAULT_EVERY && { every }),
+    };
+  }
   if (settings.page === 'bug' && settings.sheetId) {
     return {
       page: 'bug',
@@ -55,14 +73,16 @@ export function settingsToSave(settings: DisplaySettings): DisplaySettings {
       ...(settings.label !== undefined && settings.label !== 'sheet' && { label: settings.label }),
     };
   }
-  const view = settings.view ?? 'totals';
-  const every = Math.round(settings.every ?? DEFAULT_EVERY);
+  const view = WARM_ROOM_VIEWS.includes(settings.view as DisplayView) ? settings.view as DisplayView : 'totals';
   return {
     page: 'warm-room',
     ...(view !== 'totals' && { view }),
-    ...(view === 'cycle' && every !== DEFAULT_EVERY && { every: Math.min(Math.max(every, MIN_EVERY), MAX_EVERY) }),
+    ...(view === 'cycle' && every !== DEFAULT_EVERY && { every }),
   };
 }
+
+const WARM_ROOM_VIEWS: DisplayView[] = ['totals', 'full', 'cycle'];
+const BONSPIEL_VIEWS: BonspielView[] = ['now', 'schedule', 'brackets', 'cycle'];
 
 const VIEW_NAMES: Record<DisplayView, string> = {
   totals: 'totals',
@@ -70,12 +90,27 @@ const VIEW_NAMES: Record<DisplayView, string> = {
   cycle: 'totals and end by end in turn',
 };
 
+const BONSPIEL_VIEW_NAMES: Record<BonspielView, string> = {
+  now: 'the draw on now and the next',
+  schedule: 'every draw',
+  brackets: 'the brackets in turn',
+  cycle: 'the draws and brackets in turn',
+};
+
 /** A line saying what a link shows, for the portal's list of links. */
 export function describeSettings(
   settings: DisplaySettings | undefined,
   sheetName: (sheetId: string) => string | undefined,
+  bonspielName: (bonspielId: string) => string | undefined = () => undefined,
 ): string {
   const s = settings ?? DEFAULT_SETTINGS;
+  if (s.page === 'bonspiel') {
+    const view = (s.view ?? 'now') as BonspielView;
+    const turns = view === 'cycle' || view === 'brackets';
+    const every = turns ? `, every ${s.every ?? DEFAULT_EVERY} seconds` : '';
+    const name = (s.bonspielId && bonspielName(s.bonspielId)) ?? 'a removed bonspiel';
+    return `${name}, ${BONSPIEL_VIEW_NAMES[view] ?? BONSPIEL_VIEW_NAMES.now}${every}`;
+  }
   if (s.page === 'bug') {
     const parts = [`Score bug for ${(s.sheetId && sheetName(s.sheetId)) ?? 'a removed sheet'}`];
     if (s.scale !== undefined && s.scale !== 1) parts.push(`${s.scale}× size`);
@@ -83,7 +118,7 @@ export function describeSettings(
     if (s.label === 'none') parts.push('no name');
     return parts.join(', ');
   }
-  const view = s.view ?? 'totals';
+  const view = (s.view ?? 'totals') as DisplayView;
   const every = view === 'cycle' ? `, every ${s.every ?? DEFAULT_EVERY} seconds` : '';
-  return `Warm room, ${VIEW_NAMES[view]}${every}`;
+  return `Warm room, ${VIEW_NAMES[view] ?? VIEW_NAMES.totals}${every}`;
 }

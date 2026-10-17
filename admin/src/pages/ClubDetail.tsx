@@ -200,7 +200,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
           </div>
 
           <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
-            <DisplaysSection clubId={resolvedClubId} sheets={sheets} onCount={setDisplayLinkCount} />
+            <DisplaysSection clubId={resolvedClubId} sheets={sheets} bonspiels={bonspiels} onCount={setDisplayLinkCount} />
             <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
           </div>
 

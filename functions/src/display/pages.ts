@@ -10,6 +10,8 @@ import { FINAL_SHOWN_MS } from './state';
 //
 //   /display/{clubId}/sheets/{sheetId}/bug   the score bug for live streams
 //   /display/{clubId}/warm-room              every sheet, for a screen in the club
+//   /display/{clubId}/bonspiels/{bonspielId} a bonspiel's games, schedule and
+//                                            brackets, for a screen in the club
 //   /display/{clubId}                        whichever of those the display
 //                                            link's settings name
 //   /display/assets/*                        the pages' scripts and styles
@@ -56,9 +58,10 @@ function contentSecurityPolicy(projectId: string): string {
 
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
-  page: 'bug' | 'warm-room' | 'link';
+  page: 'bug' | 'warm-room' | 'bonspiel' | 'link';
   clubId: string;
   sheetId?: string;
+  bonspielId?: string;
   firebase: ReturnType<typeof webConfig>;
   region: string;
   /** Set in the emulator, where the page talks to the local emulators. */
@@ -109,12 +112,18 @@ export function renderPage(title: string, assetBase: string, config: PageConfig)
 `;
 }
 
-function pageConfig(req: Request, page: PageConfig['page'], clubId: string, sheetId?: string): PageConfig {
+function pageConfig(
+  req: Request,
+  page: PageConfig['page'],
+  clubId: string,
+  ids: { sheetId?: string; bonspielId?: string } = {},
+): PageConfig {
   const projectId = currentProjectId();
   return {
     page,
     clubId,
-    ...(sheetId !== undefined && { sheetId }),
+    ...(ids.sheetId !== undefined && { sheetId: ids.sheetId }),
+    ...(ids.bonspielId !== undefined && { bonspielId: ids.bonspielId }),
     firebase: webConfig(projectId),
     region: REGION,
     ...(runningInEmulator && { emulators: emulatorHosts(req) }),
@@ -163,7 +172,7 @@ app.get('/display/:clubId/sheets/:sheetId/bug', (req: Request, res: Response) =>
     return;
   }
   // From /display/{club}/sheets/{sheet}/ back up to /display/.
-  sendPage(res, 'Score Bug', '../../../assets/', pageConfig(req, 'bug', clubId, sheetId));
+  sendPage(res, 'Score Bug', '../../../assets/', pageConfig(req, 'bug', clubId, { sheetId }));
 });
 
 app.get('/display/:clubId/warm-room', (req: Request, res: Response) => {
@@ -174,6 +183,16 @@ app.get('/display/:clubId/warm-room', (req: Request, res: Response) => {
   }
   // From /display/{club}/ back up to /display/.
   sendPage(res, 'Live Scores', '../assets/', pageConfig(req, 'warm-room', clubId));
+});
+
+app.get('/display/:clubId/bonspiels/:bonspielId', (req: Request, res: Response) => {
+  const { clubId, bonspielId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId) || !ID_PATTERN.test(bonspielId)) {
+    notFound(res);
+    return;
+  }
+  // From /display/{club}/bonspiels/ back up to /display/.
+  sendPage(res, 'Bonspiel', '../../assets/', pageConfig(req, 'bonspiel', clubId, { bonspielId }));
 });
 
 // A display link's own URL. The page reads the link's settings and opens the

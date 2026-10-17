@@ -43,6 +43,8 @@ export interface DisplayLiveGame {
   /** Null until the scoreboard sends it with the live game. */
   numberOfEnds: number | null;
   league: { name: string } | null;
+  /** The bonspiel game this is, which the bonspiel display shows it as. */
+  bonspiel: DisplayBonspiel | null;
   team1: DisplayTeam;
   team2: DisplayTeam;
   /** Null until the scoreboard sends the ends with the live game. */
@@ -55,9 +57,18 @@ export interface DisplayFinishedGame {
   finishedAt: TimestampLike;
   numberOfEnds: number | null;
   league: { name: string } | null;
+  bonspiel: DisplayBonspiel | null;
   team1: DisplayTeam;
   team2: DisplayTeam;
   ends: DisplayEnd[];
+}
+
+/** Which bonspiel game a game is. */
+export interface DisplayBonspiel {
+  id: string;
+  name: string;
+  /** The game's ID in the bonspiel's plan. */
+  gameId: string;
 }
 
 export interface DisplaySheet {
@@ -90,6 +101,17 @@ function colorOf(value: unknown): DisplayTeam['color'] {
   const color = value as Data | null | undefined;
   if (typeof color?.['name'] !== 'string' || typeof color['hex'] !== 'string') return null;
   return { name: color['name'], hex: color['hex'] };
+}
+
+// Which bonspiel game a game is: what the bonspiel display needs to put its
+// score in the right place.
+function bonspielOf(value: unknown): DisplayBonspiel | null {
+  const bonspiel = value as Data | null | undefined;
+  const id = bonspiel?.['id'];
+  const name = bonspiel?.['name'];
+  const gameId = bonspiel?.['gameId'];
+  if (typeof id !== 'string' || typeof name !== 'string' || typeof gameId !== 'string') return null;
+  return { id, name, gameId };
 }
 
 // Only the league's name: its ID, like the teams' IDs, is for integrations.
@@ -145,6 +167,7 @@ export function displayLiveGame(liveGame: unknown): DisplayLiveGame | null {
     currentEnd: numberOr(game['currentEnd'], 1),
     numberOfEnds: numberOr(game['numberOfEnds'], null),
     league: leagueOf(game['league']),
+    bonspiel: bonspielOf(game['bonspiel']),
     team1,
     team2,
     ends: endsOf(game['ends'], team1.name, team2.name),
@@ -163,6 +186,7 @@ export function displayFinishedGame(gameId: string, game: Data): DisplayFinished
     finishedAt,
     numberOfEnds: numberOr(game['numberOfEnds'], null),
     league: leagueOf(game['league']),
+    bonspiel: bonspielOf(game['bonspiel']),
     team1,
     team2,
     ends: endsOf(game['ends'], team1.name, team2.name) ?? [],

@@ -145,7 +145,7 @@ function sheetCard(id, sheet, at) {
   const { game } = view;
   const key = view.kind === 'final' ? game.gameId : 'live';
   const before = shown.get(id);
-  card.append(el('p', 'league', game.league?.name ?? ''));
+  card.append(el('p', 'league', game.league?.name ?? game.bonspiel?.name ?? ''));
   const changedSlots = new Set(['team1', 'team2']
     .filter((slot) => before?.key === key && before[slot] !== game[slot].score));
   // A live game from a scoreboard that does not send its ends yet can only

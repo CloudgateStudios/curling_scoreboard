@@ -60,6 +60,7 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
         currentEnd: int
         numberOfEnds: int | null           // null from scoreboard builds before it was sent
         league: { name: string } | null
+        bonspiel: { id: string, name: string, gameId: string } | null   // a bonspiel game's
         team1: { name: string, color: { name, hex } | null, score: int,
                  hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
         team2: { ...the same }
@@ -71,6 +72,7 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
         finishedAt: timestamp
         numberOfEnds: int | null
         league: { name: string } | null
+        bonspiel: { ...as in live } | null
         team1: { ...as in live, with hasHammer null }
         team2: { ...the same }
         ends: [...as in live]
@@ -87,10 +89,12 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   secretHash: string         // SHA-256 of the token's secret, in hex, which sign-in checks
   token?: string             // the token itself, for the portal to show; absent on links made before it was kept
   settings: {                // what the link's screens show
-    page: 'bug' | 'warm-room'
+    page: 'bug' | 'warm-room' | 'bonspiel'
     sheetId?: string         // the score bug's sheet
+    bonspielId?: string      // the bonspiel screen's bonspiel
     view?: 'totals' | 'full' | 'cycle'   // the warm room's; totals when absent
-    every?: int              // seconds on each view when cycling, 5 to 300; 20 when absent
+         | 'now' | 'schedule' | 'brackets' | 'cycle'   // the bonspiel screen's; now when absent
+    every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
     scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
     label?: 'sheet' | 'league' | 'none'  // the score bug's bottom line; sheet when absent
   }
@@ -260,7 +264,7 @@ admin scripts.
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config`, `leagues`, and `bonspiels` with their state |
-| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState` and `private/displayBranding`; read its own link |
+| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`, `private/displayBranding`, and `bonspiels` with their state; read its own link |
 | Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
@@ -469,6 +473,8 @@ site, under `/display/**` through a Hosting rewrite, like the API:
 
 - `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
 - `/display/{clubId}/warm-room`: every sheet, for a screen in the club
+- `/display/{clubId}/bonspiels/{bonspielId}`: a bonspiel's draws and brackets,
+  for a screen in the club
 - `/display/{clubId}`: a display link's own URL, which opens the page its
   settings name
 - `/display/assets/*`: the pages' scripts and styles, from
@@ -550,7 +556,31 @@ yet is shown by its totals among them. `?view=cycle` shows the two in turn,
 
 Both pages say Final, not the end, once a live game has played its ends
 and is not tied, as the scoreboard does before anyone taps Finish Game, and
-"Extra end" once a tied game goes past them.
+"Extra end" once a tied game goes past them. Where they show a game's
+league, a bonspiel game shows its bonspiel's name.
+
+The bonspiel screen, `bonspiel.js`, listens to the bonspiel's plan and state
+as well as the summary, which the rules let a display read. Its live scores
+come from the summary: a sheet's live or just finished game whose
+`bonspiel.id` is this bonspiel's is shown as the game its `gameId` names.
+What it works out from the plan and state, the draw on now and each event's
+bracket, is in `bonspiel-model.js`, which has neither Firebase nor the page
+in it, so the emulator tests run it. Its views, in the warm room's colors and
+sized to the screen:
+
+- `?view=now`, the default: the draw on now as large cards, one a sheet, with
+  each game's teams, live score and end, or Final; and the next draw's games
+  as a list, with any team not known yet as where it comes from ("Winner of
+  A3"). A draw is on from 30 minutes before it starts, as on the scoreboard.
+  On a screen turned on its side the cards go two across.
+- `?view=schedule`: a row a draw and a column a sheet, the draw on now marked.
+  When there are more draws than fit, they start from the one before it.
+- `?view=brackets`: each event as the portal's bracket view lays it out, one
+  at a time, sized so its biggest round fits; the subtitle names the winner
+  once there is one.
+- `?view=cycle`: all of them in turn.
+
+With more than one screen, each shows for `?every=` seconds (20 by default).
 
 The rewrite needs the `display` function to exist, so in a new project deploy
 the functions before the scoreboard's hosting.
@@ -804,6 +834,8 @@ and Bonspiels; the other tabs are not mounted for them at all.
   not in the draw right after them. What it makes is an ordinary plan, edited
   like any other.
 - **Displays**: the display links, and the warm room screen's title and logo.
+  A link can show the warm room, a sheet's score bug or one of the club's
+  bonspiels.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
   - Scoreboards: the rock colors and the scoreboard admin PIN.

@@ -475,6 +475,36 @@ await check('club admin: points a link at the warm room, cycling', 'allow', () =
     settings: { page: 'warm-room', view: 'cycle', every: 30 },
   }));
 
+await check('club admin: points a link at a bonspiel\'s brackets', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'bonspiel', bonspielId: 'seeded', view: 'brackets', every: 30 },
+  }));
+
+await check('attack: club admin points a bonspiel screen at no bonspiel', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'bonspiel', view: 'now' } }));
+
+await check('attack: club admin gives a bonspiel screen a warm room view', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'bonspiel', bonspielId: 'seeded', view: 'full' },
+  }));
+
+await check('attack: club admin gives the warm room a bonspiel view', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'warm-room', view: 'brackets' } }));
+
+await check('display: reads its club\'s bonspiel and its state', 'allow', async () => {
+  await getDoc(doc(displayA, 'clubs/club-a/bonspiels/seeded'));
+  await getDoc(doc(displayA, 'clubs/club-a/bonspiels/seeded/state/current'));
+});
+
+await check('attack: display reads another club\'s bonspiels', 'deny', () =>
+  getDocs(collection(displayA, 'clubs/club-b/bonspiels')));
+
+await check('attack: display changes a bonspiel', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/bonspiels/seeded'), { name: 'Renamed' }));
+
+await check('attack: display writes a bonspiel\'s state', 'deny', () =>
+  setDoc(doc(displayA, 'clubs/club-a/bonspiels/seeded/state/current'), { games: {} }));
+
 await check('attack: club admin points a score bug at no sheet', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'bug' } }));
 
