@@ -50,7 +50,7 @@ let linkStatus = 'connecting';
 let shown = null;
 
 function labelText(sheet, view) {
-  if (label === 'league') return view.game.league?.name ?? sheet.name;
+  if (label === 'league') return view.game.league?.name ?? view.game.bonspiel?.name ?? sheet.name;
   return label === 'sheet' ? sheet.name : '';
 }
 

@@ -72,14 +72,23 @@ const DISPLAY_BASE = new URL('../', import.meta.url);
 
 /**
  * The page a display link's settings name, as a URL without the token:
- * a sheet's score bug or the warm room, with options left out at their
- * defaults. Mirrors the options bug.js and warm-room.js read.
+ * a sheet's score bug, a bonspiel or the warm room, with options left out at
+ * their defaults. Mirrors the options bug.js, bonspiel.js and warm-room.js
+ * read.
  */
 export function linkPageUrl(settings) {
   const club = encodeURIComponent(config.clubId);
   const query = new URLSearchParams();
   let path;
-  if (settings?.page === 'bug' && typeof settings.sheetId === 'string') {
+  if (settings?.page === 'bonspiel' && typeof settings.bonspielId === 'string') {
+    path = `${club}/bonspiels/${encodeURIComponent(settings.bonspielId)}`;
+    if (settings.view && settings.view !== 'now') query.set('view', settings.view);
+    // The brackets take turns too, an event at a time.
+    const turns = settings.view === 'cycle' || settings.view === 'brackets';
+    if (turns && settings.every && settings.every !== 20) {
+      query.set('every', String(settings.every));
+    }
+  } else if (settings?.page === 'bug' && typeof settings.sheetId === 'string') {
     path = `${club}/sheets/${encodeURIComponent(settings.sheetId)}/bug`;
     if (settings.scale && settings.scale !== 1) query.set('scale', String(settings.scale));
     if (settings.label && settings.label !== 'sheet') query.set('label', settings.label);
@@ -125,13 +134,15 @@ const RETRY_MAX_MS = 5 * 60_000;
  * happening: 'connecting', 'live', 'no-link', 'bad-link' or 'offline'.
  * onBranding, if given, gets the club's title and logo for its displays, or
  * null when it has none, and onLink the display link's settings, or null
- * once the link is removed. Each is optional; the first of onSummary and
+ * once the link is removed. Each of extraDocs, { what, path, on }, has `on`
+ * called with the club's document at `path`, relative to the club, or null
+ * while there is none. Each is optional; the first of onSummary and
  * onLink given is the one the page needs, whose failures are retried.
  *
  * A display is left running for weeks, so every failure is retried, apart
  * from a link the server has refused, which needs someone to fix the URL.
  */
-export function connect({ onSummary, onStatus, onBranding, onLink }) {
+export function connect({ onSummary, onStatus, onBranding, onLink, extraDocs = [] }) {
   const token = linkToken();
   if (!token) {
     onStatus('no-link');
@@ -221,6 +232,7 @@ export function connect({ onSummary, onStatus, onBranding, onLink }) {
         on: (link) => onLink(link ? (link.settings ?? { page: 'warm-room' }) : null),
       },
       onBranding && { what: 'branding', ref: doc(db, ...club, 'private', 'displayBranding'), on: onBranding },
+      ...extraDocs.map(({ what, path, on }) => ({ what, ref: doc(db, ...club, ...path), on })),
     ].filter(Boolean);
     const [main, ...rest] = watched;
     const dataOf = (snap) => (snap.exists() ? snap.data() : null);

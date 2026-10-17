@@ -15,8 +15,13 @@ import {
   connectFirestoreEmulator, doc as clientDoc, getDoc as clientGetDoc, getFirestore as getClientFirestore,
 } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
-import { FINAL_SHOWN_MS, sheetView } from '../functions/lib/display/state.js';
+import {
+  FINAL_SHOWN_MS, displayFinishedGame, displayLiveGame, sheetView,
+} from '../functions/lib/display/state.js';
 import { resolveBonspiel } from '../functions/lib/bonspiels/state.js';
+import {
+  bracketRounds, currentDraw, nextDraw, resultOf, sideOf,
+} from '../functions/lib/display/assets/bonspiel-model.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -1164,6 +1169,7 @@ describe('display summary', () => {
       currentEnd: 3,
       numberOfEnds: null,
       league: { name: 'Monday Night' },
+      bonspiel: null,
       team1: {
         name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 2,
         hasHammer: false, hadLastStoneFirstEnd: true,
@@ -1277,6 +1283,17 @@ describe('what a display shows for a sheet', () => {
 
   test('keeps a live game written before updatedAt was recorded', () => {
     assert.equal(sheetView({ name: 'S', live: live(null) }, now).kind, 'live');
+  });
+
+  test('says which bonspiel game a game is, live and finished', () => {
+    const bonspiel = { id: 'fall', name: 'Fall Spiel', gameId: 'a7' };
+    const team = { name: 'Smith', score: 1, totalScore: 1 };
+    assert.deepEqual(displayLiveGame({ currentEnd: 1, bonspiel, team1: team, team2: team }).bonspiel, bonspiel);
+    assert.deepEqual(
+      displayFinishedGame('g', { finishedAt: at(0), bonspiel, team1: team, team2: team }).bonspiel, bonspiel,
+    );
+    assert.equal(displayLiveGame({ currentEnd: 1, team1: team, team2: team }).bonspiel, null);
+    assert.equal(displayLiveGame({ currentEnd: 1, bonspiel: { id: 'fall' }, team1: team, team2: team }).bonspiel, null);
   });
 
   test('shows nothing for a sheet that has never had a game', () => {
@@ -1486,6 +1503,19 @@ describe('display pages', () => {
     assert.equal(config.sheetId, undefined);
   });
 
+  test('serves a bonspiel\'s screen', async () => {
+    const res = await fetch(`${PAGES_URL}/club-a/bonspiels/fall`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/\.\.\/assets\/bonspiel\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'bonspiel');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.bonspielId, 'fall');
+  });
+
   test('serves a display link\'s own page for a club', async () => {
     const res = await fetch(`${PAGES_URL}/club-a`);
     assert.equal(res.status, 200);
@@ -1503,6 +1533,7 @@ describe('display pages', () => {
       ['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/],
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
       ['link.js', /javascript/], ['link.css', /css/],
+      ['bonspiel.js', /javascript/], ['bonspiel-model.js', /javascript/], ['bonspiel.css', /css/],
     ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
@@ -1517,6 +1548,8 @@ describe('display pages', () => {
       '/club.a/sheets/sheet-1/bug',
       '/club-a/sheets/sheet-1',
       '/club%3Cb%3E/warm-room',
+      '/club-a/bonspiels/fall%3Cscript%3E',
+      '/club-a/bonspiels',
       '/assets/missing.js',
       '/assets/../pages.js',
       '/',
@@ -1739,5 +1772,58 @@ describe('bonspiel state', () => {
   test('is removed with the bonspiel', async () => {
     await planDoc.delete();
     await waitFor('the state to go', async () => !(await stateDoc.get()).exists);
+  });
+});
+
+describe('what the bonspiel screen shows', () => {
+  const plan = {
+    teams: [{ id: 't1', name: 'Smith' }, { id: 't2', name: 'Jones' }, { id: 't3', name: 'Brown' }, { id: 't4', name: 'Lee' }],
+    events: [{ id: 'a', name: 'A Event' }, { id: 'b', name: 'B Event' }],
+    draws: [
+      { id: 'd2', label: 'Draw 2', start: '2026-11-07T09:00' },
+      { id: 'd1', label: 'Draw 1', start: '2026-11-06T19:00' },
+    ],
+    games: [
+      { id: 'a1', label: 'A1', drawId: 'd1', sheetId: 's1', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+      { id: 'a2', label: 'A2', drawId: 'd1', sheetId: 's2', eventId: 'a', team1: { teamId: 't3' }, team2: { teamId: 't4' } },
+      {
+        id: 'a3', label: 'A Final', drawId: 'd2', sheetId: 's1', eventId: 'a',
+        team1: { from: 'a1', result: 'winner' }, team2: { from: 'a2', result: 'winner' },
+      },
+      {
+        id: 'b1', label: 'B1', drawId: 'd2', sheetId: 's2', eventId: 'b',
+        team1: { from: 'a1', result: 'loser' }, team2: null,
+      },
+    ],
+  };
+  const at = (y, mo, d, h, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
+
+  test('moves to the next draw half an hour before it starts', () => {
+    assert.equal(currentDraw(plan, at(2026, 11, 6, 12)).id, 'd1');
+    assert.equal(currentDraw(plan, at(2026, 11, 7, 8, 29)).id, 'd1');
+    assert.equal(currentDraw(plan, at(2026, 11, 7, 8, 30)).id, 'd2');
+    assert.equal(nextDraw(plan, currentDraw(plan, at(2026, 11, 6, 20))).id, 'd2');
+    assert.equal(nextDraw(plan, plan.draws[0]), null);
+  });
+
+  test('names each side as far as it is known', () => {
+    const state = { games: { a3: { status: 'ready', team1: { teamId: 't2', name: 'Jones' }, team2: null } } };
+    const [a3, b1] = [plan.games[2], plan.games[3]];
+    assert.deepEqual(sideOf(plan, state, plan.games[0], 'team1'), { name: 'Smith', known: true });
+    assert.deepEqual(sideOf(plan, state, a3, 'team1'), { name: 'Jones', known: true });
+    assert.deepEqual(sideOf(plan, state, a3, 'team2'), { name: 'Winner of A2', known: false });
+    assert.deepEqual(sideOf(plan, state, b1, 'team1'), { name: 'Loser of A1', known: false });
+    assert.deepEqual(sideOf(plan, state, b1, 'team2'), { name: 'To be decided', known: false });
+  });
+
+  test('gives a result only once a game has one', () => {
+    const state = { games: { a1: { status: 'final', team1Score: 6, team2Score: 3, winner: 'team1' }, a2: { status: 'ready' } } };
+    assert.deepEqual(resultOf(state, plan.games[0]), { team1Score: 6, team2Score: 3, winner: 'team1', tied: false });
+    assert.equal(resultOf(state, plan.games[1]), null);
+  });
+
+  test('lays an event out as a bracket, as the portal does', () => {
+    assert.deepEqual(bracketRounds(plan, 'a').map((r) => r.map((g) => g.label)), [['A1', 'A2'], ['A Final']]);
+    assert.deepEqual(bracketRounds(plan, 'b').map((r) => r.map((g) => g.label)), [['B1']]);
   });
 });

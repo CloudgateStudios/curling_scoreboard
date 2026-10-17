@@ -70,3 +70,39 @@ describe('describeSettings', () => {
     );
   });
 });
+
+describe('bonspiel screens', () => {
+  test('keep their bonspiel and view, without the defaults', () => {
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', bonspielId: 'fall', view: 'now', scale: 2 }),
+      { page: 'bonspiel', bonspielId: 'fall' });
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', bonspielId: 'fall', view: 'schedule', every: 30 }),
+      { page: 'bonspiel', bonspielId: 'fall', view: 'schedule' });
+  });
+
+  test('keep their timing when there are screens in turn, brackets included', () => {
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', bonspielId: 'fall', view: 'brackets', every: 30 }),
+      { page: 'bonspiel', bonspielId: 'fall', view: 'brackets', every: 30 });
+    assert.equal(settingsToSave({ page: 'bonspiel', bonspielId: 'fall', view: 'cycle', every: 1 }).every, 5);
+  });
+
+  test('do not take a warm room view, nor give theirs to the warm room', () => {
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', bonspielId: 'fall', view: 'full' }),
+      { page: 'bonspiel', bonspielId: 'fall' });
+    assert.deepEqual(settingsToSave({ page: 'warm-room', view: 'brackets' }), { page: 'warm-room' });
+  });
+
+  test('fall back to the warm room without a bonspiel', () => {
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', view: 'schedule' }), { page: 'warm-room' });
+  });
+
+  test('are described by the bonspiel\'s name', () => {
+    const name = (id) => (id === 'fall' ? 'Fall Spiel' : undefined);
+    const none = () => undefined;
+    assert.equal(describeSettings({ page: 'bonspiel', bonspielId: 'fall' }, none, name),
+      'Fall Spiel, the draw on now and the next');
+    assert.equal(describeSettings({ page: 'bonspiel', bonspielId: 'fall', view: 'brackets', every: 30 }, none, name),
+      'Fall Spiel, the brackets in turn, every 30 seconds');
+    assert.equal(describeSettings({ page: 'bonspiel', bonspielId: 'gone', view: 'schedule' }, none, name),
+      'a removed bonspiel, every draw');
+  });
+});

@@ -71,6 +71,8 @@ Access the app depends on:
   club's bonspiels, and reading each one's state
 - a paired scoreboard reading and listing its club's bonspiels, and reading
   their state
+- a display reading its club's bonspiels and their state, and a club admin
+  pointing a link at a bonspiel's screen
 
 Access that must stay denied:
 
@@ -115,7 +117,10 @@ Access that must stay denied:
 - anyone writing a bonspiel's state, which only the functions do; a
   bonspiel admin reading or writing another club's bonspiels; an unpaired
   device, a scoreboard without claims or one that has been replaced reading
-  one, a scoreboard reading another club's or changing one; a bonspiel with no name, a date that is
+  one, a scoreboard reading another club's or changing one; a display
+  reading another club's bonspiels, or writing one or its state; a link
+  pointing at no bonspiel, or a bonspiel screen and the warm room swapping
+  views; a bonspiel with no name, a date that is
   not one, no ends, a missing or unknown field, or too many games
 
 ### Functions
@@ -165,8 +170,12 @@ Access that must stay denied:
   coordinator only settles a tie; sends nobody on from a tied game; leaves a
   game that refers to itself or to a missing game waiting; and names an
   event's winner only when it has one final.
-- The display function serves the score bug, the warm room screen and a
-  display link's own page with
+- The bonspiel screen moves to the next draw half an hour before it starts,
+  names each side as far as it is known, gives a result only once a game has
+  one, and lays out an event's bracket as the portal does. The display
+  summary says which bonspiel game a live or finished game is.
+- The display function serves the score bug, the warm room screen, a
+  bonspiel's screen and a display link's own page with
   their strict security headers,
   never cached, with the club, sheet and server time in the page; serves the
   pages' scripts and styles; and answers 404 for malformed IDs and anything
