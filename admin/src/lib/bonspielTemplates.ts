@@ -4,17 +4,21 @@ import type { Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielSide,
 /**
  * How the losers of an event's games move on:
  *
+ * - bySize: the four event draw clubs have long laid out by hand. The A
+ *   event's losers, earliest first, fill the B event to half the field, then
+ *   the C event to a quarter; the B event's earliest losers fill the D event
+ *   to a quarter. Any other loss ends a team's bonspiel. With B, C and D
+ *   filling early, their finals can be played with A's.
  * - byRound: the losers of each round of the A event drop to the next
  *   event, so A round 1's losers make up the B event, round 2's the C event,
- *   and so on. A loss in any other event ends a team's bonspiel. The usual
- *   club format.
+ *   and so on. A loss in any other event ends a team's bonspiel.
  * - dropOne: a loss in any event drops a team to the next one, A to B and B
  *   to C, and a loss in the last ends it. The triple knockout of the tour.
  *
  * Either way, the loser of an event's final is its runner up, and goes
  * nowhere.
  */
-export type LoserRule = 'byRound' | 'dropOne';
+export type LoserRule = 'bySize' | 'byRound' | 'dropOne';
 
 export interface KnockoutOptions extends ScheduleOptions {
   /** How many teams start in the A event. */
@@ -35,13 +39,16 @@ export interface ScheduleOptions {
   /** `HH:mm`: the latest a draw can start before play moves to the next day. */
   lastDrawStart: string;
   minutesBetweenDraws: number;
-  /** Keeps a team from playing two draws in a row, unless a draw would
-   *  otherwise have no games at all. */
+  /** Keeps a team from playing two draws in a row where it can, taking up
+   *  to [EXTRA_DRAWS_FOR_REST] more draws than the fewest to do it. */
   drawOff: boolean;
 }
 
 export const MAX_TEMPLATE_TEAMS = 64;
 export const MAX_TEMPLATE_EVENTS = 4;
+/** How many more draws than the fewest a schedule may take to give teams a
+ *  draw off between games. */
+const EXTRA_DRAWS_FOR_REST = 2;
 
 /** A side of a game still to be placed in an event, and the first round it
  *  can be played in. Rounds count across the whole bonspiel, so the B
@@ -119,8 +126,17 @@ function buildEvent(entrants: Slot[], event: number, newId: () => string): Built
   }
 }
 
-/** The event a game's loser goes to, or null when a loss ends it. */
-function loserEvent(rule: LoserRule, event: number, round: number, events: number): number | null {
+/** The event a game's loser goes to, or null when a loss ends it.
+ *  [entrants] are the teams each event has so far. */
+function loserEvent(
+  rule: LoserRule, event: number, round: number, events: number, teams: number, entrants: Slot[][],
+): number | null {
+  if (rule === 'bySize') {
+    const size = [teams, Math.floor(teams / 2), Math.floor(teams / 4), Math.floor(teams / 4)];
+    // A's losers fill B then C, and B's fill D. An event of one is no event.
+    const to = [[1, 2], [3], [], []][event].filter((e) => e < events && size[e] >= 2);
+    return to.find((e) => entrants[e].length < size[e]) ?? null;
+  }
   const next = rule === 'byRound' ? (event === 0 ? round : null) : event + 1;
   return next !== null && next < events ? next : null;
 }
@@ -147,6 +163,7 @@ export function knockoutPlan(
 
   const events: BonspielEvent[] = [];
   const built: Built[] = [];
+  const finals: string[] = [];
   for (let e = 0; e < eventCount; e++) {
     const games = buildEvent(entrants[e], e, newId);
     // An event no losers reach, or only one, is left out.
@@ -154,29 +171,43 @@ export function knockoutPlan(
     const event: BonspielEvent = { id: newId(), name: `${EVENT_LETTERS[e]} Event` };
     events.push(event);
     const final = games[games.length - 1];
+    finals.push(final.game.id);
     games.forEach((b, i) => {
       b.game.eventId = event.id;
       b.game.label = b === final ? `${EVENT_LETTERS[e]} Final` : `${EVENT_LETTERS[e]}${i + 1}`;
       if (b === final) return;
-      const to = loserEvent(options.losers, e, b.round, eventCount);
+      const to = loserEvent(options.losers, e, b.round, eventCount, options.teams, entrants);
       if (to !== null) entrants[to].push({ side: { from: b.game.id, result: 'loser' }, round: b.round + 1 });
     });
     built.push(...games);
   }
 
-  const draws = schedule(built, options, newId);
+  const draws = schedule(built, options, newId, finals);
   return { events, draws, games: built.map((b) => b.game) };
 }
 
 /**
- * Places the games into draws, as many to a draw as there are sheets, those
- * whose teams have waited longest first. A game only goes in a draw after the
- * ones its teams come from, and with [KnockoutOptions.drawOff] not in the
- * draw right after them, unless that would leave the draw empty.
+ * Places the games into draws, as many to a draw as there are sheets, with
+ * every one of [finals] held for the last draw, the way clubs lay out a
+ * bonspiel so its finals are played together. With more finals than sheets,
+ * those of the later events go a draw or more earlier.
+ *
+ * It looks for the fewest draws that does that: from the last draw it works
+ * back to the latest each game can be played and still reach its final in
+ * time, then fills the draws from the first, an even share of the games
+ * left to each, those falling due first, and among them the ones whose teams
+ * have waited longest. A game only goes in a draw after the ones its teams
+ * come from, and with [ScheduleOptions.drawOff] not in the draw right after
+ * them unless it would otherwise be late. With a draw off, a draw or two more
+ * than the fewest is taken when it means fewer teams playing back to back.
  */
-function schedule(built: Built[], options: ScheduleOptions, newId: () => string): BonspielDraw[] {
+function schedule(
+  built: Built[],
+  options: ScheduleOptions,
+  newId: () => string,
+  finals: string[] = [],
+): BonspielDraw[] {
   const sheets = options.sheetIds.length > 0 ? options.sheetIds : [''];
-  const drawOf = new Map<string, number>();
   // A place in a pool's standings comes after every game in the pool.
   const inEvent = new Map<string, string[]>();
   for (const b of built) inEvent.set(b.game.eventId, [...(inEvent.get(b.game.eventId) ?? []), b.game.id]);
@@ -186,48 +217,117 @@ function schedule(built: Built[], options: ScheduleOptions, newId: () => string)
       if (side && 'rank' in side) return inEvent.get(side.eventId) ?? [];
       return [];
     });
-  let remaining = [...built].sort((a, b) => a.round - b.round || a.event - b.event);
-  const draws: BonspielDraw[] = [];
-  // The draw a game's teams are last busy in, so the games whose teams have
-  // waited longest go first. Otherwise a big A event's later rounds would
-  // keep the first round's losers waiting a day for their B game.
-  // The last draw each known player played in.
-  const playedIn = new Map<string, number>();
-  const lastDraws = (b: Built) => [
-    ...sources(b.game).map((id) => drawOf.get(id)!),
-    ...(b.players ?? []).flatMap((p) => (playedIn.has(p) ? [playedIn.get(p)!] : [])),
-  ];
-  const freedAfter = (b: Built) => Math.max(-1, ...lastDraws(b));
+  // The games each game's teams go on to.
+  const next = new Map<string, string[]>();
+  for (const b of built) for (const from of sources(b.game)) next.set(from, [...(next.get(from) ?? []), b.game.id]);
+  // How many games at most follow each one, one after another.
+  const after = new Map<string, number>();
+  const gamesAfter = (id: string): number => {
+    if (!after.has(id)) after.set(id, Math.max(0, ...(next.get(id) ?? []).map((n) => gamesAfter(n) + 1)));
+    return after.get(id)!;
+  };
+  const fewest = Math.max(Math.ceil(built.length / sheets.length), ...built.map((b) => gamesAfter(b.game.id) + 1));
 
-  for (let d = 0; remaining.length > 0; d++) {
-    const ready = remaining
-      .filter((b) => sources(b.game).every((id) => (drawOf.get(id) ?? Infinity) < d))
-      .sort((a, b) => freedAfter(a) - freedAfter(b) || a.round - b.round || a.event - b.event);
-    const rested = options.drawOff ? ready.filter((b) => lastDraws(b).every((at) => at < d - 1)) : ready;
-    const chosen: Built[] = [];
-    const busy = new Set<string>();
-    // Rested games first, then any others, never a player twice in a draw.
-    for (const b of [...rested, ...(rested.length > 0 ? [] : ready)]) {
-      if (chosen.length >= sheets.length) break;
-      if ((b.players ?? []).some((p) => busy.has(p))) continue;
-      chosen.push(b);
-      for (const p of b.players ?? []) busy.add(p);
+  for (let draws = fewest; draws < fewest + built.length; draws++) {
+    let placed = place(draws, finals);
+    if (!placed) continue;
+    // With a draw off, a draw or two more can rest teams that would
+    // otherwise play back to back.
+    for (let more = 1; options.drawOff && more <= EXTRA_DRAWS_FOR_REST; more++) {
+      const longer = place(draws + more, finals);
+      if (longer && backToBack(longer) < backToBack(placed)) placed = longer;
     }
-    const draw: BonspielDraw = {
-      id: newId(),
-      label: `Draw ${d + 1}`,
-      start: d === 0 ? options.firstDrawStart : nextStart(draws[d - 1].start, options),
-    };
-    draws.push(draw);
-    chosen.forEach((b, i) => {
-      b.game.drawId = draw.id;
-      b.game.sheetId = sheets[i];
-      drawOf.set(b.game.id, d);
-      for (const p of b.players ?? []) playedIn.set(p, d);
-    });
-    remaining = remaining.filter((b) => !chosen.includes(b));
+    return name(placed);
   }
-  return draws;
+  // Only when nothing can hold the finals together, say for a final that
+  // needs more sheets than there are.
+  return name(place(Infinity, [])!);
+
+  /** How many games in [placed] a team plays straight after another. */
+  function backToBack(placed: Built[][]): number {
+    const drawOf = new Map(placed.flatMap((games, d) => games.map((b) => [b.game.id, d])));
+    return placed.reduce((n, games, d) =>
+      n + games.filter((b) => sources(b.game).some((id) => drawOf.get(id) === d - 1)).length, 0);
+  }
+
+  /** The games of each draw, with [held] played as late as [count] draws
+   *  allows, or null when they can't all be. */
+  function place(count: number, held: string[]): Built[][] | null {
+    const last = count - 1;
+    const heldFor = new Map(held.map((id, i) => [id, last - Math.floor(i / sheets.length)]));
+    const due = new Map<string, number>();
+    const dueBy = (id: string): number => {
+      if (!due.has(id)) due.set(id, heldFor.get(id) ?? Math.min(last, ...(next.get(id) ?? []).map((n) => dueBy(n) - 1)));
+      return due.get(id)!;
+    };
+    const drawOf = new Map<string, number>();
+    // The last draw each known player played in.
+    const playedIn = new Map<string, number>();
+    const lastDraws = (b: Built) => [
+      ...sources(b.game).map((id) => drawOf.get(id)!),
+      ...(b.players ?? []).flatMap((p) => (playedIn.has(p) ? [playedIn.get(p)!] : [])),
+    ];
+    const freedAfter = (b: Built) => Math.max(-1, ...lastDraws(b));
+
+    let remaining = [...built];
+    const draws: Built[][] = [];
+    for (let d = 0; d <= last && remaining.length > 0; d++) {
+      const ready = remaining
+        .filter((b) => sources(b.game).every((id) => (drawOf.get(id) ?? Infinity) < d))
+        .filter((b) => (heldFor.get(b.game.id) ?? 0) <= d)
+        .sort((a, b) => dueBy(a.game.id) - dueBy(b.game.id) || freedAfter(a) - freedAfter(b)
+          || a.round - b.round || a.event - b.event);
+      const rested = options.drawOff ? ready.filter((b) => lastDraws(b).every((at) => at < d - 1)) : ready;
+      const late = ready.filter((b) => dueBy(b.game.id) <= d);
+      // An even share of the games left for each draw left, so a longer
+      // schedule spreads them out rather than leaving draws empty.
+      const share = Number.isFinite(last)
+        ? Math.max(late.length, Math.ceil(remaining.length / (last - d + 1)))
+        : sheets.length;
+      const room = Math.min(sheets.length, share);
+      const chosen: Built[] = [];
+      const busy = new Set<string>();
+      // Games falling due first, then rested ones, then any to fill the
+      // draw, never a player twice in a draw.
+      for (const b of [...late, ...rested, ...ready]) {
+        if (chosen.length >= room) break;
+        if (chosen.includes(b) || (b.players ?? []).some((p) => busy.has(p))) continue;
+        chosen.push(b);
+        for (const p of b.players ?? []) busy.add(p);
+      }
+      for (const b of chosen) {
+        drawOf.set(b.game.id, d);
+        for (const p of b.players ?? []) playedIn.set(p, d);
+      }
+      draws.push(chosen);
+      remaining = remaining.filter((b) => !chosen.includes(b));
+    }
+    if (remaining.length > 0 || draws.some((games) => games.length === 0) || held.some((id) => drawOf.get(id) !== heldFor.get(id))) return null;
+    return draws;
+  }
+
+  /** Makes the draws, a draw's length apart, and puts the finals on the
+   *  middle sheets, where the most people can watch. */
+  function name(placed: Built[][]): BonspielDraw[] {
+    const middleOut = sheets.map((_, i) => i)
+      .sort((a, b) => Math.abs(a - (sheets.length - 1) / 2) - Math.abs(b - (sheets.length - 1) / 2) || a - b);
+    const draws: BonspielDraw[] = [];
+    placed.forEach((chosen, d) => {
+      const draw: BonspielDraw = {
+        id: newId(),
+        label: `Draw ${d + 1}`,
+        start: d === 0 ? options.firstDrawStart : nextStart(draws[d - 1].start, options),
+      };
+      draws.push(draw);
+      const isFinal = (b: Built) => finals.includes(b.game.id);
+      const onMiddle = chosen.filter(isFinal);
+      const free = sheets.map((_, i) => i).filter((i) => !middleOut.slice(0, onMiddle.length).includes(i));
+      onMiddle.forEach((b, i) => { b.game.sheetId = sheets[middleOut[i]]; });
+      chosen.filter((b) => !isFinal(b)).forEach((b, i) => { b.game.sheetId = sheets[free[i]]; });
+      for (const b of chosen) b.game.drawId = draw.id;
+    });
+    return draws;
+  }
 }
 
 /** When the draw after one starting at [start] starts: a draw's length later,
@@ -292,6 +392,7 @@ export function poolsPlan(
   const letters = 'ABCDEFGH';
   const events: BonspielEvent[] = [];
   const built: Built[] = [];
+  const finals: string[] = [];
   let lastRound = 0;
   pools.forEach((members, p) => {
     const event: BonspielEvent = { id: newId(), name: `Pool ${letters[p]}` };
@@ -331,9 +432,10 @@ export function poolsPlan(
       b.game.label = i === games.length - 1 ? 'Final' : `P${i + 1}`;
     });
     built.push(...games);
+    finals.push(games[games.length - 1].game.id);
   }
 
-  const draws = schedule(built, options, newId);
+  const draws = schedule(built, options, newId, finals);
   return { events, draws, games: built.map((b) => b.game) };
 }
 

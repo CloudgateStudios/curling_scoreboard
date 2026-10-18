@@ -31,13 +31,13 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
   const [events, setEvents] = useState(4);
   const [pools, setPools] = useState(4);
   const [qualifiers, setQualifiers] = useState(1);
-  const [losers, setLosers] = useState<LoserRule>('byRound');
+  const [losers, setLosers] = useState<LoserRule>('bySize');
   const [sheetIds, setSheetIds] = useState(() => sheets.map((s) => s.id));
   const [firstDrawStart, setFirstDrawStart] = useState(first?.start ?? `${bonspiel.startDate}T09:00`);
   const [dayStart, setDayStart] = useState('09:00');
   const [lastDrawStart, setLastDrawStart] = useState('19:00');
   const [minutes, setMinutes] = useState('150');
-  const [drawOff, setDrawOff] = useState(true);
+  const [drawOff, setDrawOff] = useState(false);
   const [shuffle, setShuffle] = useState(false);
 
   const teamCount = Number(teams);
@@ -145,6 +145,10 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
               <legend className={styles.sideLegend}>Where losers go</legend>
               <div className={styles.results}>
                 <label className={common.checkboxLabel}>
+                  <input type="radio" name="losers" checked={losers === 'bySize'} onChange={() => setLosers('bySize')} />
+                  Four event: A's first losers fill B to half the teams, the next fill C to a quarter, and B's first losers fill D to a quarter. Every final can be played in the last draw.
+                </label>
+                <label className={common.checkboxLabel}>
                   <input type="radio" name="losers" checked={losers === 'byRound'} onChange={() => setLosers('byRound')} />
                   By A round: first round losers to B, second round losers to C, and so on. Losing in B, C or D ends a team's bonspiel.
                 </label>
@@ -201,7 +205,7 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
               </div>
               <label className={common.checkboxLabel}>
                 <input type="checkbox" checked={drawOff} onChange={(e) => setDrawOff(e.target.checked)} />
-                Give teams a draw off between games where there are games to fill it
+                Give teams a draw off between games where it can, even if that takes a draw or two more
               </label>
             </div>
           </fieldset>
