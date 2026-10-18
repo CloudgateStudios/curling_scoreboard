@@ -43,7 +43,7 @@ const eventGames = (b, name) => b.games.filter((g) => g.eventId === b.events.fin
 
 describe('knockoutPlan', () => {
   test('makes plans that pass every check, whatever the size', () => {
-    for (const losers of ['byRound', 'dropOne']) {
+    for (const losers of ['bySize', 'byRound', 'dropOne']) {
       for (let events = 1; events <= 4; events++) {
         for (let n = 2; n <= 33; n++) {
           const b = bonspiel(n, { events, losers });
@@ -79,6 +79,23 @@ describe('knockoutPlan', () => {
     const dFinal = eventGames(b, 'D Event')[0];
     const aGames = new Map(eventGames(b, 'A Event').map((g) => [g.id, g]));
     assert.ok(sources(dFinal).every((s) => s.result === 'loser' && aGames.has(s.from)));
+  });
+
+  test('fills B to half the teams and C and D to a quarter in a four event draw', () => {
+    // 16 teams: A's 8 first round losers make B, its 4 quarter final losers
+    // C, and B's 4 first round losers D.
+    const b = bonspiel(16, { losers: 'bySize' });
+    assert.deepEqual(['A Event', 'B Event', 'C Event', 'D Event'].map((e) => eventGames(b, e).length), [15, 7, 3, 3]);
+    const from = (event) => new Set(eventGames(b, event).map((g) => g.id));
+    const losersIn = (event) => eventGames(b, event).flatMap(sources).filter((s) => s.result === 'loser');
+    const [a, bEvent] = [from('A Event'), from('B Event')];
+    assert.ok(losersIn('C Event').every((s) => a.has(s.from)));
+    assert.equal(losersIn('D Event').length, 4);
+    assert.ok(losersIn('D Event').every((s) => bEvent.has(s.from)));
+
+    // 12 teams: B takes 6, C and D 3 each, the spreadsheet's layout.
+    const twelve = bonspiel(12, { losers: 'bySize' });
+    assert.deepEqual(['A Event', 'B Event', 'C Event', 'D Event'].map((e) => eventGames(twelve, e).length), [11, 5, 2, 2]);
   });
 
   test('drops losers one event at a time in a triple knockout', () => {
@@ -132,6 +149,50 @@ describe('scheduling a knockout', () => {
     // 56 games on 4 sheets need at least 14 draws.
     assert.equal(b.games.length, 56);
     assert.ok(b.draws.length >= 14);
+  });
+
+  test('plays every final in the last draw', () => {
+    for (const losers of ['bySize', 'byRound', 'dropOne']) {
+      for (let n = 8; n <= 40; n++) {
+        const b = bonspiel(n, { losers });
+        const last = sortedDraws(b.draws).at(-1).id;
+        const finals = b.games.filter((g) => g.label.endsWith('Final'));
+        assert.equal(finals.length, b.events.length);
+        assert.ok(finals.every((g) => g.drawId === last), `${n} teams, ${losers}`);
+      }
+    }
+  });
+
+  test('plays the later events\' finals a draw early when there are too few sheets', () => {
+    const b = bonspiel(12, { losers: 'bySize', drawOff: false, sheetIds: ['s1', 's2', 's3'] });
+    const draws = sortedDraws(b.draws).map((d) => d.id);
+    const finalIn = (event) => draws.indexOf(eventGames(b, event).at(-1).drawId);
+    assert.deepEqual(['A Event', 'B Event', 'C Event', 'D Event'].map(finalIn), [6, 6, 6, 5]);
+  });
+
+  test('takes as few draws as the four event spreadsheet', () => {
+    // The draws clubs' 4EDraw spreadsheet lays out for these sheets and teams.
+    const counts = { 2: { 8: 6, 12: 10, 16: 14 }, 3: { 8: 5, 12: 7, 16: 10 }, 4: { 12: 5, 16: 7, 24: 11, 32: 15 }, 6: { 12: 4, 24: 8, 32: 11 } };
+    for (const [sheets, byTeams] of Object.entries(counts)) {
+      const sheetIds = Array.from({ length: Number(sheets) }, (_, i) => `s${i + 1}`);
+      for (const [n, draws] of Object.entries(byTeams)) {
+        const b = bonspiel(Number(n), { losers: 'bySize', drawOff: false, sheetIds });
+        assert.equal(b.draws.length, draws, `${n} teams on ${sheets} sheets`);
+      }
+    }
+  });
+
+  test('puts the finals on the middle sheets', () => {
+    const b = bonspiel(24, { losers: 'bySize', sheetIds: ['s1', 's2', 's3', 's4', 's5', 's6'] });
+    const finals = b.games.filter((g) => g.label.endsWith('Final'));
+    assert.deepEqual(finals.map((g) => g.sheetId).sort(), ['s2', 's3', 's4', 's5']);
+  });
+
+  test('leaves no draw empty', () => {
+    for (const drawOff of [true, false]) {
+      const b = bonspiel(16, { drawOff, sheetIds: ['s1', 's2', 's3', 's4', 's5', 's6'] });
+      assert.ok(b.draws.every((d) => b.games.some((g) => g.drawId === d.id)));
+    }
   });
 
   test('gives teams a draw off where it can', () => {
