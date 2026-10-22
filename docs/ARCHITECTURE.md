@@ -66,19 +66,24 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
         team2: { ...the same }
         ends: [{ endNumber: int, scoringTeamSlot: 'team1' | 'team2' | null, score: int }] | null
       } | null
-      lastGame?: {           // the sheet's latest completed game
-        gameId: string
-        startedAt: timestamp | null
-        finishedAt: timestamp
-        numberOfEnds: int | null
-        league: { name: string } | null
-        bonspiel: { ...as in live } | null
-        team1: { ...as in live, with hasHammer null }
-        team2: { ...the same }
-        ends: [...as in live]
-      }
     }
   }
+  results?: [{               // games finished in the last day, the latest first, at most 48;
+                             // each sheet's latest is its final score
+    gameId: string
+    sheetId: string
+    sheetName: string        // the sheet's name when the game finished
+    startedAt: timestamp | null
+    finishedAt: timestamp
+    numberOfEnds: int | null
+    endsPlayed: int          // the last end played; 0 when none were recorded
+    league: { name: string,
+              draws: [{ day: int, start: string, end: string }] } | null   // its league's draws, as the league had them
+    bonspiel: { ...as in live } | null
+    team1: { ...as in live, with hasHammer null }
+    team2: { ...the same }
+    ends: [...as in live]
+  }]
 
 clubs/{clubId}/private/displayBranding // the warm room screen's title bar; absent for the default
   title?: string             // up to 60 characters, in place of "Live Scores"
@@ -97,6 +102,7 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
     every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
     scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
     label?: 'sheet' | 'league' | 'none'  // the score bug's bottom line; sheet when absent
+    earlier?: bool           // the warm room's earlier results beside the sheets; not when absent
   }
   createdAt: timestamp
   lastUsedAt?: timestamp     // when a display last started with it, at most hourly
@@ -390,6 +396,29 @@ whose `updatedAt` is more than 120 minutes old: the REST API reports it as
 null and the admin portal shows the sheet as idle. The stored field is left
 alone until that scoreboard next starts up or starts a game.
 
+## Where game results live
+
+A finished game is recorded once, in the sheet's `games` document. Every
+other copy of a result is made from it by a function, or is a bonspiel
+coordinator's own entry, and each says where it came from:
+
+| Where | What it holds | Written by | Read by |
+| ----- | ------------- | ---------- | ------- |
+| `sheets/{sheetId}/games/{gameId}` | The record: teams, ends, times, and whether the webhook was sent it | The scoreboard, once, at Finish Game | REST API, webhook, everything below |
+| `sheets/{sheetId}.liveGame` | The game in progress, not yet a result | The scoreboard, on each change; removed at Finish Game | REST API, portal, `syncDisplaySheet` |
+| `private/displayState.sheets[id].live` | A trimmed copy of `liveGame` | `syncDisplaySheet` | Display pages |
+| `private/displayState.results` | The last day's games, trimmed, with their league's draws; each sheet's latest is its final score | `syncDisplayResults` | Display pages |
+| `bonspiels/{id}/state/current.results` | A bonspiel game's latest scores from a scoreboard, pointing back to its `games` document | `syncBonspielResult` | `resolveBonspiel` |
+| `bonspiels/{id}/state/current.games` | Each bonspiel game's result that counts, the coordinator's or the scoreboard's | `resolveBonspiel` | Portal, scoreboards, bonspiel screen, REST API |
+| `bonspiels/{id}.games[].result` | The coordinator's own result, not a copy | Bonspiel coordinators, in the portal | `resolveBonspiel` |
+
+Everything in the table made by a function can be made again from the
+`games` documents: `scripts/backfill-display-state.js` does it for the
+display summary, and a bonspiel's state is worked out again whenever its plan
+or one of its games changes. Outside Firestore, the club's webhook receiver
+keeps whatever it was sent, and each scoreboard's Firestore cache holds its
+writes until they are sent.
+
 ## Display summary
 
 The score bug for live streams and the warm room screen show a club's sheets
@@ -407,26 +436,41 @@ Two functions in `functions/src/display/triggers.ts` keep it up to date:
   events can arrive late, out of order or twice, and this way a late one
   writes the current state again instead of an older one. A deleted sheet is
   removed.
-- `syncDisplayLastGame` fires on each completed game and keeps it as the
-  sheet's `lastGame`, unless the one already there finished later, which
-  happens when a scoreboard that was offline delivers an old game.
+- `syncDisplayResults` fires on each completed game and adds it to
+  `results`, with its league's weekly draws read from the league as it is
+  then. The list keeps the last day's games, latest first, up to 48, and a
+  game delivered twice is listed once. A game a scoreboard that was offline
+  delivers late goes in its place by when it finished.
 
-Each writes only its own fields of the entry, so neither undoes the other.
-The entries carry only what a display shows: league and team names, colors
-and scores, not the IDs integrations match on.
+The first writes only the sheet's entry and the second only `results` (and
+the sheet's entry, for a sheet the summary has not seen yet), so neither
+undoes the other. The entries carry only what a display shows: league and
+team names, colors and scores, not the IDs integrations match on.
+
+A sheet's final score is its latest game in `results`, found by
+`lastGameOf`: by when it finished, so a game delivered late does not take
+the place of a later one. Each sheet's entry used to keep its own copy as
+`lastGame`; `syncDisplaySheet` replaces the whole entry, and the backfill
+script rewrites every one, so that field goes.
 
 What a display shows for a sheet is decided by `sheetView` in
-`functions/src/display/state.ts`. A live game comes first, so the next draw
-replaces the final score as soon as its game starts. A live game that has
-gone two hours without a write is ignored, as in the REST API. Otherwise the
-last game is shown as the final score for ten minutes after it finished, and
-after that the sheet is idle. That is worked out by the display from the
+`functions/src/display/state.ts`, from the summary and the sheet's ID. A
+live game comes first, so the next draw replaces the final score as soon as
+its game starts. A live game that has gone two hours without a write is
+ignored, as in the REST API. Otherwise the sheet's latest result is shown as
+the final score for ten minutes after it finished, and after that the sheet
+is idle. That is worked out by the display from the
 times in the summary, so nothing has to be written when the ten minutes are
 up.
 
-Sheets that existed before the functions were deployed are added by
-`scripts/backfill-display-state.js` (see the README), or by their next
-change.
+Sheets that existed before the functions were deployed, and the last day's
+games, are added by `scripts/backfill-display-state.js` (see the README), or
+by their next change.
+
+A display page loaded before final scores came from `results` looks for
+`lastGame`, so it shows no final score until it is reloaded. The pages do
+not reload themselves when the functions are deployed, so reload the club's
+screens after that deploy.
 
 ## Display links
 
@@ -510,8 +554,9 @@ config, and the server's time. The script, `assets/display.js`, then:
    browser's IndexedDB, so a reload does not start a new session.
 2. Listens to the club's `private/displayState` and redraws on each change.
 3. Redraws every 15 seconds as well, because a final score comes down ten
-   minutes after the game with no write to say so. `sheetView` there mirrors
-   the one in `functions/src/display/state.ts`, with the same limits passed
+   minutes after the game with no write to say so. `sheetView` and
+   `lastGameOf` there mirror the ones in `functions/src/display/state.ts`,
+   with the same limits passed
    in through the page. Times are compared on the server's clock, worked out
    from the time in the page, so a screen with its clock off still takes
    the final score down on time.
@@ -571,6 +616,40 @@ extra ends are played. Its cards are wider and shorter, so the layout asks
 for that shape. A live game from a scoreboard that does not send its ends
 yet is shown by its totals among them. `?view=cycle` shows the two in turn,
 `?every=` seconds each (20 by default).
+
+`?earlier=today` adds the day's finished games in a column to the right of
+the sheets (under them on a TV turned on its side), for a screen left on
+through several draws, such as one in the bar. It is a link setting, off
+unless a club admin turns it on, and a screen already following its link
+picks it up as soon as it is saved. The games are grouped by draw, the
+latest draw first, each headed by its start time and its leagues, and in
+sheet order under it: the sheet, then each team's rock color, name and
+score, the winner in bold, and "Final after 7 ends" for a game that ended
+early or went to extra ends. The column is hidden until the first game of
+the day finishes, and the sheets get its width back. With `?preview`, as the
+portal's Preview button opens it, the column shows before then too, faded and
+outlined like the score bug's stand-in, with a note that the day's results
+appear there as games finish, so whoever sets the screen up sees the room it
+takes.
+
+The grouping is worked out on the screen, in `results-model.js`, because it
+is at the club and so on the club's time, which is what leagues' draws are
+written in; the club has no time zone of its own. A league game goes under
+the league draw on that weekday that it started in, from half an hour
+before the draw starts, as on the scoreboard, until it ends. An open game,
+a bonspiel game, or a league game outside its league's draws joins a draw
+that started from half an hour before to 45 minutes after it did, and
+games with no draw to join are grouped with those that started within 45
+minutes of the first of them, under that start to the nearest quarter
+hour. The day starts at 4 in the morning, so a late draw that runs past
+midnight stays with its evening.
+
+The column never scrolls or turns over by itself. What does not fit is left
+off the bottom a whole game at a time, so the oldest games go first, and a
+draw with no games left goes too. It is sized from the screen's height, a
+720th of it to a design pixel (or a 1280th of its width if that is less),
+so it keeps its proportions on any 16:9 screen; on a TV turned on its side,
+the other way round.
 
 Both pages say Final, not the end, once a live game has played its ends
 and is not tied, as the scoreboard does before anyone taps Finish Game, and

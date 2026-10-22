@@ -115,7 +115,7 @@ function render() {
   }
   showStatus(null);
 
-  const view = sheetView(sheet, now());
+  const view = sheetView(summary, config.sheetId, now());
   if (view.kind === 'idle') {
     shown = null;
     if (preview) showPlaceholder(sheet);

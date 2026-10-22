@@ -8,7 +8,7 @@ export {
 } from './admin';
 export { pairSheet, unpairSheet } from './pairing';
 export { sendCompletedGameWebhook, sendTestWebhook } from './webhook';
-export { syncDisplayLastGame, syncDisplaySheet } from './display/triggers';
+export { syncDisplayResults, syncDisplaySheet } from './display/triggers';
 export { syncBonspielPlan, syncBonspielResult } from './bonspiels/triggers';
 export {
   createDisplayLink, resetDisplayLink, revokeDisplayLink, startDisplaySession,

@@ -25,6 +25,9 @@ export interface DisplaySettings {
   scale?: number;
   /** The score bug's bottom line; the sheet name when absent. */
   label?: BugLabel;
+  /** Whether the warm room lists the day's finished games beside the
+   *  sheets; not when absent. */
+  earlier?: boolean;
 }
 
 export const DEFAULT_SETTINGS: DisplaySettings = { page: 'warm-room' };
@@ -78,6 +81,7 @@ export function settingsToSave(settings: DisplaySettings): DisplaySettings {
     page: 'warm-room',
     ...(view !== 'totals' && { view }),
     ...(view === 'cycle' && every !== DEFAULT_EVERY && { every }),
+    ...(settings.earlier === true && { earlier: true }),
   };
 }
 
@@ -120,5 +124,6 @@ export function describeSettings(
   }
   const view = (s.view ?? 'totals') as DisplayView;
   const every = view === 'cycle' ? `, every ${s.every ?? DEFAULT_EVERY} seconds` : '';
-  return `Warm room, ${VIEW_NAMES[view] ?? VIEW_NAMES.totals}${every}`;
+  const earlier = s.earlier === true ? ', with earlier results' : '';
+  return `Warm room, ${VIEW_NAMES[view] ?? VIEW_NAMES.totals}${every}${earlier}`;
 }

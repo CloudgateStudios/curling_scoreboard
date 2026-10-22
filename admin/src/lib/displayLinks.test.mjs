@@ -42,6 +42,13 @@ describe('settingsToSave', () => {
     assert.deepEqual(settingsToSave({ page: 'warm-room', view: 'totals' }), { page: 'warm-room' });
   });
 
+  test('keeps the warm room\'s earlier results only when they are shown', () => {
+    assert.deepEqual(settingsToSave({ page: 'warm-room', view: 'full', earlier: true }), { page: 'warm-room', view: 'full', earlier: true });
+    assert.deepEqual(settingsToSave({ page: 'warm-room', earlier: false }), { page: 'warm-room' });
+    assert.deepEqual(settingsToSave({ page: 'bug', sheetId: 's1', earlier: true }), { page: 'bug', sheetId: 's1' });
+    assert.deepEqual(settingsToSave({ page: 'bonspiel', bonspielId: 'b1', earlier: true }), { page: 'bonspiel', bonspielId: 'b1' });
+  });
+
   test('keeps the cycle timing within what the screen allows', () => {
     assert.equal(settingsToSave({ page: 'warm-room', view: 'cycle', every: 1 }).every, 5);
     assert.equal(settingsToSave({ page: 'warm-room', view: 'cycle', every: 9999 }).every, 300);
@@ -67,6 +74,10 @@ describe('describeSettings', () => {
     assert.equal(
       describeSettings({ page: 'warm-room', view: 'cycle', every: 30 }, sheetName),
       'Warm room, totals and end by end in turn, every 30 seconds',
+    );
+    assert.equal(
+      describeSettings({ page: 'warm-room', view: 'full', earlier: true }, sheetName),
+      'Warm room, end by end, with earlier results',
     );
   });
 });

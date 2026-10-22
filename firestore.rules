@@ -46,7 +46,7 @@ service cloud.firestore {
     // understand.
     function isDisplaySettings(settings) {
       return settings is map
-          && settings.keys().hasOnly(['page', 'sheetId', 'bonspielId', 'view', 'every', 'scale', 'label'])
+          && settings.keys().hasOnly(['page', 'sheetId', 'bonspielId', 'view', 'every', 'scale', 'label', 'earlier'])
           && settings.get('page', '') in ['bug', 'warm-room', 'bonspiel']
           && (settings.page != 'bug'
               || (settings.get('sheetId', null) is string
@@ -61,7 +61,8 @@ service cloud.firestore {
               || (settings.every is int && settings.every >= 5 && settings.every <= 300))
           && (!('scale' in settings)
               || (settings.scale is number && settings.scale >= 0.5 && settings.scale <= 4))
-          && settings.get('label', 'sheet') in ['sheet', 'league', 'none'];
+          && settings.get('label', 'sheet') in ['sheet', 'league', 'none']
+          && (!('earlier' in settings) || settings.earlier is bool);
     }
 
     function isRockColor(color) {

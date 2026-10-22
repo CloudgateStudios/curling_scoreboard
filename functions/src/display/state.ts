@@ -3,8 +3,10 @@ import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
 // What the club's display pages (the score bug and the warm room screen)
 // read. Each club has one summary document, clubs/{clubId}/private/displayState,
 // which the triggers in ./triggers.ts keep up to date from the sheets and their
-// completed games. A display listens to that one document, so it costs a read
-// per change rather than a read per sheet per poll.
+// completed games: each sheet's name and live game, and the last day's
+// finished games, from which a sheet's final score is found too. A display
+// listens to that one document, so it costs a read per change rather than a
+// read per sheet per poll.
 //
 // Nothing here imports Firebase, so scripts/backfill-display-state.js can
 // build the same entries from the compiled file. Timestamps are only ever
@@ -74,9 +76,44 @@ export interface DisplayBonspiel {
 export interface DisplaySheet {
   name: string;
   live: DisplayLiveGame | null;
-  /** The sheet's most recently finished game, once it has one. */
-  lastGame?: DisplayFinishedGame;
 }
+
+/** The summary document, clubs/{clubId}/private/displayState. */
+export interface DisplaySummary {
+  sheets?: Record<string, DisplaySheet>;
+  /** The last day's finished games, the latest first. */
+  results?: DisplayResult[];
+}
+
+/** One regular time a league plays, in the club's local time. */
+export interface DisplayLeagueDraw {
+  /** 1 (Monday) to 7 (Sunday). */
+  day: number;
+  /** 24 hour 'HH:mm'. */
+  start: string;
+  end: string;
+}
+
+/**
+ * A finished game in the summary's results: a sheet's final score, and one
+ * of the warm room's earlier results. The league comes with its weekly
+ * draws, so the screen, which is at the club and so on its time, can put the
+ * game under the draw it was played in.
+ */
+export interface DisplayResult extends Omit<DisplayFinishedGame, 'league'> {
+  sheetId: string;
+  /** The sheet's name when the game finished, kept if the sheet goes. */
+  sheetName: string;
+  /** The last end played, or 0 for a game with no ends recorded. */
+  endsPlayed: number;
+  league: { name: string; draws: DisplayLeagueDraw[] } | null;
+}
+
+/** How long a finished game stays in the summary's results: well past the
+ *  ten minutes it is a sheet's final score, for the rest of the day's. */
+export const RESULTS_KEPT_MS = 24 * 60 * 60 * 1000;
+/** The most results the summary keeps, the latest first: a busy day's worth. */
+export const MAX_RESULTS = 48;
 
 /** How long a finished game stays on the displays as the final score. */
 export const FINAL_SHOWN_MS = 10 * 60 * 1000;
@@ -194,44 +231,101 @@ export function displayFinishedGame(gameId: string, game: Data): DisplayFinished
 }
 
 /**
- * The parts of a sheet document a display shows, apart from its last game,
- * which comes from the games subcollection.
+ * The parts of a sheet document a display shows. Its finished games are in
+ * the summary's results, from the games subcollection.
  */
-export function displaySheet(sheetId: string, sheet: Data): Omit<DisplaySheet, 'lastGame'> {
+export function displaySheet(sheetId: string, sheet: Data): DisplaySheet {
   return {
     name: stringOr(sheet['name'], sheetId),
     live: displayLiveGame(sheet['liveGame']),
   };
 }
 
-/** True when [candidate] finished after the game already shown, if any. */
-export function isNewerGame(
-  candidate: DisplayFinishedGame,
-  current: DisplayFinishedGame | undefined,
-): boolean {
-  return !current || candidate.finishedAt.toMillis() > current.finishedAt.toMillis();
+const DRAW_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** A league document's weekly draws, leaving out any that are not whole. */
+export function leagueDraws(league: Data | undefined): DisplayLeagueDraw[] {
+  const draws = league?.['draws'];
+  if (!Array.isArray(draws)) return [];
+  return draws.flatMap((raw) => {
+    const draw = (raw ?? {}) as Data;
+    const { day, start, end } = draw;
+    if (typeof day !== 'number' || !Number.isInteger(day) || day < 1 || day > 7) return [];
+    if (typeof start !== 'string' || !DRAW_TIME.test(start)) return [];
+    if (typeof end !== 'string' || !DRAW_TIME.test(end)) return [];
+    return [{ day, start, end }];
+  });
+}
+
+/**
+ * The results entry for [game], played on [sheetId], named [sheetName]. The
+ * draws are its league's, or empty for a game outside a league.
+ */
+export function displayResult(
+  sheetId: string,
+  sheetName: string,
+  game: DisplayFinishedGame,
+  draws: DisplayLeagueDraw[],
+): DisplayResult {
+  return {
+    ...game,
+    sheetId,
+    sheetName,
+    endsPlayed: Math.max(0, ...game.ends.map((end) => end.endNumber)),
+    league: game.league && { name: game.league.name, draws },
+  };
+}
+
+/**
+ * The summary's results with [result] added: the latest first, without
+ * anything that finished more than a day before [now], and at most
+ * MAX_RESULTS. A game already there is replaced, as a trigger can be
+ * delivered more than once.
+ */
+export function withResult(results: unknown, result: DisplayResult, now: number): DisplayResult[] {
+  const kept = (Array.isArray(results) ? results as DisplayResult[] : [])
+    .filter((r) => isTimestamp(r?.finishedAt) && r.gameId !== result.gameId);
+  return [...kept, result]
+    .filter((r) => now - r.finishedAt.toMillis() <= RESULTS_KEPT_MS)
+    .sort((a, b) => b.finishedAt.toMillis() - a.finishedAt.toMillis())
+    .slice(0, MAX_RESULTS);
+}
+
+/**
+ * The sheet's latest finished game in the summary's results, or null. A game
+ * from a scoreboard that was offline can arrive after a later one, so this
+ * goes by when each finished, not by which arrived last.
+ */
+export function lastGameOf(summary: DisplaySummary | null | undefined, sheetId: string): DisplayResult | null {
+  let last: DisplayResult | null = null;
+  for (const result of summary?.results ?? []) {
+    if (result.sheetId !== sheetId) continue;
+    if (!last || result.finishedAt.toMillis() > last.finishedAt.toMillis()) last = result;
+  }
+  return last;
 }
 
 export type SheetView =
   | { kind: 'live'; game: DisplayLiveGame }
-  | { kind: 'final'; game: DisplayFinishedGame }
+  | { kind: 'final'; game: DisplayResult }
   | { kind: 'idle' };
 
 /**
- * What a display shows for a sheet at [now]:
+ * What a display shows for the sheet [sheetId] in [summary] at [now]:
  *
  * 1. The live game, as soon as one starts, so a new draw replaces the last
  *    one's final score straight away. A live game that has gone two hours
  *    without a write was abandoned and is ignored, as in the REST API.
- * 2. Otherwise the last finished game, for ten minutes after it finished.
+ * 2. Otherwise the sheet's latest finished game, for ten minutes after it
+ *    finished.
  * 3. Otherwise nothing.
  */
-export function sheetView(sheet: DisplaySheet, now: number): SheetView {
-  const live = sheet.live;
+export function sheetView(summary: DisplaySummary | null | undefined, sheetId: string, now: number): SheetView {
+  const live = summary?.sheets?.[sheetId]?.live;
   if (live && (live.updatedAt === null || now - live.updatedAt.toMillis() <= LIVE_GAME_TIMEOUT_MS)) {
     return { kind: 'live', game: live };
   }
-  const last = sheet.lastGame;
+  const last = lastGameOf(summary, sheetId);
   if (last && now - last.finishedAt.toMillis() <= FINAL_SHOWN_MS) {
     return { kind: 'final', game: last };
   }

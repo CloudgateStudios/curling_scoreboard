@@ -478,6 +478,16 @@ await check('club admin: points a link at the warm room, cycling', 'allow', () =
     settings: { page: 'warm-room', view: 'cycle', every: 30 },
   }));
 
+await check('club admin: shows earlier results on a warm room link', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'warm-room', view: 'full', earlier: true },
+  }));
+
+await check('attack: club admin sets earlier results to something other than yes or no', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'warm-room', earlier: 'today' },
+  }));
+
 await check('club admin: points a link at a bonspiel\'s brackets', 'allow', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
     settings: { page: 'bonspiel', bonspielId: 'seeded', view: 'brackets', every: 30 },

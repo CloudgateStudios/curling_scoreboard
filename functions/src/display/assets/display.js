@@ -28,16 +28,30 @@ export function now() {
 }
 
 /**
- * What to show for a sheet: { kind: 'live' | 'final', game } or { kind: 'idle' }.
- * Mirrors sheetView in functions/src/display/state.ts, which the emulator
- * tests cover; the limits come from the same constants.
+ * The sheet's latest finished game in the summary's results, or null. Mirrors
+ * lastGameOf in functions/src/display/state.ts.
  */
-export function sheetView(sheet, at) {
-  const live = sheet?.live;
+export function lastGameOf(summary, sheetId) {
+  let last = null;
+  for (const result of summary?.results ?? []) {
+    if (result?.sheetId !== sheetId || typeof result.finishedAt?.toMillis !== 'function') continue;
+    if (!last || result.finishedAt.toMillis() > last.finishedAt.toMillis()) last = result;
+  }
+  return last;
+}
+
+/**
+ * What to show for the sheet [sheetId] in [summary]: { kind: 'live' |
+ * 'final', game } or { kind: 'idle' }. Mirrors sheetView in
+ * functions/src/display/state.ts, which the emulator tests cover; the limits
+ * come from the same constants.
+ */
+export function sheetView(summary, sheetId, at) {
+  const live = summary?.sheets?.[sheetId]?.live;
   if (live && (!live.updatedAt || at - live.updatedAt.toMillis() <= config.liveGameTimeoutMs)) {
     return { kind: 'live', game: live };
   }
-  const last = sheet?.lastGame;
+  const last = lastGameOf(summary, sheetId);
   if (last && at - last.finishedAt.toMillis() <= config.finalShownMs) {
     return { kind: 'final', game: last };
   }
@@ -98,6 +112,7 @@ export function linkPageUrl(settings) {
     if (settings?.view === 'cycle' && settings.every && settings.every !== 20) {
       query.set('every', String(settings.every));
     }
+    if (settings?.earlier === true) query.set('earlier', 'today');
   }
   const url = new URL(path, DISPLAY_BASE);
   url.search = query.toString();

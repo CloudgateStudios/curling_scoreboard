@@ -64,8 +64,8 @@ function sheetName(sheetId) {
  *  club's display summary. */
 function liveGames(at) {
   const games = new Map();
-  for (const sheet of Object.values(summary?.sheets ?? {})) {
-    const view = sheetView(sheet, at);
+  for (const sheetId of Object.keys(summary?.sheets ?? {})) {
+    const view = sheetView(summary, sheetId, at);
     const tag = view.kind === 'idle' ? null : view.game.bonspiel;
     if (tag?.id === config.bonspielId) games.set(tag.gameId, view);
   }
