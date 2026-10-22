@@ -1,6 +1,25 @@
 name: Version Increment
 
-on: workflow_dispatch
+# Run by hand from the Actions tab. commit-and-tag-version bumps the version
+# from the last tag by the chosen part and writes the changelog, then this
+# copies the version into the app, builds the release assets, pushes the
+# release commit and tag straight to main, and creates the GitHub release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of the version to bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   version_increment:
@@ -8,15 +27,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # main only takes PRs. The release App is a bypass actor on the main
+      # ruleset, so pushing with its token lands the release directly.
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Setup Action
         uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: "0"
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup git
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
-          git config --global user.name 'Build Bot'
-          git config user.email bot@tomarra.com
+          user_id=$(gh api "/users/$APP_SLUG[bot]" --jq .id)
+          git config user.name "$APP_SLUG[bot]"
+          git config user.email "$user_id+$APP_SLUG[bot]@users.noreply.github.com"
 
       - name: Install yq
         run: |
@@ -39,7 +72,9 @@ jobs:
           npm i -g commit-and-tag-version@13
 
       - name: Run commit-and-tag-version
-        run: commit-and-tag-version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: commit-and-tag-version --release-as "$BUMP"
 
       # The release notes are the newest changelog section, which
       # commit-and-tag-version has just written with the new version in its
@@ -52,6 +87,10 @@ jobs:
         run: |
           export TAG=$(git describe --tags)
           echo "tag=$TAG" >> $GITHUB_ENV
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
 
       - name: Update version
         run: |
@@ -93,49 +132,17 @@ jobs:
           (cd app && flutter build appbundle --release)
           cp app/build/app/outputs/bundle/release/app-release.aab app-release_${{ env.tag }}.aab
 
-      - name: Disable repository rulesets
-        env:
-          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-        run: |
-          mkdir -p /tmp/rulesets
-          # Find all active rulesets and disable them temporarily
-          gh api repos/${{ github.repository }}/rulesets \
-            --jq '.[] | select(.enforcement == "active") | .id' | \
-          while read id; do
-            # Save the full ruleset so we can restore it exactly
-            gh api repos/${{ github.repository }}/rulesets/$id > /tmp/rulesets/$id.json
-            # Rebuild the payload with just the fields the PUT endpoint accepts, enforcement set to disabled
-            jq '{name,target,enforcement: "disabled",bypass_actors,conditions,rules}' \
-              /tmp/rulesets/$id.json | \
-              gh api repos/${{ github.repository }}/rulesets/$id \
-                --method PUT --input - > /dev/null
-            echo "Disabled ruleset $id"
-          done
-
-      - name: Push changes
-        run: |
-          git push --follow-tags origin main
-          git push --tags
-
-      - name: Re-enable repository rulesets
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-        run: |
-          # Restore every ruleset we disabled
-          for file in /tmp/rulesets/*.json; do
-            [ -f "$file" ] || continue
-            id=$(jq -r '.id' "$file")
-            jq '{name,target,enforcement,bypass_actors,conditions,rules}' "$file" | \
-              gh api repos/${{ github.repository }}/rulesets/$id \
-                --method PUT --input - > /dev/null
-            echo "Re-enabled ruleset $id"
-          done
+      - name: Push the release commit and tag
+        run: git push --atomic origin HEAD:main "refs/tags/${{ env.tag }}"
 
       - name: Make GitHub release
-        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
-        with:
-          bodyFile: docs/RELEASE_NOTES.md
-          tag: ${{ env.tag }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "web_${{ env.tag }}.zip,app-release_${{ env.tag }}.apk,app-release_${{ env.tag }}.aab"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh release create "${{ env.tag }}" \
+            --verify-tag \
+            --title "${{ env.tag }}" \
+            --notes-file docs/RELEASE_NOTES.md \
+            "web_${{ env.tag }}.zip" \
+            "app-release_${{ env.tag }}.apk" \
+            "app-release_${{ env.tag }}.aab"

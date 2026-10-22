@@ -233,7 +233,7 @@ Every push to `main` automatically deploys all three products to the live dev en
 
 ### Prod
 
-First, generate a version tag using the [version_increment](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/version_increment.yaml) workflow. It reads the commits since the last release, writes the [changelog](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/CHANGELOG.md) and [release notes](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/RELEASE_NOTES.md), and commits the tag back to `main`.
+First, generate a version tag using the [version_increment](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/version_increment.yaml) workflow, choosing whether to bump the patch, minor or major version. It reads the commits since the last release, writes the [changelog](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/CHANGELOG.md) and [release notes](https://github.com/CloudgateStudios/curling_scoreboard/blob/main/docs/RELEASE_NOTES.md), and pushes the release commit and tag to `main` as the studio's Release Bot GitHub App.
 
 Then trigger each prod workflow manually, entering the version tag (e.g. `0.0.37`):
 
