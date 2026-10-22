@@ -405,6 +405,17 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
                   />
                 </label>
               )}
+              <label className={styles.field}>
+                Earlier results
+                <select
+                  className={common.input}
+                  value={settings.earlier === true ? 'shown' : 'hidden'}
+                  onChange={(e) => setSettings({ ...settings, earlier: e.target.value === 'shown' })}
+                >
+                  <option value="hidden">Not shown</option>
+                  <option value="shown">Today's, beside the sheets</option>
+                </select>
+              </label>
             </div>
           ) : (
             <div className={styles.options}>

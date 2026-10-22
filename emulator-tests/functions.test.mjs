@@ -16,12 +16,16 @@ import {
 } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import {
-  FINAL_SHOWN_MS, displayFinishedGame, displayLiveGame, sheetView,
+  FINAL_SHOWN_MS, MAX_RESULTS, RESULTS_KEPT_MS, displayFinishedGame, displayLiveGame, lastGameOf, leagueDraws,
+  sheetView, withResult,
 } from '../functions/lib/display/state.js';
 import { resolveBonspiel } from '../functions/lib/bonspiels/state.js';
 import {
   bracketRounds, currentDraw, isPool, nextDraw, resultOf, sideOf,
 } from '../functions/lib/display/assets/bonspiel-model.js';
+import {
+  endedOffSchedule, todaysDraws, winnerOf,
+} from '../functions/lib/display/assets/results-model.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -1340,7 +1344,7 @@ describe('display summary', () => {
     assert.equal((await stateDoc.get()).updateTime.toMillis(), written.toMillis());
   });
 
-  test('keeps a finished game as the last game once the live game ends', async () => {
+  test('keeps a finished game as the sheet\'s final score once the live game ends', async () => {
     const sheetRef = db.doc(`${club}/sheets/s-final`);
     await sheetRef.set({ name: 'Sheet Final', liveGame });
     await waitFor('the live game', async () => (await sheetOf('s-final'))?.live);
@@ -1352,43 +1356,91 @@ describe('display summary', () => {
     batch.update(sheetRef, { liveGame: FieldValue.delete() });
     await batch.commit();
 
-    const sheet = await waitFor('the final score', async () => {
-      const s = await sheetOf('s-final');
-      return s?.lastGame && s.live === null && s;
+    const summary = await waitFor('the final score', async () => {
+      const s = (await stateDoc.get()).data();
+      return lastGameOf(s, 's-final') && s.sheets['s-final'].live === null && s;
     });
-    assert.equal(sheet.lastGame.gameId, 'g1');
-    assert.equal(sheet.lastGame.finishedAt.toMillis(), finishedAt.toMillis());
-    assert.equal(sheet.lastGame.numberOfEnds, 8);
-    assert.deepEqual(sheet.lastGame.league, { name: 'Monday Night' });
-    assert.deepEqual(sheet.lastGame.team1, {
+    const last = lastGameOf(summary, 's-final');
+    assert.equal(last.gameId, 'g1');
+    assert.equal(last.finishedAt.toMillis(), finishedAt.toMillis());
+    assert.equal(last.numberOfEnds, 8);
+    assert.equal(last.league.name, 'Monday Night');
+    assert.deepEqual(last.team1, {
       name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 3,
       hasHammer: null, hadLastStoneFirstEnd: true,
     });
-    assert.deepEqual(sheet.lastGame.ends, [
+    assert.deepEqual(last.ends, [
       { endNumber: 1, scoringTeamSlot: 'team1', score: 2 },
       { endNumber: 2, scoringTeamSlot: null, score: 0 },
       { endNumber: 3, scoringTeamSlot: 'team2', score: 1 },
       { endNumber: 4, scoringTeamSlot: 'team1', score: 1 },
     ]);
-    assert.equal(sheetView(sheet, Date.now()).kind, 'final');
+    assert.equal(sheetView(summary, 's-final', Date.now()).kind, 'final');
 
     // The next draw starts on the sheet, inside the ten minutes.
     await sheetRef.update({ liveGame: { ...liveGame, updatedAt: Timestamp.now(), currentEnd: 1 } });
-    const next = await waitFor('the new game', async () => (await sheetOf('s-final'))?.live && sheetOf('s-final'));
-    assert.equal(next.lastGame.gameId, 'g1', 'keeps the last game');
-    assert.equal(sheetView(next, Date.now()).kind, 'live');
+    await waitFor('the new game', async () => (await sheetOf('s-final'))?.live);
+    const next = (await stateDoc.get()).data();
+    assert.equal(lastGameOf(next, 's-final').gameId, 'g1', 'keeps the result');
+    assert.equal(sheetView(next, 's-final', Date.now()).kind, 'live');
   });
 
-  test('keeps the later game when an earlier one arrives late', async () => {
+  test('keeps the later game as the final score when an earlier one arrives late', async () => {
     const sheetRef = db.doc(`${club}/sheets/s-late`);
     await sheetRef.set({ name: 'Sheet Late' });
     await sheetRef.collection('games').doc('newer').set(completedGame(minutesAgo(5)));
-    await waitFor('the newer game', async () => (await sheetOf('s-late'))?.lastGame?.gameId === 'newer');
+    await waitFor('the newer game', async () => lastGameOf((await stateDoc.get()).data(), 's-late')?.gameId === 'newer');
 
     // From a scoreboard that was offline, say.
     await sheetRef.collection('games').doc('older').set(completedGame(minutesAgo(60)));
-    await settle();
-    assert.equal((await sheetOf('s-late')).lastGame.gameId, 'newer');
+    const ids = await waitFor('the older game', async () => {
+      const list = ((await stateDoc.get()).get('results') ?? []).map((r) => r.gameId);
+      return list.includes('older') && list;
+    });
+    assert.ok(ids.indexOf('newer') < ids.indexOf('older'), `results in order: ${ids}`);
+    assert.equal(lastGameOf((await stateDoc.get()).data(), 's-late').gameId, 'newer');
+  });
+
+  test('lists a finished game in the day\'s results, with its league\'s draws', async () => {
+    await db.doc(`${club}/leagues/monday`).set({
+      name: 'Monday Night', active: true, teams: [],
+      draws: [{ day: 1, start: '18:30', end: '21:00' }, { day: 9, start: 'late', end: '' }],
+    });
+    const sheetRef = db.doc(`${club}/sheets/s-result`);
+    await sheetRef.set({ name: 'Sheet Result' });
+    await sheetRef.collection('games').doc('result').set(completedGame(minutesAgo(2)));
+
+    const result = await waitFor('the result', async () =>
+      ((await stateDoc.get()).get('results') ?? []).find((r) => r.gameId === 'result'));
+    assert.equal(result.finishedAt.toMillis() - result.startedAt.toMillis(), 2 * 60 * 60 * 1000);
+    assert.deepEqual({ ...result, startedAt: null, finishedAt: null, ends: null }, {
+      gameId: 'result',
+      sheetId: 's-result',
+      sheetName: 'Sheet Result',
+      startedAt: null,
+      finishedAt: null,
+      numberOfEnds: 8,
+      endsPlayed: 4,
+      league: { name: 'Monday Night', draws: [{ day: 1, start: '18:30', end: '21:00' }] },
+      bonspiel: null,
+      team1: {
+        name: 'Team Smith', color: { name: 'Blue', hex: '#2196F3' }, score: 3,
+        hasHammer: null, hadLastStoneFirstEnd: true,
+      },
+      team2: {
+        name: 'Team Jones', color: { name: 'Green', hex: '#4CAF50' }, score: 1,
+        hasHammer: null, hadLastStoneFirstEnd: false,
+      },
+      ends: null,
+    });
+    assert.equal(result.ends.length, 4);
+  });
+
+  test('clears the last game a sheet had before final scores came from the results', async () => {
+    await stateDoc.set({ sheets: { 's-legacy': { name: 'Sheet Legacy', live: null, lastGame: { gameId: 'old' } } } }, { merge: true });
+    await db.doc(`${club}/sheets/s-legacy`).set({ name: 'Sheet Legacy', liveGame });
+    const sheet = await waitFor('the live game', async () => (await sheetOf('s-legacy'))?.live && sheetOf('s-legacy'));
+    assert.equal(sheet.lastGame, undefined);
   });
 
   test('drops a deleted sheet', async () => {
@@ -1404,25 +1456,33 @@ describe('what a display shows for a sheet', () => {
   const at = (msAgo) => Timestamp.fromMillis(now - msAgo);
   const minutes = 60 * 1000;
   const live = (updatedAt) => ({ updatedAt, currentEnd: 1 });
-  const lastGame = (finishedAt) => ({ gameId: 'g', finishedAt });
+  const result = (gameId, finishedAt, sheetId = 's') => ({ gameId, sheetId, finishedAt });
+  const summary = (sheet, results) => ({ sheets: { s: { name: 'S', live: null, ...sheet } }, results });
 
   test('shows a live game ahead of a final score', () => {
-    const view = sheetView({ name: 'S', live: live(at(0)), lastGame: lastGame(at(1 * minutes)) }, now);
+    const view = sheetView(summary({ live: live(at(0)) }, [result('g', at(1 * minutes))]), 's', now);
     assert.equal(view.kind, 'live');
   });
 
   test('shows the final score for ten minutes', () => {
-    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS)) }, now).kind, 'final');
-    assert.equal(sheetView({ name: 'S', live: null, lastGame: lastGame(at(FINAL_SHOWN_MS + 1)) }, now).kind, 'idle');
+    assert.equal(sheetView(summary({}, [result('g', at(FINAL_SHOWN_MS))]), 's', now).kind, 'final');
+    assert.equal(sheetView(summary({}, [result('g', at(FINAL_SHOWN_MS + 1))]), 's', now).kind, 'idle');
+  });
+
+  test('takes the sheet\'s own latest result as its final score', () => {
+    const results = [result('other', at(0), 't'), result('older', at(5 * minutes)), result('newer', at(2 * minutes))];
+    assert.equal(lastGameOf(summary({}, results), 's').gameId, 'newer');
+    assert.equal(sheetView(summary({}, results), 's', now).game.gameId, 'newer');
+    assert.equal(lastGameOf(summary({}, undefined), 's'), null);
   });
 
   test('ignores a live game abandoned for over two hours', () => {
-    assert.equal(sheetView({ name: 'S', live: live(at(121 * minutes)) }, now).kind, 'idle');
-    assert.equal(sheetView({ name: 'S', live: live(at(119 * minutes)) }, now).kind, 'live');
+    assert.equal(sheetView(summary({ live: live(at(121 * minutes)) }), 's', now).kind, 'idle');
+    assert.equal(sheetView(summary({ live: live(at(119 * minutes)) }), 's', now).kind, 'live');
   });
 
   test('keeps a live game written before updatedAt was recorded', () => {
-    assert.equal(sheetView({ name: 'S', live: live(null) }, now).kind, 'live');
+    assert.equal(sheetView(summary({ live: live(null) }), 's', now).kind, 'live');
   });
 
   test('says which bonspiel game a game is, live and finished', () => {
@@ -1437,7 +1497,110 @@ describe('what a display shows for a sheet', () => {
   });
 
   test('shows nothing for a sheet that has never had a game', () => {
-    assert.equal(sheetView({ name: 'S', live: null }, now).kind, 'idle');
+    assert.equal(sheetView(summary({}), 's', now).kind, 'idle');
+    assert.equal(sheetView(null, 's', now).kind, 'idle');
+  });
+});
+
+describe('the summary\'s results', () => {
+  const now = Date.now();
+  const result = (gameId, minutesAgo) => ({ gameId, finishedAt: Timestamp.fromMillis(now - minutesAgo * 60 * 1000) });
+
+  test('keeps the latest first, and a game delivered twice once', () => {
+    let results = withResult(undefined, result('a', 30), now);
+    results = withResult(results, result('b', 10), now);
+    results = withResult(results, result('c', 20), now);
+    results = withResult(results, result('b', 10), now);
+    assert.deepEqual(results.map((r) => r.gameId), ['b', 'c', 'a']);
+  });
+
+  test('lets go of games from more than a day ago', () => {
+    const old = result('old', RESULTS_KEPT_MS / 60000 + 1);
+    assert.deepEqual(withResult([old], result('new', 1), now).map((r) => r.gameId), ['new']);
+  });
+
+  test('keeps at most a busy day\'s worth', () => {
+    let results = [];
+    for (let i = 0; i < MAX_RESULTS + 5; i++) results = withResult(results, result(`g${i}`, i), now);
+    assert.equal(results.length, MAX_RESULTS);
+    assert.equal(results[0].gameId, 'g0');
+  });
+
+  test('takes only whole draws from a league', () => {
+    assert.deepEqual(leagueDraws({
+      draws: [{ day: 2, start: '09:00', end: '11:00' }, { day: 0, start: '09:00', end: '11:00' },
+        { day: 2, start: '9am', end: '11:00' }, null],
+    }), [{ day: 2, start: '09:00', end: '11:00' }]);
+    assert.deepEqual(leagueDraws(undefined), []);
+  });
+});
+
+describe('the warm room\'s earlier results', () => {
+  // Tuesday 20 October 2026, on this machine's clock, as the screen's is.
+  const at = (hour, minute, day = 20) => new Date(2026, 9, day, hour, minute).getTime();
+  const ts = (millis) => Timestamp.fromMillis(millis);
+  const team = (name, score) => ({ name, color: null, score });
+  const game = (sheetName, startedAt, finishedAt, league, scores = [5, 3]) => ({
+    gameId: `${sheetName}-${startedAt}`,
+    sheetName,
+    startedAt: startedAt === null ? null : ts(startedAt),
+    finishedAt: ts(finishedAt),
+    numberOfEnds: 8,
+    endsPlayed: 8,
+    league,
+    bonspiel: null,
+    team1: team('Red', scores[0]),
+    team2: team('Yellow', scores[1]),
+  });
+  const seniors = { name: 'Seniors', draws: [{ day: 2, start: '11:00', end: '13:00' }] };
+  const ladies = { name: 'Daytime Ladies', draws: [] };
+
+  test('groups the day\'s games by draw, the latest first, each by sheet', () => {
+    const draws = todaysDraws([
+      game('Sheet B', at(11, 4), at(12, 50), seniors),
+      game('Sheet A', at(11, 10), at(13, 5), seniors),
+      // An open game started in the same draw.
+      game('Sheet C', at(11, 20), at(12, 40), null),
+      // A league with no draws: its games go by when they started.
+      game('Sheet A', at(8, 35), at(10, 20), ladies),
+      game('Sheet B', at(8, 50), at(10, 30), ladies),
+      // Yesterday's.
+      game('Sheet A', at(19, 0, 19), at(21, 0, 19), null),
+    ], at(14, 25));
+
+    assert.deepEqual(draws.map((d) => [new Date(d.start).getHours(), new Date(d.start).getMinutes()]), [[11, 0], [8, 30]]);
+    assert.deepEqual(draws.map((d) => d.names), [['Seniors'], ['Daytime Ladies']]);
+    assert.deepEqual(draws[0].results.map((r) => r.sheetName), ['Sheet A', 'Sheet B', 'Sheet C']);
+  });
+
+  test('keeps a draw that runs past midnight with its evening', () => {
+    const late = { name: 'Late League', draws: [{ day: 1, start: '22:00', end: '00:30' }] };
+    const draws = todaysDraws([game('Sheet A', at(22, 5, 19), at(0, 25), late)], at(2, 0));
+    assert.equal(draws.length, 1);
+    assert.equal(draws[0].start, at(22, 0, 19));
+    // A new day starts at 4 in the morning.
+    assert.deepEqual(todaysDraws([game('Sheet A', at(22, 5, 19), at(0, 25), late)], at(4, 10)), []);
+  });
+
+  test('goes by when a game finished when it has no start', () => {
+    const draws = todaysDraws([game('Sheet A', null, at(9, 58), null)], at(12, 0));
+    assert.equal(draws[0].start, at(10, 0));
+  });
+
+  test('leaves out games still to finish, by this screen\'s clock', () => {
+    assert.deepEqual(todaysDraws([game('Sheet A', at(11, 0), at(13, 0), null)], at(12, 0)), []);
+    assert.deepEqual(todaysDraws(undefined, at(12, 0)), []);
+  });
+
+  test('names the winner, and a game that ended early or late', () => {
+    assert.equal(winnerOf(game('A', 0, 0, null, [5, 3])), 'team1');
+    assert.equal(winnerOf(game('A', 0, 0, null, [2, 7])), 'team2');
+    assert.equal(winnerOf(game('A', 0, 0, null, [4, 4])), null);
+    assert.equal(endedOffSchedule({ endsPlayed: 7, numberOfEnds: 8 }), true);
+    assert.equal(endedOffSchedule({ endsPlayed: 9, numberOfEnds: 8 }), true);
+    assert.equal(endedOffSchedule({ endsPlayed: 8, numberOfEnds: 8 }), false);
+    assert.equal(endedOffSchedule({ endsPlayed: 0, numberOfEnds: 8 }), false);
+    assert.equal(endedOffSchedule({ endsPlayed: 6, numberOfEnds: null }), false);
   });
 });
 

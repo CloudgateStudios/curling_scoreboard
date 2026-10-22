@@ -7,11 +7,17 @@
 //   view=full          each game end by end, like a scoreboard
 //   view=cycle         the two in turn
 //   every=20           with view=cycle, seconds on each, from 5 to 300
+//   earlier=today      the day's finished games beside the sheets, a draw at
+//                      a time, the latest first
+//   preview            while setting up: with earlier=today, show the column
+//                      outlined before the day has any results, instead of
+//                      nothing, to see the room it will take
 
 import {
   STATUS_MESSAGES, connect, el, endLabel, followLink, followsLink, isPlayedOut, now, sheetView,
   textColorOn,
 } from './display.js';
+import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
 
 // Width over height of a sheet's card, which the layout keeps to as closely
 // as the screen allows. The full view is a wide, short line score, so it
@@ -22,6 +28,8 @@ const GAP_PX = 16;
 const params = new URLSearchParams(location.search);
 const viewOption = ['totals', 'full', 'cycle'].includes(params.get('view')) ? params.get('view') : 'totals';
 const cycleMs = Math.min(Math.max(Number(params.get('every')) || 20, 5), 300) * 1000;
+const showEarlier = params.get('earlier') === 'today';
+const preview = params.has('preview') && params.get('preview') !== '0';
 // What is on screen now; only changes by itself with view=cycle.
 let currentView = viewOption === 'full' ? 'full' : 'totals';
 
@@ -38,9 +46,14 @@ const title = el('h1', 'title', DEFAULT_TITLE);
 brand.append(logo, title);
 const clock = el('time', 'clock');
 header.append(brand, clock);
+const body = el('div', 'body');
 const grid = el('div', 'grid');
+// Today's earlier results, with earlier=today. Hidden until there are some,
+// so the sheets have the screen to themselves until the first draw is over.
+const rail = el('aside', 'rail hidden');
+body.append(grid, rail);
 const status = el('p', 'status hidden');
-root.append(header, grid, status);
+root.append(header, body, status);
 
 let summary = undefined;
 let linkStatus = 'connecting';
@@ -124,7 +137,7 @@ function lineScore(game, view, changedSlots) {
 }
 
 function sheetCard(id, sheet, at) {
-  const view = sheetView(sheet, at);
+  const view = sheetView(summary, id, at);
   const card = el('section', `sheet ${view.kind}`);
   const top = el('div', 'sheet-top');
   top.append(el('h2', 'sheet-name', sheet.name));
@@ -180,10 +193,68 @@ function layout(count) {
   grid.style.setProperty('--u', `${best.cardWidth / 100}px`);
 }
 
+// A sheet's name as short as it can be put beside a result: 'A' for
+// 'Sheet A', and the whole name for anything else.
+function shortSheetName(name) {
+  return (name ?? '').replace(/^sheet\s+/i, '');
+}
+
+function resultRow(result) {
+  const winner = winnerOf(result);
+  const row = el('div', 'result');
+  row.append(el('span', 'result-sheet', shortSheetName(result.sheetName)));
+  for (const slot of ['team1', 'team2']) {
+    const team = result[slot];
+    const won = winner === slot ? ' won' : '';
+    const swatch = el('span', 'result-swatch');
+    swatch.style.background = team.color?.hex ?? '#666666';
+    row.append(swatch, el('span', `result-name${won}`, team.name), el('span', `result-score${won}`, String(team.score)));
+  }
+  if (endedOffSchedule(result)) row.append(el('span', 'result-note', `Final after ${result.endsPlayed} ends`));
+  return row;
+}
+
+const drawTime = (start) => new Date(start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+// Lists today's draws, the latest first, as far as they fit: whole games
+// drop off the bottom, and a draw with none left goes with them. The list
+// never scrolls or turns over by itself. With ?preview, a day with no
+// results yet shows the column faded and outlined, at its real size.
+function renderRail(at) {
+  const draws = showEarlier ? todaysDraws(summary?.results, at) : [];
+  const placeholder = showEarlier && preview && draws.length === 0;
+  rail.classList.toggle('hidden', draws.length === 0 && !placeholder);
+  rail.classList.toggle('placeholder', placeholder);
+  if (placeholder) {
+    rail.replaceChildren(
+      el('h2', 'rail-title', 'Earlier today'),
+      el('p', 'rail-note', 'Today\'s results appear here as games finish.'),
+    );
+    return;
+  }
+  if (draws.length === 0) {
+    rail.replaceChildren();
+    return;
+  }
+  const children = [el('h2', 'rail-title', 'Earlier today')];
+  for (const draw of draws) {
+    const head = el('div', 'draw-head');
+    head.append(el('span', 'draw-time', drawTime(draw.start)), el('span', 'draw-names', draw.names.join(' · ')));
+    children.push(head, ...draw.results.map(resultRow));
+  }
+  rail.replaceChildren(...children);
+}
+
+function fitRail() {
+  const overflows = () => rail.scrollHeight > rail.clientHeight + 1;
+  while (overflows() && rail.childElementCount > 2) rail.lastElementChild.remove();
+  while (rail.lastElementChild?.classList.contains('draw-head')) rail.lastElementChild.remove();
+}
+
 function showStatus(message) {
   status.textContent = message ?? '';
   status.classList.toggle('hidden', !message);
-  grid.classList.toggle('hidden', Boolean(message));
+  body.classList.toggle('hidden', Boolean(message));
 }
 
 function render() {
@@ -204,8 +275,10 @@ function render() {
     return;
   }
   showStatus(null);
+  renderRail(at);
   grid.replaceChildren(...sheets.map(([id, sheet]) => sheetCard(id, sheet, at)));
   layout(sheets.length);
+  fitRail();
 }
 
 // The club's own title and logo, set in the admin portal. The logo is a data
@@ -233,7 +306,11 @@ connect({
   },
 });
 
-window.addEventListener('resize', () => layout(grid.childElementCount));
+window.addEventListener('resize', () => {
+  if (summary !== undefined && !body.classList.contains('hidden')) renderRail(now());
+  layout(grid.childElementCount);
+  fitRail();
+});
 
 // Hides the pointer after it has been still for a few seconds, and shows it
 // again as soon as it moves, so it is there to use on a computer but does
@@ -249,8 +326,8 @@ for (const type of ['pointermove', 'pointerdown', 'keydown']) {
   window.addEventListener(type, wakeCursor, { passive: true });
 }
 wakeCursor();
-// Keeps the clock right, and takes a final score down ten minutes after the
-// game with no write to say so.
+// Keeps the clock right, takes a final score down ten minutes after the game
+// with no write to say so, and starts a new day's earlier results.
 setInterval(render, 15_000);
 
 if (viewOption === 'cycle') {
