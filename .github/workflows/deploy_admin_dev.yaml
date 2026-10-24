@@ -5,6 +5,12 @@ on:
     branches:
       - main
 
+# Merges in quick succession must not deploy over each other. A queued run
+# waits for the one in progress, and only the newest queued run is kept.
+concurrency:
+  group: deploy-admin-dev
+  cancel-in-progress: false
+
 jobs:
   deploy-admin-dev:
     runs-on: ubuntu-latest
