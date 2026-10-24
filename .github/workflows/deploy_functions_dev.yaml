@@ -5,6 +5,12 @@ on:
     branches:
       - main
 
+# Merges in quick succession must not deploy over each other. A queued run
+# waits for the one in progress, and only the newest queued run is kept.
+concurrency:
+  group: deploy-functions-dev
+  cancel-in-progress: false
+
 jobs:
   deploy-functions-dev:
     runs-on: ubuntu-latest
@@ -32,4 +38,4 @@ jobs:
       # Keep the version in step with firebase-tools in emulator-tests.
       - name: Deploy Firestore and Functions
         working-directory: ${{ github.workspace }}
-        run: npx firebase-tools@15.33.0 deploy --only firestore,functions --force --project curling-scoreboard-dev
+        run: npx firebase-tools@15.34.0 deploy --only firestore,functions --force --project curling-scoreboard-dev
