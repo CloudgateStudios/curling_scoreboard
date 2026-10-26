@@ -3,7 +3,7 @@ export type DisplayView = 'totals' | 'full' | 'cycle';
 /** A bonspiel screen's views: the draw on now and the next, every draw, each
  *  event's bracket, or all of them in turn. */
 export type BonspielView = 'now' | 'schedule' | 'brackets' | 'cycle';
-/** What the score bug's bottom line names. */
+/** What the score bug's caption names. */
 export type BugLabel = 'sheet' | 'league' | 'none';
 
 /**
@@ -23,7 +23,7 @@ export interface DisplaySettings {
   every?: number;
   /** The score bug's size; 1 when absent. */
   scale?: number;
-  /** The score bug's bottom line; the sheet name when absent. */
+  /** The score bug's caption; the sheet name when absent. */
   label?: BugLabel;
   /** Whether the warm room lists the day's finished games beside the
    *  sheets; not when absent. */

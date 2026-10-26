@@ -1,6 +1,29 @@
 /* The score bug. Everything is sized in rem, from --scale, so the scale
    option grows the whole bug evenly. */
 
+/* A condensed face lets the names, scores and end be large without the bug
+   growing. It ships with the assets (OFL, see fonts/OFL.txt), so OBS draws
+   the same on every machine. */
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("fonts/barlow-condensed-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --scale: 1;
   font-size: calc(16px * var(--scale));
@@ -23,23 +46,33 @@ body {
   display: none !important;
 }
 
+/* The teams on the left, the end in a box on the right spanning both, and
+   an optional caption across the bottom. */
 .bug {
   display: inline-grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 4rem;
   width: 22rem;
   border-radius: 0.5rem;
   overflow: hidden;
   background: rgba(17, 20, 26, 0.92);
   color: #fff;
+  font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
   box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
   animation: appear 300ms ease-out;
 }
 
+.teams {
+  display: grid;
+  min-width: 0;
+}
+
 .team {
   display: grid;
-  grid-template-columns: 0.5rem minmax(0, 1fr) auto 3.5rem;
+  grid-template-columns: 0.5rem minmax(0, 1fr) auto 3.4rem;
   align-items: center;
-  height: 2.75rem;
+  height: 3.5rem;
 }
 
 .team + .team {
@@ -50,10 +83,11 @@ body {
   align-self: stretch;
 }
 
+/* bug.js shrinks a name that doesn't fit, down to 80% of this, before it
+   is cut short. */
 .name {
-  padding: 0 0.75rem;
-  font-size: 1.25rem;
-  font-weight: 700;
+  padding: 0 0.7rem;
+  font-size: 1.75rem;
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -78,8 +112,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  font-weight: 800;
+  font-size: 2.4rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -87,23 +120,59 @@ body {
   animation: scored 1.5s ease-out;
 }
 
-.footer {
+.end {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.3rem 0.75rem;
-  background: rgba(0, 0, 0, 0.45);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.8);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  text-align: center;
 }
 
-.footer .label {
+.end-label {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+}
+
+.end-label:empty {
+  display: none;
+}
+
+.end-value {
+  font-size: 2.7rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Final, in place of a number. */
+.end-value.word {
+  font-size: 1.15rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.final .end-value {
+  color: #ffd54f;
+}
+
+.caption {
+  grid-column: 1 / -1;
+  padding: 0.2rem 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.caption:empty {
+  display: none;
 }
 
 /* The ?preview stand-in for an idle sheet: the bug's size and place, but
@@ -119,10 +188,6 @@ body {
 .placeholder .score {
   background: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.85);
-}
-
-.final .footer .end {
-  color: #ffd54f;
 }
 
 /* Shown only when the link is wrong, so it can be fixed while setting up. */

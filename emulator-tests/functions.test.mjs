@@ -1780,6 +1780,7 @@ describe('display pages', () => {
     const csp = res.headers.get('content-security-policy');
     assert.match(csp, /default-src 'none'/);
     assert.match(csp, /script-src 'self' https:\/\/www\.gstatic\.com(;|$)/);
+    assert.match(csp, /font-src 'self'(;|$)/);
     assert.match(csp, /frame-ancestors 'none'/);
 
     const html = await res.text();
@@ -1837,6 +1838,8 @@ describe('display pages', () => {
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
       ['link.js', /javascript/], ['link.css', /css/],
       ['bonspiel.js', /javascript/], ['bonspiel-model.js', /javascript/], ['bonspiel.css', /css/],
+      ['fonts/barlow-condensed-latin-700-normal.woff2', /font\/woff2/],
+      ['fonts/barlow-condensed-latin-ext-700-normal.woff2', /font\/woff2/],
     ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
