@@ -4,8 +4,8 @@
 //
 // Options, in the query string:
 //   scale=1.5          size, from 0.5 to 4
-//   label=league       what the bottom line names: sheet (default), league
-//                      or none
+//   label=league       what the caption under the bug names: sheet
+//                      (default), league or none, which leaves it off
 //   preview            while setting up: show an outlined placeholder of the
 //                      same size while the sheet has no game, instead of
 //                      nothing, so the bug can be placed in OBS between draws
@@ -38,11 +38,14 @@ function teamRow() {
 }
 
 const rows = { team1: teamRow(), team2: teamRow() };
-const footer = el('div', 'footer');
-const footerLabel = el('span', 'label');
-const footerEnd = el('span', 'end');
-footer.append(footerLabel, footerEnd);
-bug.append(rows.team1.row, rows.team2.row, footer);
+const teams = el('div', 'teams');
+teams.append(rows.team1.row, rows.team2.row);
+const end = el('div', 'end');
+const endName = el('span', 'end-label');
+const endValue = el('span', 'end-value');
+end.append(endName, endValue);
+const caption = el('div', 'caption');
+bug.append(teams, end, caption);
 
 let summary = undefined;
 let linkStatus = 'connecting';
@@ -53,6 +56,53 @@ function labelText(sheet, view) {
   if (label === 'league') return view.game.league?.name ?? view.game.bonspiel?.name ?? sheet.name;
   return label === 'sheet' ? sheet.name : '';
 }
+
+// The end box: "End" over the number, "Extra" over it in an extra end, or
+// just Final.
+function showEnd(view) {
+  const text = endLabel(view);
+  const final = text === 'Final';
+  endName.textContent = final ? '' : text === 'Extra end' ? 'Extra' : 'End';
+  endValue.textContent = final ? text : String(view.game.currentEnd);
+  endValue.classList.toggle('word', final);
+  end.title = text;
+  bug.classList.toggle('final', final);
+}
+
+// A name too long for its row is made smaller, down to this share of its
+// size in the stylesheet, before it is cut short.
+const MIN_NAME_SHRINK = 0.8;
+
+// Text width grows with its size, so a step or two finds the size that
+// fits; more than one, since system fonts draw small text a little wider.
+// The text is measured itself, since scrollWidth rounds to whole pixels and
+// an ellipsis shows for less. Needs the bug shown, to measure.
+const textRange = document.createRange();
+function fitName(name) {
+  name.style.fontSize = '';
+  const style = getComputedStyle(name);
+  const room = name.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const full = parseFloat(style.fontSize);
+  textRange.selectNodeContents(name);
+  let size = full;
+  for (let step = 0; step < 3; step++) {
+    const width = textRange.getBoundingClientRect().width;
+    if (width <= room || size <= full * MIN_NAME_SHRINK) return;
+    size = Math.max(size * (room / width) * 0.98, full * MIN_NAME_SHRINK);
+    name.style.fontSize = `${size}px`;
+  }
+}
+
+function fitNames() {
+  fitName(rows.team1.name);
+  fitName(rows.team2.name);
+}
+
+// And again when a name's box changes, as when the page is laid out after
+// the first render.
+const nameWatch = new ResizeObserver(fitNames);
+nameWatch.observe(rows.team1.name);
+nameWatch.observe(rows.team2.name);
 
 function showTeam(parts, team, view, changed) {
   const hex = team.color?.hex ?? '#666666';
@@ -86,11 +136,15 @@ function showPlaceholder(sheet) {
     parts.score.style.color = '';
     parts.score.classList.remove('changed');
   }
-  footerLabel.textContent = label === 'none' ? '' : sheet.name;
-  footerEnd.textContent = 'No game';
+  caption.textContent = label === 'none' ? '' : sheet.name;
+  endName.textContent = 'End';
+  endValue.textContent = '–';
+  endValue.classList.remove('word');
+  end.title = 'No game';
   bug.classList.remove('final');
   bug.classList.add('placeholder');
   bug.classList.remove('hidden');
+  fitNames();
 }
 
 function showStatus(message) {
@@ -132,10 +186,10 @@ function render() {
   }
   shown = { key, team1: game.team1.score, team2: game.team2.score };
 
-  footerLabel.textContent = labelText(sheet, view);
-  footerEnd.textContent = endLabel(view);
-  bug.classList.toggle('final', footerEnd.textContent === 'Final');
+  caption.textContent = labelText(sheet, view);
+  showEnd(view);
   bug.classList.remove('hidden');
+  fitNames();
 }
 
 connect({

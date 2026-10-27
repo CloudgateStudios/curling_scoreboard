@@ -194,7 +194,7 @@ const SIZES = [
 const BUG_LABELS: { value: BugLabel; label: string }[] = [
   { value: 'sheet', label: 'The sheet name' },
   { value: 'league', label: 'The league name' },
-  { value: 'none', label: 'Nothing' },
+  { value: 'none', label: 'None, for the smallest bug' },
 ];
 
 const VIEWS: { value: DisplayView; label: string }[] = [
@@ -430,7 +430,7 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
                 </select>
               </label>
               <label className={styles.field}>
-                Under the scores
+                Caption under the bug
                 <select
                   className={common.input}
                   value={settings.label ?? 'sheet'}
