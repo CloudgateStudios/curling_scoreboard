@@ -51,6 +51,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get matchupPickerEmptySlotLabel => 'Tap a team';
 
   @override
+  String matchupPickerClearSlotTooltip(String color) {
+    return 'Clear $color';
+  }
+
+  @override
   String get matchupPickerSwapTooltip => 'Swap colors';
 
   @override
