@@ -27,6 +27,13 @@ export function sortDraws(draws: LeagueDraw[]): LeagueDraw[] {
   );
 }
 
+/** Orders teams by name, ignoring case, with numbers in number order. */
+export function sortTeams(teams: LeagueTeam[]): LeagueTeam[] {
+  return [...teams].sort((a, b) =>
+    a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: 'base', numeric: true }),
+  );
+}
+
 /** Orders leagues by when they first play in the week, then by name.
  *  Leagues with no schedule come last, by name. */
 export function compareLeagues(a: League, b: League): number {
@@ -138,7 +145,7 @@ export function leagueFrom(id: string, data: Record<string, unknown>): League {
     seasonStart: typeof data.seasonStart === 'string' ? data.seasonStart : undefined,
     seasonEnd: typeof data.seasonEnd === 'string' ? data.seasonEnd : undefined,
     draws: Array.isArray(data.draws) ? (data.draws as LeagueDraw[]) : [],
-    teams: Array.isArray(data.teams) ? (data.teams as LeagueTeam[]) : [],
+    teams: Array.isArray(data.teams) ? sortTeams(data.teams as LeagueTeam[]) : [],
   };
 }
 
@@ -151,7 +158,7 @@ export function leagueData(league: Omit<League, 'id'>): Record<string, unknown> 
     ...(league.seasonStart ? { seasonStart: league.seasonStart } : {}),
     ...(league.seasonEnd ? { seasonEnd: league.seasonEnd } : {}),
     draws: sortDraws(league.draws),
-    teams: league.teams.map((t) => ({
+    teams: sortTeams(league.teams).map((t) => ({
       id: t.id,
       name: t.name.trim(),
       ...(t.externalId ? { externalId: t.externalId } : {}),

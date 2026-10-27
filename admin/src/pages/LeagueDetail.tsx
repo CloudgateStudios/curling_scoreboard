@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
-import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId } from '../lib/leagues';
+import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId, sortTeams } from '../lib/leagues';
 import type { AuthUser, League, LeagueDraw, LeagueTeam } from '../types';
 import common from '../styles/common.module.css';
 import styles from './LeagueDetail.module.css';
@@ -70,6 +70,8 @@ export function LeagueDetail({ user }: Props) {
     setError('');
     try {
       await setDoc(doc(db, 'clubs', clubId, 'leagues', league.id), leagueData(league));
+      // Teams stay where they were added while typing, then take their place by name.
+      setLeague((current) => (current ? { ...current, teams: sortTeams(current.teams) } : current));
       markDirty(false);
     } catch (err) {
       setError(errorMessage(err, 'Could not save the league.'));
