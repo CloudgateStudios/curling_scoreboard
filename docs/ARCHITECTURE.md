@@ -570,8 +570,7 @@ otherwise silent about trouble and keeps showing the last scores.
 The Firebase SDK is loaded as ES modules from `www.gstatic.com`, pinned to
 the version the admin portal uses. Nothing is inline, so the
 `Content-Security-Policy` allows scripts only from the function and gstatic,
-fonts only from the function, connections only to the Firebase services the
-page uses, and no framing.
+connections only to the Firebase services the page uses, and no framing.
 Responses carry `X-Content-Type-Options: nosniff` and
 `Referrer-Policy: no-referrer`; pages are `no-store`, since they carry the
 server's time, and assets `no-cache`.
@@ -579,13 +578,11 @@ server's time, and assets `no-cache`.
 The score bug is transparent, so an OBS browser source shows only the bug.
 It shows the two teams with their rock colors and scores, the hammer in a
 live game, and the end (or Final) in a box beside the scores, as large as
-they are, and hides itself while the sheet is idle. It is set in Barlow
-Condensed, served with the assets, so the text can be large without the bug
-growing; a name too long for its row shrinks to 80% before it is cut short.
-`?scale=` (0.5 to 4) sizes it, and `?label=league` or `?label=none` changes
-or removes the sheet name in the caption under it. `?preview` is for setting
-it up: while the sheet has no game it shows a faded, outlined stand-in at the bug's real
-size instead of nothing, so it can be placed in OBS between draws. A link's
+they are, and hides itself while the sheet is idle. A name too long for its
+row shrinks to 80% before it is cut short. `?scale=` (0.5 to 4) sizes it,
+and `?label=league` or `?label=none` changes or removes the sheet name in
+the caption under it. `?preview` is for setting it up: while the sheet has
+no game it shows a faded, outlined stand-in at the bug's real size instead of nothing, so it can be placed in OBS between draws. A link's
 own URL carries `?preview` on to the page it opens, and the portal's
 Preview button opens a link that way.
 

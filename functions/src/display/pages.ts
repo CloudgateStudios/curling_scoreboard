@@ -41,15 +41,13 @@ function connectSources(projectId: string): string[] {
 }
 
 // Scripts come from this function and the Firebase SDK from gstatic; nothing
-// is inline, so there is nothing for an injected tag to run. Fonts ship with
-// the assets, so OBS draws the same on every machine. The pages are shown
-// full screen or in OBS, never framed by another site.
+// is inline, so there is nothing for an injected tag to run. The pages are
+// shown full screen or in OBS, never framed by another site.
 function contentSecurityPolicy(projectId: string): string {
   return [
     "default-src 'none'",
     "script-src 'self' https://www.gstatic.com",
     "style-src 'self'",
-    "font-src 'self'",
     `connect-src ${connectSources(projectId).join(' ')}`,
     "img-src 'self' data:",
     "base-uri 'none'",

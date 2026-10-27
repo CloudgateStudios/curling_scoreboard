@@ -73,20 +73,36 @@ function showEnd(view) {
 // size in the stylesheet, before it is cut short.
 const MIN_NAME_SHRINK = 0.8;
 
-// Text width grows with its size, so one step finds the size that fits.
-// Needs the bug shown, to measure.
+// Text width grows with its size, so a step or two finds the size that
+// fits; more than one, since system fonts draw small text a little wider.
+// The text is measured itself, since scrollWidth rounds to whole pixels and
+// an ellipsis shows for less. Needs the bug shown, to measure.
+const textRange = document.createRange();
 function fitName(name) {
   name.style.fontSize = '';
-  if (name.scrollWidth <= name.clientWidth) return;
-  const size = parseFloat(getComputedStyle(name).fontSize);
-  const fit = size * (name.clientWidth / name.scrollWidth) * 0.98;
-  name.style.fontSize = `${Math.max(fit, size * MIN_NAME_SHRINK)}px`;
+  const style = getComputedStyle(name);
+  const room = name.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const full = parseFloat(style.fontSize);
+  textRange.selectNodeContents(name);
+  let size = full;
+  for (let step = 0; step < 3; step++) {
+    const width = textRange.getBoundingClientRect().width;
+    if (width <= room || size <= full * MIN_NAME_SHRINK) return;
+    size = Math.max(size * (room / width) * 0.98, full * MIN_NAME_SHRINK);
+    name.style.fontSize = `${size}px`;
+  }
 }
 
 function fitNames() {
   fitName(rows.team1.name);
   fitName(rows.team2.name);
 }
+
+// And again when a name's box changes, as when the page is laid out after
+// the first render.
+const nameWatch = new ResizeObserver(fitNames);
+nameWatch.observe(rows.team1.name);
+nameWatch.observe(rows.team2.name);
 
 function showTeam(parts, team, view, changed) {
   const hex = team.color?.hex ?? '#666666';
@@ -188,9 +204,6 @@ connect({
     render();
   },
 });
-
-// Names are measured in the bug's own font, so fit them again once it loads.
-document.fonts?.ready.then(render);
 
 // A final score is taken down ten minutes after the game ends, with no write
 // to say so, and an abandoned game expires the same way.
