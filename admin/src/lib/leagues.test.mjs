@@ -2,7 +2,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  compareLeagues, drawConflicts, formatConflict, formatDraws, scheduledDraws,
+  compareLeagues, drawConflicts, formatConflict, formatDraws, leagueData, leagueFrom, scheduledDraws,
+  sortTeams,
 } from './leagues.ts';
 
 function league(name, draws = [], extra = {}) {
@@ -106,6 +107,26 @@ describe('drawConflicts', () => {
     assert.equal(
       formatConflict(conflicts[0]),
       'Double has two draws that overlap on Wed 19:30–20:00',
+    );
+  });
+});
+
+describe('sortTeams', () => {
+  const team = (name) => ({ id: name, name });
+
+  test('orders by name, ignoring case, with numbers in number order', () => {
+    const teams = ['smith', 'Team 10', 'Anderson', 'Team 2', 'Brown'].map(team);
+    assert.deepEqual(sortTeams(teams).map((t) => t.name), [
+      'Anderson', 'Brown', 'smith', 'Team 2', 'Team 10',
+    ]);
+  });
+
+  test('leagues are read and saved with their teams in order', () => {
+    const teams = ['Wilson', 'Adams', 'Moore'].map(team);
+    assert.deepEqual(leagueFrom('x', { name: 'L', teams }).teams.map((t) => t.name), ['Adams', 'Moore', 'Wilson']);
+    assert.deepEqual(
+      leagueData({ name: 'L', active: true, draws: [], teams }).teams.map((t) => t.name),
+      ['Adams', 'Moore', 'Wilson'],
     );
   });
 });
