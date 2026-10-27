@@ -209,9 +209,10 @@ class LeagueChooserOption extends StatelessWidget {
 
 /// A full screen for choosing the two teams of a league game.
 ///
-/// Every team in the league is one large button. The first team tapped
-/// throws the first rock color and the second the other, and the two slots
-/// at the top show who has been picked. Pops with a [LeagueMatchup], or with
+/// Every team in the league is one large button. The two rock colors at the
+/// top show who has been picked, and one of them is ringed as the color the
+/// next team tapped goes to: the first color to begin with, then the other.
+/// Tapping a color rings it instead. Pops with a [LeagueMatchup], or with
 /// null if cancelled.
 ///
 /// The screen has no title and no way to change league: both live on the
@@ -250,6 +251,10 @@ class LeagueMatchupPicker extends StatefulWidget {
 class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
   LeagueTeam? _team1;
   LeagueTeam? _team2;
+
+  /// The color the next team tapped goes to: 1 or 2, or null once both are
+  /// picked and none has been tapped since.
+  int? _target;
   late bool _showAll;
 
   @override
@@ -257,25 +262,52 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
     super.initState();
     _team1 = widget.initial?.team1 ?? widget.initialTeam1;
     _team2 = widget.initial?.team2 ?? widget.initialTeam2;
+    _target = _firstEmpty();
     // With nobody likely, there is nothing else to show first.
     _showAll = widget.league.teams.isEmpty;
   }
 
-  /// The first tap fills the first color, the second tap the other. Tapping
-  /// a team that is already picked takes it back out.
+  int? _firstEmpty() => _team1 == null
+      ? 1
+      : _team2 == null
+      ? 2
+      : null;
+
+  /// A team goes to the ringed color, and the ring moves on to the other
+  /// color if that one is still empty. Tapping a team that is already
+  /// picked takes it back out and rings its color.
   void _tapTeam(LeagueTeam team) {
     setState(() {
       if (_team1?.id == team.id) {
         _team1 = null;
+        _target = 1;
       } else if (_team2?.id == team.id) {
         _team2 = null;
-      } else if (_team1 == null) {
-        _team1 = team;
+        _target = 2;
       } else {
-        // With both picked, another tap replaces the second team: the
-        // usual slip is the second tap landing on the wrong button.
-        _team2 = team;
+        // With both picked and no color tapped, another tap replaces the
+        // second team: the usual slip is the second tap landing on the
+        // wrong button.
+        final target = _target ?? 2;
+        if (target == 1) {
+          _team1 = team;
+        } else {
+          _team2 = team;
+        }
+        final other = target == 1 ? 2 : 1;
+        _target = (other == 1 ? _team1 : _team2) == null ? other : null;
       }
+    });
+  }
+
+  void _clear(int slot) {
+    setState(() {
+      if (slot == 1) {
+        _team1 = null;
+      } else {
+        _team2 = null;
+      }
+      _target = slot;
     });
   }
 
@@ -284,6 +316,8 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
       final team1 = _team1;
       _team1 = _team2;
       _team2 = team1;
+      // The ring stays on whichever color is still to be picked.
+      _target = _firstEmpty() ?? _target;
     });
   }
 
@@ -300,14 +334,16 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 84,
+              height: 96,
               child: Row(
                 children: [
                   Expanded(
                     child: _Slot(
                       color: widget.rockColors.team1,
                       team: team1,
-                      onClear: () => setState(() => _team1 = null),
+                      targeted: _target == 1,
+                      onTap: () => setState(() => _target = 1),
+                      onClear: () => _clear(1),
                     ),
                   ),
                   IconButton(
@@ -320,7 +356,9 @@ class _LeagueMatchupPickerState extends State<LeagueMatchupPicker> {
                     child: _Slot(
                       color: widget.rockColors.team2,
                       team: team2,
-                      onClear: () => setState(() => _team2 = null),
+                      targeted: _target == 2,
+                      onTap: () => setState(() => _target = 2),
+                      onClear: () => _clear(2),
                     ),
                   ),
                 ],
@@ -519,40 +557,144 @@ class _TileGrid extends StatelessWidget {
   }
 }
 
-/// One of the two rock colors, showing the team picked for it.
-class _Slot extends StatelessWidget {
-  const _Slot({required this.color, required this.team, required this.onClear});
+/// One of the two rock colors, showing the team picked for it. A thick ring
+/// marks the color the next team tapped goes to, and the color flashes when
+/// a team lands on it so the pick is seen.
+class _Slot extends StatefulWidget {
+  const _Slot({
+    required this.color,
+    required this.team,
+    required this.targeted,
+    required this.onTap,
+    required this.onClear,
+  });
 
   final RockColor color;
   final LeagueTeam? team;
+  final bool targeted;
+
+  /// Rings this color, so the next team tapped goes here.
+  final VoidCallback onTap;
+
+  /// Takes the team back out.
   final VoidCallback onClear;
 
   @override
+  State<_Slot> createState() => _SlotState();
+}
+
+class _SlotState extends State<_Slot> with SingleTickerProviderStateMixin {
+  static const _ringWidth = 7.0;
+  static const _ringGap = 4.0;
+
+  // Starts at the end, where the flash has faded and the scale is back.
+  late final _flash = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 400),
+    value: 1,
+  );
+
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 1, end: 1.04), weight: 1),
+    TweenSequenceItem(tween: Tween(begin: 1.04, end: 1), weight: 2),
+  ]).animate(CurvedAnimation(parent: _flash, curve: Curves.easeOut));
+
+  @override
+  void didUpdateWidget(_Slot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final team = widget.team;
+    if (team != null && team.id != oldWidget.team?.id) {
+      _flash.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _flash.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final team = this.team;
-    return Material(
-      color: color.color,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        // Tapping a filled slot empties it.
-        onTap: team == null ? null : onClear,
+    final l10n = context.l10n;
+    final color = widget.color;
+    final team = widget.team;
+    final radius = BorderRadius.circular(16);
+    final ringRadius = BorderRadius.circular(16 + _ringWidth + _ringGap);
+
+    return ScaleTransition(
+      scale: _scale,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: ringRadius,
+          border: Border.all(
+            width: _ringWidth,
+            // The blue the setup screen marks its choices with. Kept in
+            // place without a ring, so the slot does not jump.
+            color: widget.targeted ? Colors.blueAccent : Colors.transparent,
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: DefaultTextStyle.merge(
-            style: TextStyle(color: color.textColor),
-            child: Row(
-              children: [
-                Text(color.name, style: const TextStyle(fontSize: 22)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _FittedLabel(
-                    team?.name ?? context.l10n.matchupPickerEmptySlotLabel,
-                    bold: team != null,
-                    fontSize: 36,
+          // A DecoratedBox paints its border over the child, so the child
+          // is held clear of the ring as well as the gap.
+          padding: const EdgeInsets.all(_ringWidth + _ringGap),
+          child: Material(
+            color: color.color,
+            borderRadius: radius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onTap,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 4),
+                    child: DefaultTextStyle.merge(
+                      style: TextStyle(color: color.textColor),
+                      child: Row(
+                        children: [
+                          Text(
+                            color.name,
+                            style: const TextStyle(fontSize: 22),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _FittedLabel(
+                              team?.name ??
+                                  (widget.targeted
+                                      ? l10n.matchupPickerEmptySlotLabel
+                                      : ''),
+                              bold: team != null,
+                              fontSize: 36,
+                            ),
+                          ),
+                          if (team != null)
+                            IconButton(
+                              iconSize: 36,
+                              color: color.textColor,
+                              tooltip: l10n.matchupPickerClearSlotTooltip(
+                                color.name,
+                              ),
+                              onPressed: widget.onClear,
+                              icon: const Icon(Icons.cancel),
+                            )
+                          else
+                            const SizedBox(width: 12),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  // A white wash that fades out as the team lands.
+                  IgnorePointer(
+                    child: FadeTransition(
+                      opacity: ReverseAnimation(_flash),
+                      child: ColoredBox(
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
