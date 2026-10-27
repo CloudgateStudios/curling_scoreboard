@@ -160,7 +160,8 @@ void main() {
     await tapAndSettle(tester, 'Pick teams');
     // Straight to the teams of the league playing now.
     expect(find.byType(LeagueMatchupPicker), findsOneWidget);
-    expect(find.text('Tap a team'), findsNWidgets(2));
+    // Only the color the next tap goes to asks for a team.
+    expect(find.text('Tap a team'), findsOneWidget);
     expect(doneEnabled(tester), isFalse);
 
     // The first tap is red, the second yellow.
@@ -308,6 +309,49 @@ void main() {
 
     expect(started()!.team1.name, 'Rock Stars');
     expect(started()!.team2.name, 'Team Jones');
+  });
+
+  testWidgets('LeagueMatchupPicker puts the next team on the color tapped', (
+    tester,
+  ) async {
+    final started = await openDialog(
+      tester,
+      leagues: [mondayNight],
+      now: mondayEvening,
+    );
+    await tapAndSettle(tester, 'Pick teams');
+
+    final picker = find.byType(LeagueMatchupPicker);
+    Future<void> tapColor(String name) async {
+      await tester.tap(find.descendant(of: picker, matching: find.text(name)));
+      await tester.pumpAndSettle();
+    }
+
+    // Yellow first, then the ring moves on to red.
+    await tapColor('Yellow');
+    await tapTeam(tester, 'Team Jones');
+    await tapTeam(tester, 'Team Smith');
+    expect(doneEnabled(tester), isTrue);
+
+    // Tapping a picked color rings it rather than emptying it, and the
+    // next team replaces the one there.
+    await tapColor('Red');
+    expect(find.text('Team Smith'), findsNWidgets(2));
+    await tapTeam(tester, 'Rock Stars');
+    expect(find.text('Team Smith'), findsOneWidget);
+
+    // Its clear button empties a color and rings it.
+    await tester.tap(find.byTooltip('Clear Yellow'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tap a team'), findsOneWidget);
+    expect(doneEnabled(tester), isFalse);
+    await tapTeam(tester, 'Team Smith');
+
+    await tapAndSettle(tester, 'Done');
+    await tapAndSettle(tester, 'Start Game');
+
+    expect(started()!.team1.name, 'Rock Stars');
+    expect(started()!.team2.name, 'Team Smith');
   });
 
   testWidgets('GameStartDialog asks for the league before the teams when '

@@ -172,11 +172,17 @@ abstract class AppLocalizations {
   /// **'vs'**
   String get matchupVersus;
 
-  /// Text shown on a rock color in the league team picker until a team has been picked for it.
+  /// Text shown on the rock color in the league team picker that the next team tapped will go to, until a team has been picked for it.
   ///
   /// In en, this message translates to:
   /// **'Tap a team'**
   String get matchupPickerEmptySlotLabel;
+
+  /// Tooltip for the button on a rock color in the league team picker that takes its team back out.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear {color}'**
+  String matchupPickerClearSlotTooltip(String color);
 
   /// Tooltip for the button that swaps which rock color each picked team is throwing.
   ///

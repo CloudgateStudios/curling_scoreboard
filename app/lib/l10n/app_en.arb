@@ -54,7 +54,17 @@
   },
   "matchupPickerEmptySlotLabel": "Tap a team",
   "@matchupPickerEmptySlotLabel": {
-    "description": "Text shown on a rock color in the league team picker until a team has been picked for it."
+    "description": "Text shown on the rock color in the league team picker that the next team tapped will go to, until a team has been picked for it."
+  },
+  "matchupPickerClearSlotTooltip": "Clear {color}",
+  "@matchupPickerClearSlotTooltip": {
+    "description": "Tooltip for the button on a rock color in the league team picker that takes its team back out.",
+    "placeholders": {
+      "color": {
+        "type": "String",
+        "example": "Red"
+      }
+    }
   },
   "matchupPickerSwapTooltip": "Swap colors",
   "@matchupPickerSwapTooltip": {
