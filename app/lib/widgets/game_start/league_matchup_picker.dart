@@ -630,7 +630,7 @@ class _SlotState extends State<_Slot> with SingleTickerProviderStateMixin {
           border: Border.all(
             width: _ringWidth,
             // The blue the setup screen marks its choices with. Kept in
-            // place when unringed, so the slot does not jump.
+            // place without a ring, so the slot does not jump.
             color: widget.targeted ? Colors.blueAccent : Colors.transparent,
           ),
         ),
