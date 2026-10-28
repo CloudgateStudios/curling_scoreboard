@@ -28,6 +28,14 @@ jobs:
         working-directory: ./functions
         run: npm run build
 
+      # The commit SHA identifies this build. Open display pages compare it
+      # with the deployed one to know when to reload, and report it and the
+      # release version to the admin portal.
+      - name: Write build manifest
+        run: |
+          VERSION=$(sed -n 's/^version: *//p' app/pubspec.yaml | cut -d+ -f1)
+          echo "{\"buildId\":\"$(git rev-parse HEAD)\",\"version\":\"$VERSION\"}" > functions/lib/display/assets/build.json
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
@@ -37,3 +45,14 @@ jobs:
       - name: Deploy Firestore and Functions
         working-directory: ${{ github.workspace }}
         run: npx firebase-tools@15.34.0 deploy --only firestore,functions --force --project curling-scoreboard-prod
+
+      # Tell open display pages about the new build so they reload onto it,
+      # the score bug between games.
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Notify displays of new build
+        run: |
+          curl --fail-with-body -sS -X PATCH \
+            -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            -H "Content-Type: application/json" \
+            "https://firestore.googleapis.com/v1/projects/curling-scoreboard-prod/databases/(default)/documents/appConfig/displays" \
+            -d "{\"fields\":{\"buildId\":{\"stringValue\":\"$(git rev-parse HEAD)\"},\"deployedAt\":{\"timestampValue\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}}"

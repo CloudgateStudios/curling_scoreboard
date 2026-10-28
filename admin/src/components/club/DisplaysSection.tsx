@@ -10,6 +10,7 @@ import {
 import { errorMessage, formatAgo } from '../../lib/format';
 import type { Bonspiel, DisplayLink, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
+import { DisplayDeviceStatus } from './DisplayDeviceStatus';
 import styles from './DisplaysSection.module.css';
 
 interface Props {
@@ -51,12 +52,21 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [deployedBuildId, setDeployedBuildId] = useState<string | null>(null);
   // Re-read each minute so "last used" stays current while the page is open.
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
+  }, []);
+
+  // The build the functions deploy last published, which is what every
+  // display page should end up running.
+  useEffect(() => {
+    return onSnapshot(doc(db, 'appConfig', 'displays'), (snap) => {
+      setDeployedBuildId((snap.get('buildId') as string | undefined) ?? null);
+    });
   }, []);
 
   useEffect(() => {
@@ -153,6 +163,12 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
                 <span className={common.rowName}>{link.label}</span>
                 <span className={common.rowMeta}>{describeSettings(link.settings, sheetName, bonspielName)}</span>
                 <span className={common.rowMeta}>{describeUse(link, now)}</span>
+                <DisplayDeviceStatus
+                  device={link.device}
+                  deployedBuildId={deployedBuildId}
+                  sheetName={sheetName}
+                  now={now}
+                />
               </div>
               <div className={common.rowActions}>
                 <button className={common.ghostButton} onClick={() => setEditing({ link })} disabled={busy !== null}>

@@ -55,6 +55,9 @@ let summary = undefined;
 let linkStatus = 'connecting';
 // The scores last shown, so a change can be marked as it lands.
 let shown = null;
+// Whether a game is on screen, which a reload onto a new version would
+// blank on the stream for a moment.
+let onAir = false;
 
 function labelText(sheet, view) {
   if (label === 'league') return view.game.league?.name ?? view.game.bonspiel?.name ?? sheet.name;
@@ -157,6 +160,7 @@ function showStatus(message) {
 }
 
 function render() {
+  onAir = false;
   const message = STATUS_MESSAGES[linkStatus];
   if (message) {
     bug.classList.add('hidden');
@@ -193,6 +197,7 @@ function render() {
   caption.textContent = labelText(sheet, view);
   showEnd(view);
   bug.classList.remove('hidden');
+  onAir = true;
   fitNames();
 }
 
@@ -207,6 +212,8 @@ connect({
     linkStatus = next;
     render();
   },
+  // Only between games. Still connecting, a game may be about to show.
+  readyToUpdate: () => summary !== undefined && !onAir,
 });
 
 // A final score is taken down ten minutes after the game ends, with no write

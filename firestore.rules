@@ -209,7 +209,9 @@ service cloud.firestore {
       // hash of each token is kept and the token is shown once. Admins change
       // a link's name and what it shows, and a display reads its own link to
       // follow those settings. The hash is no use to the screen holding the
-      // token it was made from.
+      // token it was made from. A display also reports on itself in its
+      // link's device field, as a scoreboard does on its sheet, which is
+      // only held to being a map of a sensible size.
       match /displayLinks/{linkId} {
         allow read: if isClubAdmin(clubId)
             || (isClubDisplay(clubId) && request.auth.token.linkId == linkId);
@@ -219,6 +221,11 @@ service cloud.firestore {
             && request.resource.data.label.size() > 0
             && request.resource.data.label.size() <= 60
             && isDisplaySettings(request.resource.data.settings);
+        allow update: if isClubDisplay(clubId)
+            && request.auth.token.linkId == linkId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['device'])
+            && request.resource.data.device is map
+            && request.resource.data.device.size() <= 20;
       }
 
       match /admins/{uid} {

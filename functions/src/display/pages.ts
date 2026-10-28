@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import path from 'path';
 import express, { NextFunction, Request, Response } from 'express';
 import { onRequest } from 'firebase-functions/v2/https';
@@ -56,6 +57,25 @@ function contentSecurityPolicy(projectId: string): string {
   ].join('; ');
 }
 
+// The deploy writes the commit it deployed and the release version to
+// assets/build.json, and the commit to appConfig/displays once it is live.
+// An open page compares the two to know when to reload onto the new version
+// (see watchForUpdates in display.js), and reports both to the portal.
+// Local and emulator builds have no build.json, and never update.
+function readBuild(): { buildId: string; appVersion: string } {
+  try {
+    const { buildId, version } = JSON.parse(readFileSync(path.join(__dirname, 'assets', 'build.json'), 'utf8'));
+    return {
+      buildId: typeof buildId === 'string' ? buildId : '',
+      appVersion: typeof version === 'string' ? version : '',
+    };
+  } catch {
+    return { buildId: '', appVersion: '' };
+  }
+}
+
+const BUILD = readBuild();
+
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
   page: 'bug' | 'warm-room' | 'bonspiel' | 'link';
@@ -64,6 +84,10 @@ export interface PageConfig {
   bonspielId?: string;
   firebase: ReturnType<typeof webConfig>;
   region: string;
+  /** The deployed commit, or '' for a local build. */
+  buildId: string;
+  /** The release the deploy was made from, as in app/pubspec.yaml, or ''. */
+  appVersion: string;
   /** Set in the emulator, where the page talks to the local emulators. */
   emulators?: { auth: string; firestore: { host: string; port: number }; functions: { host: string; port: number } };
   /** The server's clock, so a display with a wrong clock can allow for it. */
@@ -126,6 +150,8 @@ function pageConfig(
     ...(ids.bonspielId !== undefined && { bonspielId: ids.bonspielId }),
     firebase: webConfig(projectId),
     region: REGION,
+    buildId: BUILD.buildId,
+    appVersion: BUILD.appVersion,
     ...(runningInEmulator && { emulators: emulatorHosts(req) }),
     serverNow: Date.now(),
     finalShownMs: FINAL_SHOWN_MS,

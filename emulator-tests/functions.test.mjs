@@ -26,6 +26,9 @@ import {
 import {
   endedOffSchedule, todaysDraws, winnerOf,
 } from '../functions/lib/display/assets/results-model.js';
+import {
+  RETRY_RELOAD_AFTER_MS, canReload, targetBuild, timeUntilNextDailyCheck,
+} from '../functions/lib/display/assets/update-model.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -1791,6 +1794,7 @@ describe('display pages', () => {
     assert.equal(config.firebase.projectId, PROJECT_ID);
     assert.equal(config.finalShownMs, FINAL_SHOWN_MS);
     assert.ok(config.serverNow >= before && config.serverNow <= Date.now(), 'carries the server time');
+    assert.equal(config.buildId, '', 'a local build has no build ID, so never updates');
   });
 
   test('serves the warm room screen for a club', async () => {
@@ -1837,6 +1841,7 @@ describe('display pages', () => {
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
       ['link.js', /javascript/], ['link.css', /css/],
       ['bonspiel.js', /javascript/], ['bonspiel-model.js', /javascript/], ['bonspiel.css', /css/],
+      ['update-model.js', /javascript/],
     ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
@@ -1862,6 +1867,34 @@ describe('display pages', () => {
       const res = await fetch(`${PAGES_URL}${path}`);
       assert.equal(res.status, 404, path);
     }
+  });
+});
+
+describe('updating a display onto a new version', () => {
+  test('targets a deployed build other than the running one', () => {
+    assert.equal(targetBuild('aaa', 'bbb'), 'bbb');
+    assert.equal(targetBuild('aaa', 'aaa'), null);
+    assert.equal(targetBuild('aaa', null), null);
+    assert.equal(targetBuild('aaa', ''), null);
+    assert.equal(targetBuild('aaa', 42), null);
+    assert.equal(targetBuild('', 'bbb'), null, 'a local build never updates');
+  });
+
+  test('does not retry a reload for the same build straight away', () => {
+    const at = 1_000_000;
+    assert.equal(canReload(null, null, at), false);
+    assert.equal(canReload('bbb', null, at), true);
+    assert.equal(canReload('bbb', { target: 'ccc', at }, at), true);
+    assert.equal(canReload('bbb', { target: 'bbb', at }, at + RETRY_RELOAD_AFTER_MS - 1), false);
+    assert.equal(canReload('bbb', { target: 'bbb', at }, at + RETRY_RELOAD_AFTER_MS), true);
+    assert.equal(canReload('bbb', { target: 'bbb' }, at), true, 'an unreadable attempt is ignored');
+  });
+
+  test('checks daily at 1 AM local time', () => {
+    const hours = (ms) => ms / 3_600_000;
+    assert.equal(hours(timeUntilNextDailyCheck(new Date(2026, 5, 15, 0, 0))), 1);
+    assert.equal(hours(timeUntilNextDailyCheck(new Date(2026, 5, 15, 1, 0))), 24);
+    assert.equal(hours(timeUntilNextDailyCheck(new Date(2026, 5, 15, 22, 0))), 3);
   });
 });
 
