@@ -23,6 +23,17 @@ export function pollDelay(live) {
   return live?.sheets?.some((sheet) => sheet.kind !== 'idle') ? LIVE_POLL_MS : QUIET_POLL_MS;
 }
 
+/**
+ * How long to wait before polling again when the page is shown, given when
+ * live.json was last fetched: nothing if it is due, otherwise the rest of
+ * the wait. Coming back to the page a moment after it last asked would find
+ * nothing new, as the answer is cached for longer than that.
+ */
+export function timeUntilDue(live, fetchedAt, now) {
+  if (fetchedAt === null) return 0;
+  return Math.max(0, pollDelay(live) - (now - fetchedAt));
+}
+
 /** True when the page has been left alone long enough to stop polling. */
 export function isIdle(lastActiveAt, now) {
   return now - lastActiveAt >= IDLE_PAUSE_MS;

@@ -31,7 +31,7 @@ import {
 } from '../functions/lib/display/assets/update-model.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
 import {
-  IDLE_PAUSE_MS, LIVE_POLL_MS, QUIET_POLL_MS, asSummaryResults, isIdle, pollDelay,
+  IDLE_PAUSE_MS, LIVE_POLL_MS, QUIET_POLL_MS, asSummaryResults, isIdle, pollDelay, timeUntilDue,
 } from '../functions/lib/display/assets/scores-model.js';
 
 const PROJECT_ID = 'demo-functions';
@@ -2064,6 +2064,14 @@ describe('how often the scores page polls', () => {
     assert.equal(pollDelay({ sheets: [{ kind: 'final' }] }), LIVE_POLL_MS);
     assert.equal(pollDelay({ sheets: [{ kind: 'idle' }] }), QUIET_POLL_MS);
     assert.equal(pollDelay(null), QUIET_POLL_MS, 'and while it cannot tell');
+  });
+
+  test('shown again, polls when one is due and otherwise waits out the rest', () => {
+    const live = { sheets: [{ kind: 'live' }] };
+    assert.equal(timeUntilDue(live, null, 1000), 0, 'never fetched');
+    assert.equal(timeUntilDue(live, 0, 5000), LIVE_POLL_MS - 5000);
+    assert.equal(timeUntilDue(live, 0, LIVE_POLL_MS + 1), 0);
+    assert.equal(timeUntilDue(null, 0, LIVE_POLL_MS), QUIET_POLL_MS - LIVE_POLL_MS);
   });
 
   test('stops once the phone has been left alone for half an hour', () => {
