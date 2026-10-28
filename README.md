@@ -37,6 +37,7 @@ flowchart LR
 | Each folder's README                         | Running, checking and finding your way around that product                                  |
 | [API documentation](https://curlingscoreboard.app/api-docs/) | The REST API and webhook, for club integrations                             |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md)       | What changed in each release                                                                |
+| [CLAUDE.md](CLAUDE.md)                       | Guidance for Claude Code sessions working in the repo                                       |
 
 ---
 
