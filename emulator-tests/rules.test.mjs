@@ -493,6 +493,11 @@ await check('club admin: points a link at a sheet\'s score bug', 'allow', () =>
     settings: { page: 'bug', sheetId: 'sheet-paired', scale: 1.5, label: 'league', end: 'left' },
   }));
 
+await check('club admin: captions a score bug with both the league and the sheet', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'bug', sheetId: 'sheet-paired', label: 'both' },
+  }));
+
 await check('attack: club admin puts the score bug\'s end somewhere other than left or right', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
     settings: { page: 'bug', sheetId: 'sheet-paired', end: 'top' },

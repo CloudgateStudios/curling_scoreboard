@@ -210,6 +210,7 @@ const SIZES = [
 const BUG_LABELS: { value: BugLabel; label: string }[] = [
   { value: 'sheet', label: 'The sheet name' },
   { value: 'league', label: 'The league name' },
+  { value: 'both', label: 'The league name, with the sheet name on the right' },
   { value: 'none', label: 'None, for the smallest bug' },
 ];
 

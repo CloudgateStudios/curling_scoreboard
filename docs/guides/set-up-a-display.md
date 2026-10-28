@@ -35,7 +35,8 @@ top (in place of "Live Scores") and adds your club's logo. Press **Save**.
 ## A score bug in OBS
 
 Under **Shows**, choose **Score bug for** the sheet. Then pick its **Size**,
-the **Caption under the bug** (the sheet name, the league name, or none), and
+the **Caption under the bug** (the sheet name, the league name, both, or
+none), and
 which side the **End** box is on.
 
 1. In OBS, add a **Browser** source and paste the URL. Leave the size at your

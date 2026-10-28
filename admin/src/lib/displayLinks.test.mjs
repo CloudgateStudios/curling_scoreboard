@@ -68,6 +68,10 @@ describe('describeSettings', () => {
       describeSettings({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'league', end: 'left' }, sheetName),
       'Score bug for Sheet 2, 1.5× size, league name, end on the left',
     );
+    assert.equal(
+      describeSettings({ page: 'bug', sheetId: 's2', label: 'both' }, sheetName),
+      'Score bug for Sheet 2, league and sheet names',
+    );
     assert.equal(describeSettings({ page: 'bug', sheetId: 'gone' }, sheetName), 'Score bug for a removed sheet');
   });
 

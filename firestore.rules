@@ -61,7 +61,7 @@ service cloud.firestore {
               || (settings.every is int && settings.every >= 5 && settings.every <= 300))
           && (!('scale' in settings)
               || (settings.scale is number && settings.scale >= 0.5 && settings.scale <= 4))
-          && settings.get('label', 'sheet') in ['sheet', 'league', 'none']
+          && settings.get('label', 'sheet') in ['sheet', 'league', 'both', 'none']
           && settings.get('end', 'right') in ['left', 'right']
           && (!('earlier' in settings) || settings.earlier is bool);
     }

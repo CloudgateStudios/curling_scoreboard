@@ -154,6 +154,8 @@ body {
 
 .caption {
   grid-column: 1 / -1;
+  display: flex;
+  gap: 1rem;
   padding: 0.2rem 0.75rem;
   background: rgba(0, 0, 0, 0.45);
   font-size: 0.95rem;
@@ -161,12 +163,18 @@ body {
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
+}
+
+/* With label=both, a long league name is cut short before the sheet's. */
+.caption-main {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.caption:empty {
-  display: none;
+.caption-sheet {
+  flex-shrink: 0;
 }
 
 /* The ?preview stand-in for an idle sheet: the bug's size and place, but

@@ -142,7 +142,7 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
          | 'now' | 'schedule' | 'brackets' | 'cycle'   // the bonspiel screen's; now when absent
     every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
     scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
-    label?: 'sheet' | 'league' | 'none'  // the score bug's caption; sheet when absent
+    label?: 'sheet' | 'league' | 'both' | 'none'  // the score bug's caption; sheet when absent
     end?: 'left' | 'right'   // the side of the score bug its end box is on; right when absent
     earlier?: bool           // the warm room's earlier results beside the sheets; not when absent
   }

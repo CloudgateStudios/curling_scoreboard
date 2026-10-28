@@ -5,7 +5,8 @@
 // Options, in the query string:
 //   scale=1.5          size, from 0.5 to 4
 //   label=league       what the caption under the bug names: sheet
-//                      (default), league or none, which leaves it off
+//                      (default), league, both (the league on the left, the
+//                      sheet on the right) or none, which leaves it off
 //   end=left           put the end box left of the names, rather than
 //                      right of the scores
 //   preview            while setting up: show an outlined placeholder of the
@@ -19,7 +20,7 @@ import {
 
 const params = new URLSearchParams(location.search);
 const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
-const label = ['sheet', 'league', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
+const label = ['sheet', 'league', 'both', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
 const preview = params.has('preview') && params.get('preview') !== '0';
 const endLeft = params.get('end') === 'left';
 document.documentElement.style.setProperty('--scale', String(scale));
@@ -49,6 +50,9 @@ const endName = el('span', 'end-label');
 const endValue = el('span', 'end-value');
 end.append(endName, endValue);
 const caption = el('div', 'caption');
+const captionMain = el('span', 'caption-main');
+const captionSheet = el('span', 'caption-sheet');
+caption.append(captionMain, captionSheet);
 bug.append(teams, end, caption);
 
 let summary = undefined;
@@ -59,9 +63,21 @@ let shown = null;
 // blank on the stream for a moment.
 let onAir = false;
 
-function labelText(sheet, view) {
-  if (label === 'league') return view.game.league?.name ?? view.game.bonspiel?.name ?? sheet.name;
-  return label === 'sheet' ? sheet.name : '';
+// The caption's text, and with label=both the sheet name for its right
+// side. Hidden when it has neither.
+function showCaption(main, sheetName) {
+  captionMain.textContent = main;
+  captionSheet.textContent = sheetName;
+  caption.classList.toggle('hidden', !main && !sheetName);
+}
+
+// A game with no league or bonspiel names just the sheet, either way.
+function showLabel(sheet, view) {
+  if (label === 'none') return showCaption('', '');
+  if (label === 'sheet') return showCaption(sheet.name, '');
+  const event = view.game.league?.name ?? view.game.bonspiel?.name;
+  if (!event) return showCaption(sheet.name, '');
+  showCaption(event, label === 'both' ? sheet.name : '');
 }
 
 // The end box: "End" over the number, "Extra" over it in an extra end, or
@@ -143,7 +159,8 @@ function showPlaceholder(sheet) {
     parts.score.style.color = '';
     parts.score.classList.remove('changed');
   }
-  caption.textContent = label === 'none' ? '' : sheet.name;
+  if (label === 'both') showCaption('League', sheet.name);
+  else showCaption(label === 'none' ? '' : sheet.name, '');
   endName.textContent = 'End';
   endValue.textContent = '–';
   endValue.classList.remove('word');
@@ -194,7 +211,7 @@ function render() {
   }
   shown = { key, team1: game.team1.score, team2: game.team2.score };
 
-  caption.textContent = labelText(sheet, view);
+  showLabel(sheet, view);
   showEnd(view);
   bug.classList.remove('hidden');
   onAir = true;
