@@ -52,6 +52,12 @@ npm run lint
 npm test
 ```
 
+**Docs** (`docs-check/`, for any Markdown change)
+
+```bash
+npm run check
+```
+
 Changing `firestore.rules` or a function? Add a case to `rules.test.mjs` or
 `functions.test.mjs` for the access you mean to allow or deny.
 
@@ -110,7 +116,8 @@ Diagrams are [Mermaid](https://mermaid.js.org) blocks in the Markdown, which
 GitHub draws; check them in the PR's rich diff. In a label, quote the text
 (`A["..."]`), use `<br/>` for a line break, and avoid `*` and `_` in pairs,
 which Mermaid takes as Markdown emphasis. Text in diagrams is spell checked
-like the rest.
+like the rest. `docs-check/` renders every diagram and follows every
+relative link; run it before pushing a docs change.
 
 ## Generated and release-managed files
 

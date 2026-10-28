@@ -11,6 +11,7 @@ bonspiels. It's a monorepo of products sharing one Firebase backend:
 | [`functions/`](functions/)           | Node.js + Express          | Callable functions, Firestore triggers, the REST API, the display pages and the public scores page |
 | [`scripts/`](scripts/)               | Node.js                    | Seeding dev, the first super admin, one-off migrations and backfills                               |
 | [`emulator-tests/`](emulator-tests/) | Node.js, Firebase emulators | Tests for `firestore.rules` and the functions                                                     |
+| [`docs-check/`](docs-check/)         | Node.js, Mermaid, Playwright | Checks that the Markdown's diagrams render and its links resolve                                |
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 
@@ -186,6 +187,7 @@ Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curl
 | `functions/`                                                          | Build, lint                                                                             |
 | `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests and Cloud Functions tests against the emulators                   |
 | `scripts/`                                                            | Syntax check                                                                            |
+| Any Markdown file, or `docs-check/`                                   | Mermaid diagrams render, relative links and anchors resolve                             |
 
 Changing a workflow file runs the checks for the product it builds or deploys.
 
