@@ -6,6 +6,7 @@
     "seed-dev": "node seed-dev.js",
     "migrate-api-keys": "node migrate-api-keys.js",
     "backfill-scoreboard-claims": "node backfill-scoreboard-claims.js",
+    "backfill-scoreboard-pins": "node backfill-scoreboard-pins.js",
     "set-super-admin": "node set-super-admin.js",
     "backfill-display-state": "node backfill-display-state.js"
   },
