@@ -3,7 +3,8 @@
 How the scoreboard app, the admin portal, the display pages and the Cloud
 Functions fit together on Firebase. This page is the map; each area has its
 own page under [`docs/architecture/`](architecture/) with the detail. For
-what the system does in plain terms, see [FEATURES](FEATURES.md); for setup
+what the system does in plain terms, see [FEATURES](FEATURES.md); for
+curling and system terms, the [GLOSSARY](GLOSSARY.md); for setup
 and day to day commands, the [README](../README.md); for how to make and ship
 a change, [CONTRIBUTING](../CONTRIBUTING.md).
 
