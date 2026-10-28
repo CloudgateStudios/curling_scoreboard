@@ -1,0 +1,348 @@
+/* The public scores page, for members' phones. Laid out for a phone held
+   upright first; on anything wider the column stays a readable width. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --line: rgba(0, 0, 0, 0.1);
+  --text: #15191e;
+  --muted: rgba(21, 25, 30, 0.6);
+  --final: #8a6d00;
+  --accent: #1f6feb;
+  --cell: 1.6rem;
+  --total: 2.2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --line: rgba(255, 255, 255, 0.1);
+    --text: #f0f3f6;
+    --muted: rgba(240, 243, 246, 0.6);
+    --final: #ffd54f;
+    --accent: #58a6ff;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+#display {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 2rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.logo {
+  max-height: 2.75rem;
+  max-width: 8rem;
+  object-fit: contain;
+  flex: none;
+}
+
+.heading {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.updated {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.notice {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.paused {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+}
+
+.sheets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sheet {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sheet.idle {
+  padding: 0.6rem 0.875rem;
+}
+
+.sheet-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sheet-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.state {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sheet.final .state {
+  color: var(--final);
+}
+
+.event {
+  margin: -0.2rem 0 0.1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* The two teams, a button that shows the game end by end. */
+.teams {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+
+.teams:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.team {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hammer {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.hammer.off {
+  visibility: hidden;
+}
+
+.score {
+  min-width: 2.6rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.45rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.score.changed {
+  animation: pop 1.2s ease-out;
+}
+
+@keyframes pop {
+  0% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score.changed {
+    animation: none;
+  }
+}
+
+/* End by end. Narrow enough for ten ends on a small phone. */
+.line-score {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+  margin-top: 0.35rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.end-head {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.end-head.current {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.team-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 0.25rem;
+}
+
+.cell,
+.total {
+  height: 1.6rem;
+  line-height: 1.6rem;
+  text-align: center;
+  border-radius: 0.3rem;
+  background: var(--bg);
+}
+
+.cell.current {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.cell.scored,
+.total {
+  font-weight: 700;
+}
+
+.earlier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.earlier-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.draw-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.draw-time {
+  font-weight: 700;
+}
+
+.draw-names {
+  overflow-wrap: anywhere;
+}
+
+.result {
+  display: grid;
+  grid-template-columns: 1.6rem auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.2rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+}
+
+/* The sheet sits beside both teams, which take a line each. */
+.result-sheet {
+  grid-row: span 2;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-score {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.result-name.won,
+.result-score.won {
+  font-weight: 700;
+}
+
+.result-note {
+  grid-column: 2 / -1;
+  font-size: 0.75rem;
+  color: var(--muted);
+}

@@ -8,6 +8,7 @@ fvmrc
 gstatic
 iamcredentials
 ltrb
+maxage
 nosniff
 notmain
 nums

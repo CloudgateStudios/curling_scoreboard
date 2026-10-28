@@ -1,10 +1,12 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import express, { NextFunction, Request, Response } from 'express';
+import { getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
 import { currentProjectId, webConfig } from './firebaseConfig';
-import { FINAL_SHOWN_MS } from './state';
+import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
+import { DisplaySummary, FINAL_SHOWN_MS } from './state';
 
 // Serves the display pages on the scoreboard's hosting site, under
 // /display/** through a Hosting rewrite:
@@ -15,13 +17,20 @@ import { FINAL_SHOWN_MS } from './state';
 //                                            brackets, for a screen in the club
 //   /display/{clubId}                        whichever of those the display
 //                                            link's settings name
+//   /display/{clubId}/scores                 the public scores page, for
+//                                            members' phones, and the JSON
+//                                            and logo it fetches
 //   /display/assets/*                        the pages' scripts and styles
 //
 // The pages are the same for everyone: the display link's token is in the
 // URL fragment, which never reaches this function. In the browser the page
 // trades it for a sign-in (see ./links.ts) and listens to the club's display
-// summary (see ./state.ts). So nothing here reads Firestore, and a request
-// costs no reads at all.
+// summary (see ./state.ts). So the pages read nothing from Firestore.
+//
+// The scores page has no sign-in, so that any number of phones can follow
+// it for the same cost. It fetches the summary as JSON from here instead,
+// cut down by ./scores.ts and cached by Hosting's CDN, so only a cache miss
+// reaches this function and Firestore, however many people are watching.
 
 const runningInEmulator = process.env['FUNCTIONS_EMULATOR'] === 'true';
 const REGION = 'us-central1';
@@ -43,13 +52,15 @@ function connectSources(projectId: string): string[] {
 
 // Scripts come from this function and the Firebase SDK from gstatic; nothing
 // is inline, so there is nothing for an injected tag to run. The pages are
-// shown full screen or in OBS, never framed by another site.
-function contentSecurityPolicy(projectId: string): string {
+// shown full screen or in OBS, never framed by another site. The scores page
+// loads no Firebase and only fetches from here.
+function contentSecurityPolicy(projectId: string, page: PageConfig['page']): string {
+  const scores = page === 'scores';
   return [
     "default-src 'none'",
-    "script-src 'self' https://www.gstatic.com",
+    scores ? "script-src 'self'" : "script-src 'self' https://www.gstatic.com",
     "style-src 'self'",
-    `connect-src ${connectSources(projectId).join(' ')}`,
+    `connect-src ${scores ? "'self'" : connectSources(projectId).join(' ')}`,
     "img-src 'self' data:",
     "base-uri 'none'",
     "form-action 'none'",
@@ -78,7 +89,7 @@ const BUILD = readBuild();
 
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
-  page: 'bug' | 'warm-room' | 'bonspiel' | 'link';
+  page: 'bug' | 'warm-room' | 'bonspiel' | 'link' | 'scores';
   clubId: string;
   sheetId?: string;
   bonspielId?: string;
@@ -180,7 +191,7 @@ app.use('/display/assets', express.static(path.join(__dirname, 'assets'), {
 
 function sendPage(res: Response, title: string, assetBase: string, config: PageConfig) {
   res.set({
-    'Content-Security-Policy': contentSecurityPolicy(currentProjectId()),
+    'Content-Security-Policy': contentSecurityPolicy(currentProjectId(), config.page),
     // Holds the server's time, so it must never come from a cache.
     'Cache-Control': 'no-store',
   });
@@ -220,6 +231,107 @@ app.get('/display/:clubId/bonspiels/:bonspielId', (req: Request, res: Response) 
   // From /display/{club}/bonspiels/ back up to /display/.
   sendPage(res, 'Bonspiel', '../../assets/', pageConfig(req, 'bonspiel', clubId, { bonspielId }));
 });
+
+// --- The public scores page ---
+
+/** How long Hosting's CDN keeps live.json, and so how stale it can be. */
+const LIVE_CACHE = 'public, max-age=15, s-maxage=30';
+/** results.json is only fetched when live.json says it has changed. */
+const RESULTS_CACHE = 'public, max-age=60, s-maxage=300';
+/** A club without the page is checked again after this. */
+const OFF_CACHE = 'public, max-age=60, s-maxage=60';
+/** The branding is read at most this often by each instance: it holds the
+ *  logo, up to 250 KB, and only changes when an admin saves it. */
+const BRANDING_KEPT_MS = 5 * 60 * 1000;
+
+const brandingKept = new Map<string, { at: number; branding: ScoresBranding | null }>();
+
+async function brandingOf(clubId: string): Promise<ScoresBranding | null> {
+  const kept = brandingKept.get(clubId);
+  if (kept && Date.now() - kept.at < BRANDING_KEPT_MS) return kept.branding;
+  const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
+  const branding = (snap.data() as ScoresBranding | undefined) ?? null;
+  brandingKept.set(clubId, { at: Date.now(), branding });
+  return branding;
+}
+
+/** Whether a club admin has turned the scores page on, in the portal. */
+async function scoresOn(clubId: string): Promise<boolean> {
+  const snap = await getFirestore().doc(`clubs/${clubId}/private/publicScores`).get();
+  return snap.get('enabled') === true;
+}
+
+async function summaryOf(clubId: string): Promise<DisplaySummary | null> {
+  const snap = await getFirestore().doc(`clubs/${clubId}/private/displayState`).get();
+  return (snap.data() as DisplaySummary | undefined) ?? null;
+}
+
+// Cached by the CDN too, so polling a club without the page costs as little
+// as one with it.
+function scoresOff(res: Response) {
+  res.set('Cache-Control', OFF_CACHE);
+  notFound(res);
+}
+
+// Runs [handler] for a club with the scores page on. Express adds an ETag to
+// each response and answers a matching If-None-Match with a 304, so a poll
+// that finds nothing new costs only headers.
+function scoresRoute(handler: (clubId: string, req: Request, res: Response) => Promise<void>) {
+  return async (req: Request, res: Response) => {
+    const { clubId } = req.params as Record<string, string>;
+    if (!ID_PATTERN.test(clubId)) {
+      notFound(res);
+      return;
+    }
+    try {
+      if (!(await scoresOn(clubId))) {
+        scoresOff(res);
+        return;
+      }
+      await handler(clubId, req, res);
+    } catch (err) {
+      console.error(`Scores for ${clubId} failed`, err);
+      res.set('Cache-Control', 'no-store');
+      res.status(500).type('text/plain').send('Something went wrong');
+    }
+  };
+}
+
+// The page itself reads nothing: a club without the page turned on finds
+// out from live.json, which the CDN keeps.
+app.get('/display/:clubId/scores', (req: Request, res: Response) => {
+  const { clubId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId)) {
+    notFound(res);
+    return;
+  }
+  // From /display/{club}/ back up to /display/.
+  sendPage(res, 'Live Scores', '../assets/', pageConfig(req, 'scores', clubId));
+});
+
+app.get('/display/:clubId/scores/live.json', scoresRoute(async (clubId, _req, res) => {
+  const [summary, branding] = await Promise.all([summaryOf(clubId), brandingOf(clubId)]);
+  res.set('Cache-Control', LIVE_CACHE).json(scoresLive(summary, branding, Date.now()));
+}));
+
+app.get('/display/:clubId/scores/results.json', scoresRoute(async (clubId, _req, res) => {
+  res.set('Cache-Control', RESULTS_CACHE).json(scoresResults(await summaryOf(clubId)));
+}));
+
+// The logo's URL names its version, so the logo it names never changes and
+// can be kept for good. An old version's URL gets the current logo, kept
+// only briefly.
+app.get('/display/:clubId/scores/logo', scoresRoute(async (clubId, req, res) => {
+  const branding = await brandingOf(clubId);
+  const logo = decodeLogo(branding?.logo);
+  if (!logo) {
+    scoresOff(res);
+    return;
+  }
+  const current = req.query['v'] === versionOf(branding?.logo);
+  res.set('Cache-Control', current ? 'public, max-age=31536000, immutable' : RESULTS_CACHE)
+    .type(logo.type).send(logo.bytes);
+}));
 
 // A display link's own URL. The page reads the link's settings and opens the
 // page they name, which then follows any change an admin makes to them.
