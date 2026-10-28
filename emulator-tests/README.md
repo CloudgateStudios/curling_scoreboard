@@ -54,19 +54,27 @@ Access the app depends on:
 
 - a paired scoreboard pushing `liveGame` and writing a completed game
 - a paired scoreboard reporting its device status
+- a club admin renaming and unpairing their own club's sheets
 - a club admin reading their own club and its API key
 - a paired scoreboard and a club admin reading the club's `config`
 - a club admin setting and clearing their club's rock colors
 - a club admin setting, changing and reading their club's scoreboard PIN
 - a club admin creating, updating, listing and deleting leagues
 - a paired scoreboard reading and listing its club's leagues
-- anyone reading `appConfig/scoreboard` to pick up new builds
+- a club admin setting the completed game webhook, for every game, league
+  games or bonspiel games, with a message template and time zone, and
+  reading how its last delivery went
+- anyone reading `appConfig/scoreboard`, and a display `appConfig/displays`,
+  to pick up new builds
 - a display reading its club's display summary, and a club admin reading
   it and listing the club's display links
-- a club admin pointing a link at a sheet's score bug or the warm room, and
-  a display reading its own link's settings
+- a club admin pointing a link at a sheet's score bug or the warm room,
+  cycling or with the day's earlier results, and a display reading its own
+  link's settings and reporting on itself to it
 - a club admin setting, changing and removing the warm room's title and
   logo, and a display reading them
+- a club admin turning the public scores page on and reading whether it is
+- a bonspiel admin reading their club and listing its sheets
 - club and bonspiel admins creating, updating, listing and deleting their
   club's bonspiels, and reading each one's state
 - a paired scoreboard reading and listing its club's bonspiels, and reading
@@ -81,7 +89,9 @@ Access that must stay denied:
 - claiming a sheet directly, for yourself or another uid
 - reading another club's paired sheet directly
 - reassigning a paired sheet to another device
-- a scoreboard clearing its own uid, which would skip the admin PIN
+- a scoreboard clearing its own uid, which would skip the admin PIN, or
+  pushing its live game once it has been unpaired; a club admin unpairing
+  another club's sheet
 - a scoreboard changing anything else on its sheet, writing a device status
   that is not a map or is oversized, or reporting for a sheet it is not
   paired with
@@ -101,7 +111,16 @@ Access that must stay denied:
 - a club admin setting rock colors for another club, storing malformed
   colors or anything else in the scoreboard config, or writing other
   `config` documents
-- writing `appConfig`
+- a webhook URL that is not `https`, a games setting that is unknown or
+  missing, a template that is too long or not text, a time zone that is not
+  text, or other fields beside them; a club admin forging the last
+  delivery; a paired scoreboard reading or setting the webhook
+- the public scores switch set to anything but true or false, or stored
+  with anything else; a paired scoreboard reading it
+- a bonspiel admin renaming or adding sheets, setting pairing codes,
+  renaming the club, or reading the API key, the leagues or the display
+  links
+- writing `appConfig`, from any device or display, signed in or not
 - a display reading another club's display summary, its club document, API
   key, config or sheets, or the display links; anyone else but the club's
   admins reading the summary; anyone writing it
@@ -109,7 +128,9 @@ Access that must stay denied:
   changing a link's secret or token, a link in another club, or its settings to a
   score bug with no sheet, a page that does not exist, an option out of
   range or an unknown one; a display reading another link or changing its
-  own
+  own, or reporting on itself to another link, with something other than a
+  map, oversized, or renaming its link while it does; earlier results set to
+  something other than yes or no
 - a club admin setting another club's warm room branding, an SVG or remote
   logo, one over the size limit, a title over 60 characters, or anything
   else beside them; a display reading another club's branding or changing
@@ -128,7 +149,9 @@ Access that must stay denied:
 - `pairSheet` turns away callers who are not signed in, missing and unknown
   codes; pairs the caller with the sheet (matching codes after trimming and
   upper-casing), recording when and dropping the previous scoreboard's device
-  status; and does not accept a code twice. It gives the scoreboard claims
+  status; and does not accept a code twice. It pairs over a previous
+  scoreboard that no longer exists, and lets a scoreboard move to another
+  sheet. It gives the scoreboard claims
   naming its sheet, takes them away from the scoreboard it replaces, and
   refuses admin accounts.
 - `unpairSheet` turns away callers who are not signed in and malformed
@@ -139,19 +162,34 @@ Access that must stay denied:
 - The REST API requires a key, rejects a wrong one, accepts the club's key,
   returns 404 for an unknown club, ignores a key left on the club
   document from before the API key migration, and leaves the scoreboard's
-  device status out of sheet responses. It lists a club's leagues and
+  device status out of sheet responses. It reports a live game from the
+  moment it starts, with when it was last written, the ends played so far,
+  how many are scheduled and who had last stone in the first end; keeps one
+  written before `updatedAt` was recorded; and drops one with no change for
+  over two hours. It lists a club's leagues and
   returns one, only with the club's own key and only the documented fields,
   and reports the league and teams on live and completed games. It lists a
   club's bonspiels newest first, and returns one with only the documented
   fields: each pool's standings, and each game's teams, scores and where
-  its sides come from, worked out from the results kept.
+  its sides come from, worked out from the results kept. It answers a
+  preflight for `GET` with the `X-API-Key` header, and lets any origin read
+  its answers, errors included.
 - The display summary lists each sheet by name, with its live game cut down
   to what a display needs; follows a renamed sheet; is not written for a
   scoreboard's status report; keeps a finished game as the last game once
   its live game is removed, and shows the next draw's game ahead of it
-  straight away; keeps the later game when an earlier one arrives late; and
-  drops a deleted sheet. A display shows a live game first, then the final
+  straight away; keeps the later game when an earlier one arrives late;
+  lists each finished game in the day's results with its league's draws,
+  clearing the last game a sheet kept before that; and drops a deleted
+  sheet. The results keep the latest first and a game delivered twice once,
+  let go of games over a day old, keep at most a busy day's worth, and take
+  only whole draws from a league. A display shows a live game first, then the final
   score for ten minutes, ignoring a live game abandoned for over two hours.
+- The warm room's earlier results group the day's games by draw, the latest
+  first and each by sheet; keep a draw that runs past midnight with its
+  evening; go by when a game finished when it has no start; leave out games
+  still to finish by the screen's clock; and name the winner, and a game
+  that ended early or went to extra ends.
 - Display links can only be made by the club's admins, need a name, keep
   their token for the club's admins with a hash of its secret for sign-in,
   and stop at twenty a club. A link made before the token was kept still
@@ -176,19 +214,57 @@ Access that must stay denied:
   one final, gets standings by points, then the games between teams level
   on points, then the coordinator's tiebreak order, with teams still level
   sharing a place; and a place in a pool sends its team on only once the
-  pool is played and nobody shares it.
+  pool is played and nobody shares it. A tied game counts a point each, and
+  a place in its own event is left unknown rather than going round in
+  circles.
 - The bonspiel screen moves to the next draw half an hour before it starts,
   names each side as far as it is known, a place in a pool among them, gives a result only once a game has
   one, and lays out an event's bracket as the portal does. The display
   summary says which bonspiel game a live or finished game is.
+- The completed game webhook posts a finished game with a message both
+  Slack and Discord read, naming its league and teams; fills in the club's
+  own template; dates a game that runs past midnight by the night it
+  started; posts only league games or only bonspiel games when set to, a
+  bonspiel game named with its event; posts nothing for a club with no
+  webhook or for a game already attempted; records a refused delivery
+  without trying it again; and keeps the result out of the games API.
+  `sendTestWebhook` is limited to the club's admins and super admins, needs
+  a saved webhook, posts a sample game in the club's template, and reports
+  how the delivery went, refused or not.
 - The display function serves the score bug, the warm room screen, a
   bonspiel's screen and a display link's own page with
   their strict security headers,
   never cached, with the club, sheet and server time in the page; serves the
   pages' scripts and styles; and answers 404 for malformed IDs and anything
   else.
+- The public scores page shows every sheet in name order with any kind of
+  game, leaves out what a phone does not show, sends results with their
+  draws, and shows only raster logos. The function serves the page with no
+  Firebase and never cached; `live.json` for the CDN to keep, with a 304
+  when nothing changed; `results.json`, kept longer; the logo as an image,
+  kept for good at its own version; and a 404, cached briefly, for a club
+  that has not turned the page on. The page polls every half minute while
+  any sheet has a game and every five minutes while none does, polls when
+  shown again only once a poll is due, and stops once the phone has been
+  left alone for half an hour.
+- A display updates onto a deployed build other than the one it runs, does
+  not retry a reload for the same build straight away, and checks daily at
+  1 AM local time.
 - `provisionClub` is limited to super admins, and creates the club without a
   key on its document, a 32 character key under `private/apiKey`, the
   scoreboard PIN it was given under `private/scoreboardPin`, and a club admin
   with the right claims. It refuses a missing or malformed PIN before creating
   anything, and removes the PIN with the club when creating the admin fails.
+  A taken or malformed email rolls the club back; a short password and a
+  club ID outside the allowed pattern are turned away first.
+- `addClubAdmin` is limited to super admins and to clubs that exist, and
+  creates a club admin, or a bonspiel admin with the name given, with the
+  claims and an `admins` listing; it refuses an unknown role, a taken email
+  and a short password. `updateClubAdmin` changes a name, email, role and
+  password, refuses a short password, and leaves alone an account that is
+  not the club's. `removeClubAdmin` deletes the account and its listing,
+  freeing the email, keeps an account that is not the club's admin, and
+  removes the listing of one that no longer exists. All three are limited
+  to super admins.
+- `deleteSheet` is limited to super admins, refuses an unknown sheet, and
+  deletes the sheet with its games and its scoreboard's claims.
