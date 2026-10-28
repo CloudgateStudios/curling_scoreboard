@@ -16,9 +16,15 @@ jobs:
         with:
           ref: ${{ github.event.inputs.version }}
 
+      # The Node version comes from the tag being deployed. A tag from before
+      # admin/.nvmrc existed falls back to the version this workflow pinned then.
+      - name: Read Node version
+        id: node
+        run: echo "version=$(cat admin/.nvmrc 2>/dev/null || echo 24)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: ${{ steps.node.outputs.version }}
 
       - name: Install admin portal dependencies
         working-directory: ./admin
@@ -38,4 +44,4 @@ jobs:
           channelId: live
           target: admin
           entryPoint: .
-          firebaseToolsVersion: 15.32.0
+          firebaseToolsVersion: 15.34.0

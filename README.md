@@ -19,7 +19,7 @@ Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.j
 ## Prerequisites
 
 - [Flutter](https://docs.flutter.dev/get-started/install) 3.47.6. The version is set by `environment.flutter` in `app/pubspec.yaml`, which CI reads too. With [FVM](https://fvm.app), run `fvm install` in `app/` to get it (`app/.fvmrc`).
-- [Node.js](https://nodejs.org/) 22 (see `.nvmrc`)
+- [Node.js](https://nodejs.org/) 22 for the functions and scripts (`.nvmrc`), and 24 for the admin portal and the emulator tests (`admin/.nvmrc`, `emulator-tests/.nvmrc`), which the firebase web SDK needs. With [nvm](https://github.com/nvm-sh/nvm), run `nvm use` in each folder.
 - [Java](https://adoptium.net/) 21 or later, only for running the emulator tests
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`

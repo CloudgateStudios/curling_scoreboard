@@ -109,6 +109,9 @@ deploy workflows with the new tag.
 ## Dependencies
 
 Dependabot opens weekly grouped updates for every package and for the GitHub
-Actions, which are pinned to commit SHAs. The Flutter version is set in
+Actions, which are pinned to commit SHAs. It does not update two pins in the
+workflows: firebase-tools in the deploy workflows, which should match
+`emulator-tests/package.json`, and the Node versions, which every workflow
+reads from the `.nvmrc` of the product it builds. The Flutter version is set in
 `app/pubspec.yaml`, `app/.fvmrc` and the dev container; change all three
 together.
