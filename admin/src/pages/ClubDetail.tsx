@@ -14,6 +14,7 @@ import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
 import { WebhookSection } from '../components/club/WebhookSection';
 import { DisplaysSection } from '../components/club/DisplaysSection';
 import { DisplayBrandingSection } from '../components/club/DisplayBrandingSection';
+import { PublicScoresSection } from '../components/club/PublicScoresSection';
 import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import { BonspielsSection } from '../components/club/BonspielsSection';
@@ -201,7 +202,10 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
 
           <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
             <DisplaysSection clubId={resolvedClubId} sheets={sheets} bonspiels={bonspiels} onCount={setDisplayLinkCount} />
-            <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
+            <div className={styles.stack}>
+              <DisplayBrandingSection clubId={resolvedClubId} clubName={club.name} />
+              <PublicScoresSection clubId={resolvedClubId} />
+            </div>
           </div>
 
           {/* Every group stays mounted too, for the same reason. */}

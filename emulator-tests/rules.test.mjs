@@ -622,6 +622,28 @@ await check('attack: paired scoreboard reads the branding', 'deny', () =>
 await check('club admin: removes the branding', 'allow', () =>
   deleteDoc(doc(adminA, 'clubs/club-a/private/displayBranding')));
 
+// --- the public scores page's switch ---
+await check('club admin: turns the public scores page on', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/publicScores'), { enabled: true }));
+
+await check('club admin: reads whether the scores page is on', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/publicScores')));
+
+await check('attack: club admin stores something else with the switch', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/publicScores'), { enabled: true, extra: 1 }));
+
+await check('attack: club admin sets the switch to something other than true or false', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/publicScores'), { enabled: 'yes' }));
+
+await check('attack: club admin turns on another club\'s scores page', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/private/publicScores'), { enabled: true }));
+
+await check('attack: display turns on its club\'s scores page', 'deny', () =>
+  setDoc(doc(displayA, 'clubs/club-a/private/publicScores'), { enabled: true }));
+
+await check('attack: paired scoreboard reads the switch', 'deny', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/private/publicScores')));
+
 // --- bonspiel admins see the sheets and their games, and change nothing ---
 await check('bonspiel admin: read own club', 'allow', () =>
   getDoc(doc(bonspielA, 'clubs/club-a')));

@@ -58,6 +58,17 @@
   margin-bottom: 0;
 }
 
+/* Sections sharing a column. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stack > * {
+  margin-bottom: 0;
+}
+
 /* Settings: a list of groups beside the one being shown. */
 .settingsLayout {
   display: grid;

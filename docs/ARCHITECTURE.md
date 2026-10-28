@@ -93,6 +93,9 @@ clubs/{clubId}/private/displayBranding // the warm room screen's title bar; abse
   title?: string             // up to 60 characters, in place of "Live Scores"
   logo?: string              // a PNG, JPEG or WebP data URL, up to 250,000 characters
 
+clubs/{clubId}/private/publicScores // the public scores page's switch; absent when off
+  enabled: bool              // set by club admins in the portal
+
 clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   label: string              // up to 60 characters, e.g. "Warm room TV"
   secretHash: string         // SHA-256 of the token's secret, in hex, which sign-in checks
@@ -706,6 +709,39 @@ With more than one screen, each shows for `?every=` seconds (20 by default).
 The rewrite needs the `display` function to exist, so in a new project deploy
 the functions before the scoreboard's hosting.
 
+## Public scores page
+
+`/display/{clubId}/scores` is the club's scores for members' phones: every
+sheet with its game, the event (the bonspiel's name, otherwise the league's),
+end and hammer, a tap to see a game end by end, and the day's results grouped
+by draw as the warm room groups them. A club admin turns it on in the portal,
+which sets `private/publicScores`. It has no sign-in: anyone with the address
+can see it, team names included.
+
+So that its cost does not grow with the number of people watching, the page
+loads no Firebase. It polls JSON from the `display` function, which Hosting's
+CDN caches, so only a cache miss reaches the function and Firestore
+(`functions/src/display/scores.ts` builds the JSON from the display summary):
+
+| Path, under `/display/{clubId}/scores/` | What | Cache-Control |
+|---|---|---|
+| `live.json` | each sheet and what it shows now, about a kilobyte, and versions of the other two | `public, max-age=15, s-maxage=30` |
+| `results.json` | the day's finished games | `public, max-age=60, s-maxage=300` |
+| `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
+
+A club without the page turned on gets a 404 for each, cached for a minute.
+Express gives each response an ETag and answers a matching `If-None-Match`
+with a 304, so a poll that finds nothing new costs only headers. A cache miss
+reads the switch and the summary; the branding, which holds the logo, is
+kept in each function instance for five minutes.
+
+The page (`assets/scores.js`, its timing in `assets/scores-model.js`) polls
+`live.json` every 30 seconds while any sheet has a game, every 5 minutes while
+none does, not at all while it is hidden, and stops after 30 minutes without a
+tap, scroll or key until it is touched again. It fetches `results.json` only
+when `live.json`'s `resultsVersion` changes. A score can take up to about a
+minute to reach a phone.
+
 ## Rock colors
 
 The scoreboard is red and yellow out of the box: those two colors are built
@@ -987,9 +1023,9 @@ and Bonspiels; the other tabs are not mounted for them at all.
   knockout playoff ending in one final: first places meet the other pools'
   lowest qualifiers, and the best seeds get any byes. What either template
   makes is an ordinary plan, edited like any other.
-- **Displays**: the display links, and the warm room screen's title and logo.
-  A link can show the warm room, a sheet's score bug or one of the club's
-  bonspiels.
+- **Displays**: the display links, the warm room screen's title and logo, and
+  the switch for the public scores page, with its address. A link can show the
+  warm room, a sheet's score bug or one of the club's bonspiels.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
   - Scoreboards: the rock colors and the scoreboard admin PIN.
@@ -1146,6 +1182,12 @@ The scoreboard is built with WebAssembly and served cross-origin isolated
 (`Cross-Origin-Opener-Policy: same-origin`,
 `Cross-Origin-Embedder-Policy: credentialless`), with `Cache-Control:
 no-cache` so a reload always fetches the newest build. See `firebase.json`.
+
+Those headers are set on `/` and `/!(display){,/**}`, everything but
+`/display/**`. Hosting applies its header rules to rewritten responses too,
+replacing the function's own, so a rule that matched `/display/**` would stop
+the public scores page's JSON from being cached by the CDN. The `display`
+function sets its own Cache-Control on everything it serves.
 
 ## Environments
 

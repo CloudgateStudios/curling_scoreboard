@@ -29,6 +29,10 @@ import {
 import {
   RETRY_RELOAD_AFTER_MS, canReload, targetBuild, timeUntilNextDailyCheck,
 } from '../functions/lib/display/assets/update-model.js';
+import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
+import {
+  IDLE_PAUSE_MS, LIVE_POLL_MS, QUIET_POLL_MS, asSummaryResults, isIdle, pollDelay,
+} from '../functions/lib/display/assets/scores-model.js';
 
 const PROJECT_ID = 'demo-functions';
 const API_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/api/api/v1`;
@@ -1841,7 +1845,8 @@ describe('display pages', () => {
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
       ['link.js', /javascript/], ['link.css', /css/],
       ['bonspiel.js', /javascript/], ['bonspiel-model.js', /javascript/], ['bonspiel.css', /css/],
-      ['update-model.js', /javascript/],
+      ['update-model.js', /javascript/], ['game-view.js', /javascript/],
+      ['scores.js', /javascript/], ['scores-model.js', /javascript/], ['scores.css', /css/],
     ]) {
       const res = await fetch(`${PAGES_URL}/assets/${file}`);
       assert.equal(res.status, 200, file);
@@ -1867,6 +1872,210 @@ describe('display pages', () => {
       const res = await fetch(`${PAGES_URL}${path}`);
       assert.equal(res.status, 404, path);
     }
+  });
+});
+
+describe('the public scores page', () => {
+  const PAGES_URL = `http://127.0.0.1:5001/${PROJECT_ID}/us-central1/display/display`;
+  const clubId = 'scores-club';
+  const club = `clubs/${clubId}`;
+  const now = Date.now();
+  const at = (msAgo) => Timestamp.fromMillis(now - msAgo);
+  const minutes = 60 * 1000;
+  // A 1 by 1 PNG.
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const LOGO = `data:image/png;base64,${PNG}`;
+
+  const team = (name, hex, score, hasHammer) => ({
+    name, color: { name: 'Rock', hex }, score, hasHammer, hadLastStoneFirstEnd: false,
+  });
+  const ends = [
+    { endNumber: 1, scoringTeamSlot: 'team1', score: 2 },
+    { endNumber: 2, scoringTeamSlot: null, score: 0 },
+  ];
+  const result = {
+    gameId: 'g1', sheetId: 'c', sheetName: 'Sheet C',
+    startedAt: at(130 * minutes), finishedAt: at(5 * minutes), numberOfEnds: 8, endsPlayed: 8,
+    league: { name: 'Monday Night', draws: [{ day: 1, start: '18:30', end: '20:30' }] }, bonspiel: null,
+    team1: team('Galas', '#c62828', 6, null), team2: team('Kirchhoff', '#f9a825', 4, null),
+    ends: [{ endNumber: 8, scoringTeamSlot: 'team1', score: 1 }],
+  };
+  const summary = {
+    sheets: {
+      b: {
+        name: 'Sheet B',
+        live: {
+          updatedAt: at(1 * minutes), currentEnd: 3, numberOfEnds: 8,
+          league: null, bonspiel: { id: 'fall', name: 'Fall Spiel', gameId: 'A1' },
+          team1: team('Smith', '#2196F3', 2, false), team2: team('Jones', '#4CAF50', 0, true), ends,
+        },
+      },
+      a: {
+        name: 'Sheet A',
+        live: {
+          updatedAt: at(1 * minutes), currentEnd: 2, numberOfEnds: null, league: { name: 'Monday Night' },
+          bonspiel: null, team1: team('Lee', '#000000', 1, true), team2: team('Kim', '#ffffff', 0, false),
+          ends: null,
+        },
+      },
+      c: { name: 'Sheet C', live: null },
+      d: { name: 'Sheet D', live: null },
+      // A game whose scoreboard went away hours ago is not shown.
+      e: { name: 'Sheet E', live: { updatedAt: at(5 * 60 * minutes), currentEnd: 4, team1: team('X', '#000000', 0, true), team2: team('Y', '#000000', 0, false) } },
+    },
+    results: [result],
+  };
+
+  before(async () => {
+    await db.doc(club).set({ name: 'Scores Club' });
+    await db.doc(`${club}/private/displayState`).set(summary);
+    await db.doc(`${club}/private/displayBranding`).set({ title: 'Scores Club', logo: LOGO });
+    await db.doc(`${club}/private/publicScores`).set({ enabled: true });
+  });
+
+  test('shows every sheet in name order, with any kind of game', () => {
+    const live = scoresLive(summary, { title: 'Scores Club', logo: LOGO }, now);
+    assert.deepEqual(live.sheets.map((s) => [s.name, s.kind]), [
+      ['Sheet A', 'live'], ['Sheet B', 'live'], ['Sheet C', 'final'], ['Sheet D', 'idle'], ['Sheet E', 'idle'],
+    ]);
+    const [a, b, c, d] = live.sheets;
+    assert.equal(a.game.event, 'Monday Night');
+    assert.equal(b.game.event, 'Fall Spiel', 'a bonspiel game is named for its bonspiel');
+    assert.deepEqual(b.game, {
+      event: 'Fall Spiel', currentEnd: 3, numberOfEnds: 8,
+      team1: { name: 'Smith', color: '#2196F3', score: 2, hasHammer: false },
+      team2: { name: 'Jones', color: '#4CAF50', score: 0, hasHammer: true },
+      ends,
+    });
+    assert.equal(c.game.currentEnd, 8, 'a final score is at its last end');
+    assert.equal(c.game.team1.hasHammer, null, 'and has no hammer');
+    assert.equal(d.game, undefined);
+    assert.equal(live.title, 'Scores Club');
+    assert.equal(live.logo, `logo?v=${versionOf(LOGO)}`);
+    assert.equal(live.resultsVersion, versionOf(scoresResults(summary)));
+  });
+
+  test('leaves out what the phone does not show', () => {
+    const json = JSON.stringify(scoresLive(summary, {}, now));
+    for (const left of ['updatedAt', 'hadLastStoneFirstEnd', 'gameId', '"fall"', 'draws', 'startedAt', 'base64']) {
+      assert.ok(!json.includes(left), left);
+    }
+    assert.equal(scoresLive(summary, {}, now).title, null);
+    assert.equal(scoresLive(summary, {}, now).logo, null);
+    assert.deepEqual(scoresLive(null, null, now).sheets, []);
+  });
+
+  test('sends results with their draws, in milliseconds', () => {
+    const [r] = scoresResults(summary).results;
+    assert.deepEqual(r, {
+      sheetName: 'Sheet C', startedAt: now - 130 * minutes, finishedAt: now - 5 * minutes,
+      numberOfEnds: 8, endsPlayed: 8,
+      league: { name: 'Monday Night', draws: [{ day: 1, start: '18:30', end: '20:30' }] }, bonspiel: null,
+      team1: { name: 'Galas', color: '#c62828', score: 6 },
+      team2: { name: 'Kirchhoff', color: '#f9a825', score: 4 },
+    });
+    assert.deepEqual(scoresResults(undefined), { results: [] });
+  });
+
+  test('only shows raster logos', () => {
+    assert.equal(decodeLogo(LOGO).type, 'image/png');
+    assert.equal(decodeLogo('data:image/svg+xml;base64,PHN2Zz4='), null);
+    assert.equal(decodeLogo('https://example.com/logo.png'), null);
+    assert.equal(decodeLogo(undefined), null);
+  });
+
+  test('serves the page with no Firebase, never cached', async () => {
+    const res = await fetch(`${PAGES_URL}/${clubId}/scores`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    const csp = res.headers.get('content-security-policy');
+    assert.match(csp, /script-src 'self'(;|$)/);
+    assert.match(csp, /connect-src 'self'(;|$)/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/assets\/scores\.js"><\/script>/);
+    assert.match(html, /<link rel="stylesheet" href="\.\.\/assets\/scores\.css">/);
+  });
+
+  test('serves live.json for the CDN to keep, and 304 when nothing changed', async () => {
+    const res = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /^application\/json/);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=15, s-maxage=30');
+    assert.equal(res.headers.get('access-control-allow-origin'), null);
+    const etag = res.headers.get('etag');
+    assert.ok(etag, 'has an ETag');
+    const live = await res.json();
+    assert.equal(live.title, 'Scores Club');
+    assert.equal(live.sheets.length, 5);
+
+    const again = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`, { headers: { 'If-None-Match': etag } });
+    assert.equal(again.status, 304);
+    assert.equal(await again.text(), '');
+  });
+
+  test('serves results.json, kept longer', async () => {
+    const res = await fetch(`${PAGES_URL}/${clubId}/scores/results.json`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=300');
+    assert.equal((await res.json()).results[0].sheetName, 'Sheet C');
+  });
+
+  test('serves the logo as an image, kept for good at its own version', async () => {
+    const res = await fetch(`${PAGES_URL}/${clubId}/scores/logo?v=${versionOf(LOGO)}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+    assert.deepEqual(Buffer.from(await res.arrayBuffer()), Buffer.from(PNG, 'base64'));
+
+    const old = await fetch(`${PAGES_URL}/${clubId}/scores/logo?v=old`);
+    assert.equal(old.status, 200);
+    assert.equal(old.headers.get('cache-control'), 'public, max-age=60, s-maxage=300');
+  });
+
+  test('answers 404, cached briefly, for a club that has not turned it on', async () => {
+    await db.doc('clubs/scores-off').set({ name: 'Scores Off' });
+    await db.doc('clubs/scores-off/private/displayState').set(summary);
+    await db.doc('clubs/scores-off/private/publicScores').set({ enabled: false });
+    for (const path of ['live.json', 'results.json', 'logo']) {
+      for (const id of ['scores-off', 'scores-missing']) {
+        const res = await fetch(`${PAGES_URL}/${id}/scores/${path}`);
+        assert.equal(res.status, 404, `${id} ${path}`);
+        assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60', `${id} ${path}`);
+      }
+    }
+    assert.equal((await fetch(`${PAGES_URL}/club%3Cb%3E/scores/live.json`)).status, 404);
+  });
+});
+
+describe('how often the scores page polls', () => {
+  test('every half minute while any sheet has a game, every five while none do', () => {
+    assert.equal(pollDelay({ sheets: [{ kind: 'idle' }, { kind: 'live' }] }), LIVE_POLL_MS);
+    assert.equal(pollDelay({ sheets: [{ kind: 'final' }] }), LIVE_POLL_MS);
+    assert.equal(pollDelay({ sheets: [{ kind: 'idle' }] }), QUIET_POLL_MS);
+    assert.equal(pollDelay(null), QUIET_POLL_MS, 'and while it cannot tell');
+  });
+
+  test('stops once the phone has been left alone for half an hour', () => {
+    assert.equal(isIdle(0, IDLE_PAUSE_MS - 1), false);
+    assert.equal(isIdle(0, IDLE_PAUSE_MS), true);
+  });
+
+  test('reads results.json for the warm room\'s draws', () => {
+    const team = (name, score) => ({ name, color: '#c62828', score });
+    const results = asSummaryResults({
+      results: [
+        { sheetName: 'Sheet A', startedAt: 1000, finishedAt: 5000, endsPlayed: 6, numberOfEnds: 8,
+          league: null, bonspiel: { name: 'Fall Spiel' }, team1: team('A', 3), team2: team('B', 5) },
+        { sheetName: 'Sheet B', finishedAt: 'not a time' },
+      ],
+    });
+    assert.equal(results.length, 1, 'leaves out a result with no finish time');
+    assert.equal(results[0].finishedAt.toMillis(), 5000);
+    assert.equal(results[0].startedAt.toMillis(), 1000);
+    assert.deepEqual(results[0].team1.color, { hex: '#c62828' });
+    assert.equal(winnerOf(results[0]), 'team2');
+    assert.equal(endedOffSchedule(results[0]), true);
+    assert.deepEqual(asSummaryResults(null), []);
   });
 });
 
