@@ -9,7 +9,7 @@
 
 import { el, endLabel, isPlayedOut, textColorOn } from './game-view.js';
 import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
-import { asSummaryResults, isIdle, pollDelay } from './scores-model.js';
+import { asSummaryResults, isIdle, pollDelay, timeUntilDue } from './scores-model.js';
 
 // Ends a game shows before it is played, when it does not say how many.
 const DEFAULT_ENDS = 8;
@@ -40,6 +40,9 @@ let resultsVersion = null;
 let status = 'loading';
 let updatedAt = null;
 let timer = null;
+// A poll is under way. Another asked for meanwhile is left to it, so the
+// two never both fetch results.json.
+let polling = false;
 let lastActiveAt = Date.now();
 let isPaused = false;
 // The sheets shown end by end, by ID.
@@ -65,12 +68,13 @@ function schedule(ms) {
 
 async function poll() {
   clearTimeout(timer);
-  if (document.visibilityState === 'hidden') return;
+  if (polling || document.visibilityState === 'hidden') return;
   if (isIdle(lastActiveAt, Date.now())) {
     isPaused = true;
     render();
     return;
   }
+  polling = true;
   try {
     const next = await fetchJson('live.json');
     if (next.off) {
@@ -89,6 +93,8 @@ async function poll() {
   } catch (err) {
     console.warn('Scores could not be fetched', err);
     status = 'offline';
+  } finally {
+    polling = false;
   }
   render();
   schedule(pollDelay(live));
@@ -287,15 +293,17 @@ paused.addEventListener('click', wake);
 for (const type of ['pointerdown', 'keydown', 'scroll', 'touchstart']) {
   window.addEventListener(type, wake, { passive: true });
 }
-// Nothing is fetched while the page is hidden; showing it again catches up
-// straight away.
+// Nothing is fetched while the page is hidden. Showing it again catches up
+// straight away if a poll came due meanwhile, and otherwise waits out the
+// rest of the time.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     clearTimeout(timer);
   } else {
     lastActiveAt = Date.now();
     isPaused = false;
-    poll();
+    render();
+    schedule(timeUntilDue(live, updatedAt, Date.now()));
   }
 });
 
