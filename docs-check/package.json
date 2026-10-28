@@ -7,7 +7,7 @@
     "check": "node check.mjs"
   },
   "devDependencies": {
-    "mermaid": "11.4.1",
+    "mermaid": "11.17.2",
     "playwright": "1.63.0"
   }
 }
