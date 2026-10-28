@@ -11,6 +11,7 @@ bonspiels. It's a monorepo of products sharing one Firebase backend:
 | [`functions/`](functions/)           | Node.js + Express          | Callable functions, Firestore triggers, the REST API, the display pages and the public scores page |
 | [`scripts/`](scripts/)               | Node.js                    | Seeding dev, the first super admin, one-off migrations and backfills                               |
 | [`emulator-tests/`](emulator-tests/) | Node.js, Firebase emulators | Tests for `firestore.rules` and the functions                                                     |
+| [`docs-check/`](docs-check/)         | Node.js, Mermaid, Playwright | Checks that the Markdown's diagrams render and its links resolve                                |
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 
@@ -32,11 +33,14 @@ flowchart LR
 | Read                                         | For                                                                                         |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [docs/FEATURES.md](docs/FEATURES.md)         | What the system does, for everyone who uses it, in plain terms                              |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md)         | Curling terms for developers who don't curl, and the system's own terms                     |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it fits together: the system diagram, the life of a game, every Cloud Function, and a page for each area in [`docs/architecture/`](docs/architecture/) |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | PR conventions, the checks to run, spelling, scoreboard text, release-managed files, keeping these docs current |
 | Each folder's README                         | Running, checking and finding your way around that product                                  |
+| [docs/guides/](docs/guides/)                 | Step by step guides for club admins: scoreboards, screens, leagues, bonspiels, chat, members |
 | [API documentation](https://curlingscoreboard.app/api-docs/) | The REST API and webhook, for club integrations                             |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md)       | What changed in each release                                                                |
+| [CLAUDE.md](CLAUDE.md)                       | Guidance for Claude Code sessions working in the repo                                       |
 
 ---
 
@@ -186,6 +190,7 @@ Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curl
 | `functions/`                                                          | Build, lint                                                                             |
 | `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests and Cloud Functions tests against the emulators                   |
 | `scripts/`                                                            | Syntax check                                                                            |
+| Any Markdown file, or `docs-check/`                                   | Mermaid diagrams render, relative links and anchors resolve                             |
 
 Changing a workflow file runs the checks for the product it builds or deploys.
 

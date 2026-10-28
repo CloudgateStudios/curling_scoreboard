@@ -57,3 +57,12 @@ updates:
       scripts:
         patterns:
           - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/docs-check"
+    schedule:
+      interval: "weekly"
+    groups:
+      docs-check:
+        patterns:
+          - "*"

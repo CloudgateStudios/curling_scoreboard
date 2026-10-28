@@ -3,7 +3,8 @@
 What Curling Scoreboard does, in plain terms, for everyone who uses it: the
 players at the sheet, the club's staff, bonspiel coordinators, members
 following along, and the club's own systems. Each section links to how it
-works, in the [architecture docs](ARCHITECTURE.md).
+works, in the [architecture docs](ARCHITECTURE.md). New to curling? The [glossary](GLOSSARY.md)
+explains the terms.
 
 ## Feature map
 
@@ -112,7 +113,8 @@ Club admins run their club from the admin portal in a browser.
   and logo, and the switch for the public scores page.
 - **Integrations.** The club's API key, and where to post finished games.
 
-How it works: [Admin portal](architecture/admin-portal.md).
+How it works: [Admin portal](architecture/admin-portal.md). Step by step: the
+[guides for club admins](guides/).
 
 ## Bonspiels
 

@@ -14,7 +14,7 @@ How to make a change and get it shipped. Setup lives in the
   `test`, `ci`, `chore` or `revert`. CI rejects anything else.
 - The type decides whether the change shows up in the
   [changelog](docs/CHANGELOG.md): `feat`, `fix` and `test` do; the rest don't.
-- Fill in the PR template's Summary and Test Plan.
+- Fill in the PR template's Summary, Test Plan and Docs.
 
 ## Checks to run before pushing
 
@@ -50,6 +50,12 @@ npm run lint
 
 ```bash
 npm test
+```
+
+**Docs** (`docs-check/`, for any Markdown change)
+
+```bash
+npm run check
 ```
 
 Changing `firestore.rules` or a function? Add a case to `rules.test.mjs` or
@@ -110,7 +116,8 @@ Diagrams are [Mermaid](https://mermaid.js.org) blocks in the Markdown, which
 GitHub draws; check them in the PR's rich diff. In a label, quote the text
 (`A["..."]`), use `<br/>` for a line break, and avoid `*` and `_` in pairs,
 which Mermaid takes as Markdown emphasis. Text in diagrams is spell checked
-like the rest.
+like the rest. `docs-check/` renders every diagram and follows every
+relative link; run it before pushing a docs change.
 
 ## Generated and release-managed files
 
