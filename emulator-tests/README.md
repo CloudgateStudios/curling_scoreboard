@@ -6,9 +6,13 @@ Tests that run against the Firebase emulators:
   patterns still work and that the paths we intend to block stay blocked.
 - `functions.test.mjs` calls the Cloud Functions in `functions/` the way the
   scoreboard, the admin portal and API clients do.
+- `npm run test:smoke` runs `scripts/smoke-test-emulators.mjs`, which plays
+  a game through the functions with the
+  [upgrade smoke test](../docs/upgrade-smoke-test.md)'s script, so that
+  script is known to work before anyone points it at dev.
 
-Both run in the `Validate Firestore Rules and Functions` CI job whenever the
-rules, the functions or these tests change. The emulators start from the repo
+All three run in the `Validate Firestore Rules and Functions` CI job whenever the
+rules, the functions, these tests or the smoke test script change. The emulators start from the repo
 root's `firebase.json` and use `demo-` project IDs, so nothing reaches a real
 Firebase project.
 
@@ -17,9 +21,11 @@ Firebase project.
 ```sh
 npm install
 (cd ../functions && npm install)
-npm test                # both suites
+(cd ../scripts && npm install)
+npm test                # all three
 npm run test:rules      # rules only
 npm run test:functions  # builds functions/, then tests them
+npm run test:smoke      # builds functions/, then plays the smoke test game
 ```
 
 The emulators need a Java runtime (21 or later). macOS ships a stub `java`

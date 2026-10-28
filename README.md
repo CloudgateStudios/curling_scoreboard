@@ -37,6 +37,7 @@ flowchart LR
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it fits together: the system diagram, the life of a game, every Cloud Function, and a page for each area in [`docs/architecture/`](docs/architecture/) |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | PR conventions, the checks to run, spelling, scoreboard text, release-managed files, keeping these docs current |
 | Each folder's README                         | Running, checking and finding your way around that product                                  |
+| [docs/upgrade-smoke-test.md](docs/upgrade-smoke-test.md) | Checking dev after a Node, `firebase-tools` or Firebase SDK upgrade, before it goes to prod |
 | [docs/guides/](docs/guides/)                 | Step by step guides for club admins: scoreboards, screens, leagues, bonspiels, chat, members |
 | [API documentation](https://curlingscoreboard.app/api-docs/) | The REST API and webhook, for club integrations                             |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md)       | What changed in each release                                                                |
@@ -188,8 +189,8 @@ Opening a PR triggers the [validate_pr](https://github.com/CloudgateStudios/curl
 | `app/`                                                                | Formatting, analysis, web build, tests, Android release build, unused localized strings |
 | `admin/`                                                              | Type checking, lint, tests, build                                                       |
 | `functions/`                                                          | Build, lint                                                                             |
-| `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests and Cloud Functions tests against the emulators                   |
-| `scripts/`                                                            | Syntax check                                                                            |
+| `functions/`, `firestore.rules`, `firebase.json` or `emulator-tests/` | Firestore rules tests, Cloud Functions tests and the smoke test script against the emulators |
+| `scripts/`                                                            | Syntax check; the emulator tests too when the smoke test or its dependencies change     |
 | Any Markdown file, or `docs-check/`                                   | Mermaid diagrams render, relative links and anchors resolve                             |
 
 Changing a workflow file runs the checks for the product it builds or deploys.
@@ -205,6 +206,8 @@ Every push to `main` automatically deploys all three products to the live dev en
 | [deploy_web_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_web_dev.yaml)             | Flutter web app                   |
 | [deploy_admin_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_admin_dev.yaml)         | Admin portal                      |
 | [deploy_functions_dev](https://github.com/CloudgateStudios/curling_scoreboard/actions/workflows/deploy_functions_dev.yaml) | Cloud Functions + Firestore rules |
+
+After an upgrade to Node, `firebase-tools` or the Firebase SDKs, work through the [upgrade smoke test](docs/upgrade-smoke-test.md) on dev before releasing to prod.
 
 ### Prod
 

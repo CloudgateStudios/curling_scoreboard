@@ -4,9 +4,10 @@
   "type": "module",
   "description": "Tests for firestore.rules and the Cloud Functions, run against the Firebase emulators.",
   "scripts": {
-    "test": "npm run test:rules && npm run test:functions",
+    "test": "npm run test:rules && npm run test:functions && npm run test:smoke",
     "test:rules": "cd .. && firebase emulators:exec --only firestore --project demo-rules \"node emulator-tests/rules.test.mjs\"",
-    "test:functions": "npm run build --prefix ../functions && cd .. && firebase emulators:exec --only firestore,auth,functions --project demo-functions \"node --test emulator-tests/functions.test.mjs\""
+    "test:functions": "npm run build --prefix ../functions && cd .. && firebase emulators:exec --only firestore,auth,functions --project demo-functions \"node --test emulator-tests/functions.test.mjs\"",
+    "test:smoke": "npm run build --prefix ../functions && cd .. && firebase emulators:exec --only firestore,auth,functions --project demo-smoke \"node scripts/smoke-test-emulators.mjs\""
   },
   "dependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

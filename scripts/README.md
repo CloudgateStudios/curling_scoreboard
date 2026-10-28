@@ -15,7 +15,8 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node <script>.js  # prod
 ```
 
 They target `curling-scoreboard-dev` unless `FIREBASE_PROJECT_ID` says
-otherwise. CI only checks their syntax.
+otherwise. CI checks their syntax, and runs the smoke test against the
+emulators.
 
 | Script                          | What it does                                                          | When                                                  | Safe to re-run          |
 | ------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------- |
@@ -25,8 +26,9 @@ otherwise. CI only checks their syntax.
 | `backfill-scoreboard-claims.js` | Gives scoreboards paired before claims existed their claims           | Once a project, after the deploy that added claims    | Yes                     |
 | `backfill-scoreboard-pins.js`   | Gives every club without a scoreboard PIN a random one, and prints it | Once a project, after the deploy that added PINs      | Yes                     |
 | `backfill-display-state.js`     | Rewrites every club's display summary from its sheets and games       | Once a project, after the display functions were first deployed; again to repair a summary | Yes |
+| `smoke-test.mjs`                | Plays a short game as a scoreboard and checks it reaches every function that shows it | After an upgrade reaches dev; see the [upgrade smoke test](../docs/upgrade-smoke-test.md) | Leaves a test game each run |
 
-The last four went with past deploys. Each section below says why, for a new
+The four before it went with past deploys. Each section below says why, for a new
 project or for anyone wondering what they did.
 
 ## Seeding dev data
@@ -96,3 +98,24 @@ FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-display-state.js  # pr
 ```
 
 It writes every sheet as it is now, and the games finished in the last day for the warm room's earlier results, so it is safe to re-run.
+
+## Smoke testing an upgrade
+
+`smoke-test.mjs` pairs with a test sheet as a scoreboard would, plays a two
+end game, finishes it, and checks the REST API, the public scores page, the
+display summary and the completed game webhook all show it, then
+disconnects with the club's PIN. It is Part 4 of the
+[upgrade smoke test](../docs/upgrade-smoke-test.md), which says what each
+check proves and what to ask the club's admin for first:
+
+```bash
+cd scripts
+npm install
+PAIRING_CODE=<code> ADMIN_PIN=<pin> CLUB_API_KEY=<key> PUBLIC_SCORES=1 ADMIN=1 \
+  node smoke-test.mjs
+```
+
+`smoke-test-emulators.mjs` seeds a club on the emulators and runs the same
+script against it with every check on. CI runs it with the emulator tests,
+so the script keeps up with the app; run it locally with
+`npm run test:smoke` in `emulator-tests/`.

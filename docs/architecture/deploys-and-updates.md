@@ -42,6 +42,12 @@ flowchart LR
   `app/lib/src/version.dart`, and pushes the release commit and tag as the
   Release Bot GitHub App. Each prod workflow is then run by hand with that
   tag, checks it out exactly, and deploys it to `curling-scoreboard-prod`.
+- **Upgrades.** A new Node version, `firebase-tools` or major Firebase SDK
+  changes the runtime under every function at once, which the tests on a
+  pull request cannot see. Once it reaches dev, the
+  [upgrade smoke test](../upgrade-smoke-test.md) checks every function
+  runs on it, and plays a game through the deployed system, before it is
+  released to prod.
 
 The web and functions deploys also tell running clients that there is a new
 build, which is how scoreboards and display screens update themselves:
