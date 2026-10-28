@@ -14,7 +14,7 @@ How to make a change and get it shipped. Setup lives in the
   `test`, `ci`, `chore` or `revert`. CI rejects anything else.
 - The type decides whether the change shows up in the
   [changelog](docs/CHANGELOG.md): `feat`, `fix` and `test` do; the rest don't.
-- Fill in the PR template's Summary and Test Plan.
+- Fill in the PR template's Summary, Test Plan and Docs.
 
 ## Checks to run before pushing
 
