@@ -63,15 +63,18 @@ and `firestore.rules` with custom claims keeps clubs apart. Leagues have
 teams and weekly draws; bonspiels have events, draws, games, pools and
 standings, with results coming in from scoreboards. Cloud Functions already
 do anything a browser can't be trusted with, which is the same pattern
-payment webhooks need. See [ARCHITECTURE](ARCHITECTURE.md).
+payment webhooks need. Members can already follow every sheet on the public
+scores page, with no account. See [FEATURES](FEATURES.md) and
+[ARCHITECTURE](ARCHITECTURE.md).
 
 Missing:
 
 - Any notion of a **person**. Teams are names, and admins are the only
   accounts.
 - Money, orders, refunds, waivers, consent, and anything for minors.
-- A screen for members. The admin portal is for staff and the scoreboard is
-  for the ice.
+- A screen for members that knows who they are. The admin portal is for
+  staff, the scoreboard is for the ice, and the public scores page is the same
+  for everyone.
 
 ## Technical plan
 
@@ -164,7 +167,8 @@ The club's own website embeds the platform's pages:
 - League schedules, standings and results, and live scores.
 
 These need to look at home on a Squarespace or WordPress site, follow the
-club's colors, and work on a phone. They load from the platform, so a club
+club's colors, and work on a phone. Live scores can build on the public scores
+page. They load from the platform, so a club
 that later moves to a built-in site keeps the same pages.
 
 ### Everything else
