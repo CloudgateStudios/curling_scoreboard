@@ -1,18 +1,42 @@
 # Curling Scoreboard
 
-A platform for curling clubs to run and display live scoreboards, track game history, and manage scoring. It's built as a monorepo with three products sharing a Firebase backend:
+A platform for curling clubs to score games at the sheet, show them live on
+screens around the club and on members' phones, and run leagues and
+bonspiels. It's a monorepo of products sharing one Firebase backend:
 
-| Product      | Stack             | Purpose                               |
-| ------------ | ----------------- | ------------------------------------- |
-| `app/`       | Flutter           | Scoreboard app (web, mobile, desktop) |
-| `admin/`     | React + Vite      | Club and super-admin web portal       |
-| `functions/` | Node.js + Express | REST API and callable Cloud Functions |
+| Folder                               | Stack                      | What it is                                                                                         |
+| ------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| [`app/`](app/)                       | Flutter                    | The scoreboard on each sheet (web, mobile, desktop)                                                |
+| [`admin/`](admin/)                   | React + Vite               | The admin portal for super admins, club admins and bonspiel coordinators                           |
+| [`functions/`](functions/)           | Node.js + Express          | Callable functions, Firestore triggers, the REST API, the display pages and the public scores page |
+| [`scripts/`](scripts/)               | Node.js                    | Seeding dev, the first super admin, one-off migrations and backfills                               |
+| [`emulator-tests/`](emulator-tests/) | Node.js, Firebase emulators | Tests for `firestore.rules` and the functions                                                     |
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the data model, roles, pairing, syncing, the REST API and how scoreboards and display pages reload after a deploy
-- [CONTRIBUTING.md](CONTRIBUTING.md): PR conventions, the checks to run, spelling, scoreboard text and release-managed files
-- [API documentation](https://curlingscoreboard.app/api-docs/) for club integrations
+```mermaid
+flowchart LR
+  SB["Scoreboard app"] --> FB
+  AD["Admin portal"] --> FB
+  subgraph FB["Firebase"]
+    FS[("Firestore")]
+    CF["Cloud Functions"]
+  end
+  FB --> DP["Display screens<br/>score bug, warm room, bonspiel"]
+  FB --> PS["Public scores page"]
+  FB --> INT["REST API and webhook<br/>for the club's own systems"]
+```
+
+## Documentation
+
+| Read                                         | For                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [docs/FEATURES.md](docs/FEATURES.md)         | What the system does, for everyone who uses it, in plain terms                              |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it fits together: the system diagram, the life of a game, every Cloud Function, and a page for each area in [`docs/architecture/`](docs/architecture/) |
+| [CONTRIBUTING.md](CONTRIBUTING.md)           | PR conventions, the checks to run, spelling, scoreboard text, release-managed files, keeping these docs current |
+| Each folder's README                         | Running, checking and finding your way around that product                                  |
+| [API documentation](https://curlingscoreboard.app/api-docs/) | The REST API and webhook, for club integrations                             |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md)       | What changed in each release                                                                |
 
 ---
 
@@ -102,7 +126,8 @@ See [`emulator-tests/README.md`](emulator-tests/README.md) for what the tests co
 
 ## Seeding dev data
 
-A seed script populates the dev Firestore with realistic clubs, sheets, and game history.
+A seed script fills the dev Firestore with clubs, sheets, leagues and game
+history:
 
 ```bash
 cd scripts
@@ -110,64 +135,9 @@ npm install
 node seed-dev.js
 ```
 
-The script is **idempotent for clubs and sheets** — re-running it won't create duplicates there. Each run does add a new set of game documents, so run it once unless you want additional game history.
-
-To target a different project:
-
-```bash
-FIREBASE_PROJECT_ID=my-other-project node seed-dev.js
-```
-
-### Migrating API keys
-
-Club API keys live at `clubs/{clubId}/private/apiKey`, readable only by that club's admins. Older clubs kept the key on the club document itself, which any signed in client could read. After deploying the rules and functions that use the new location, run the one-off migration once per project. It gives every club a new key and deletes the old field:
-
-```bash
-cd scripts
-npm install
-node migrate-api-keys.js                                              # dev
-FIREBASE_PROJECT_ID=curling-scoreboard-prod node migrate-api-keys.js  # prod
-```
-
-### Backfilling scoreboard claims
-
-Pairing gives a scoreboard custom claims that let it read its club's settings. Scoreboards paired before that was added have none. After deploying the functions and rules that use the claims, run the one-off backfill once per project, so nobody has to pair again:
-
-```bash
-cd scripts
-npm install
-node backfill-scoreboard-claims.js                                              # dev
-FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-claims.js  # prod
-```
-
-Each scoreboard picks its claims up within the hour, the next time its sign in token refreshes.
-
-### Backfilling scoreboard PINs
-
-A scoreboard asks for its club's admin PIN before it disconnects, and a club without one cannot disconnect its scoreboards at all. New clubs are given a PIN when they are created. After deploying the functions and rules that use the PIN, run the one-off backfill once per project to give every older club a random four digit PIN:
-
-```bash
-cd scripts
-npm install
-node backfill-scoreboard-pins.js                                              # dev
-FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-scoreboard-pins.js  # prod
-```
-
-It prints each new PIN. Clubs that already have one keep it, so it is safe to re-run. Club admins can see and change their PIN in the admin portal.
-
-### Backfilling display summaries
-
-The score bug and warm room displays read one summary document per club, which the `syncDisplaySheet` and `syncDisplayResults` functions keep up to date. They only see sheets that change after they are deployed, so after deploying them run the one-off backfill once per project. It reuses the functions' compiled code, so build them first:
-
-```bash
-(cd functions && npm install && npm run build)
-cd scripts
-npm install
-node backfill-display-state.js                                              # dev
-FIREBASE_PROJECT_ID=curling-scoreboard-prod node backfill-display-state.js  # prod
-```
-
-It writes every sheet as it is now, and the games finished in the last day for the warm room's earlier results, so it is safe to re-run.
+See [`scripts/README.md`](scripts/README.md) for what it creates, how to point
+it at another project, and the one-off migrations and backfills that went with
+past deploys.
 
 ---
 
