@@ -204,6 +204,16 @@ service cloud.firestore {
         allow delete: if isClubAdmin(clubId);
       }
 
+      // Whether the club's public scores page, for members' phones, is on.
+      // Club admins switch it in the portal; the display function reads it
+      // with admin access, as the page has no sign-in. Club admins read it
+      // through the rule on private above.
+      match /private/publicScores {
+        allow create, update: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['enabled'])
+            && request.resource.data.enabled is bool;
+      }
+
       // The links the club's displays sign in with. Club admins see them in
       // the portal; the functions create, reset and remove them, since only a
       // hash of each token is kept and the token is shown once. Admins change

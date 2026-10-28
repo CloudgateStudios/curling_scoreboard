@@ -9,7 +9,15 @@
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
       "headers": [
         {
-          "source": "**",
+          "source": "/",
+          "headers": [
+            { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+            { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
+            { "key": "Cache-Control", "value": "no-cache" }
+          ]
+        },
+        {
+          "source": "/!(display){,/**}",
           "headers": [
             { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
             { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
