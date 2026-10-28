@@ -37,6 +37,7 @@ flowchart LR
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it fits together: the system diagram, the life of a game, every Cloud Function, and a page for each area in [`docs/architecture/`](docs/architecture/) |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | PR conventions, the checks to run, spelling, scoreboard text, release-managed files, keeping these docs current |
 | Each folder's README                         | Running, checking and finding your way around that product                                  |
+| [docs/guides/](docs/guides/)                 | Step by step guides for club admins: scoreboards, screens, leagues, bonspiels, chat, members |
 | [API documentation](https://curlingscoreboard.app/api-docs/) | The REST API and webhook, for club integrations                             |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md)       | What changed in each release                                                                |
 | [CLAUDE.md](CLAUDE.md)                       | Guidance for Claude Code sessions working in the repo                                       |

@@ -113,7 +113,8 @@ Club admins run their club from the admin portal in a browser.
   and logo, and the switch for the public scores page.
 - **Integrations.** The club's API key, and where to post finished games.
 
-How it works: [Admin portal](architecture/admin-portal.md).
+How it works: [Admin portal](architecture/admin-portal.md). Step by step: the
+[guides for club admins](guides/).
 
 ## Bonspiels
 
