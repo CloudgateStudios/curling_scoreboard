@@ -75,6 +75,8 @@ jobs:
               - 'firestore.rules'
               - 'firestore.indexes.json'
               - 'firebase.json'
+              - 'scripts/smoke-test*.mjs'
+              - 'scripts/package*.json'
               - '.github/workflows/validate_pr.yaml'
               - '.github/workflows/deploy_functions_*.yaml'
             scripts:
@@ -223,6 +225,7 @@ jobs:
           cache-dependency-path: |
             functions/package-lock.json
             emulator-tests/package-lock.json
+            scripts/package-lock.json
       # The Firestore emulator runs on Java.
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -238,6 +241,13 @@ jobs:
         run: npm run test:rules
       - name: Test Functions
         run: npm run test:functions
+      # The smoke test run after an upgrade, played on the emulators, so it
+      # is known to work before anyone points it at dev.
+      - name: Install Scripts Dependencies
+        working-directory: ./scripts
+        run: npm ci
+      - name: Test Smoke Test Script
+        run: npm run test:smoke
 
   validate_scripts:
     name: Validate Scripts
@@ -252,7 +262,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Check Syntax
-        run: for f in scripts/*.js; do node --check "$f"; done
+        run: for f in scripts/*.js scripts/*.mjs; do node --check "$f"; done
 
   # Renders every Mermaid diagram and follows every relative link in the
   # Markdown, which GitHub would otherwise show broken without a word.

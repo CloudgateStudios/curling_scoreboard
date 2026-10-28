@@ -8,9 +8,11 @@
     "backfill-scoreboard-claims": "node backfill-scoreboard-claims.js",
     "backfill-scoreboard-pins": "node backfill-scoreboard-pins.js",
     "set-super-admin": "node set-super-admin.js",
-    "backfill-display-state": "node backfill-display-state.js"
+    "backfill-display-state": "node backfill-display-state.js",
+    "smoke-test": "node smoke-test.mjs"
   },
   "dependencies": {
+    "firebase": "^13.1.0",
     "firebase-admin": "^14.0.0"
   }
 }
