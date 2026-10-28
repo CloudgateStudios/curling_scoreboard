@@ -32,6 +32,7 @@ flowchart LR
 | Read                                         | For                                                                                         |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [docs/FEATURES.md](docs/FEATURES.md)         | What the system does, for everyone who uses it, in plain terms                              |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md)         | Curling terms for developers who don't curl, and the system's own terms                     |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How it fits together: the system diagram, the life of a game, every Cloud Function, and a page for each area in [`docs/architecture/`](docs/architecture/) |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | PR conventions, the checks to run, spelling, scoreboard text, release-managed files, keeping these docs current |
 | Each folder's README                         | Running, checking and finding your way around that product                                  |

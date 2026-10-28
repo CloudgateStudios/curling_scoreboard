@@ -3,7 +3,8 @@
 What Curling Scoreboard does, in plain terms, for everyone who uses it: the
 players at the sheet, the club's staff, bonspiel coordinators, members
 following along, and the club's own systems. Each section links to how it
-works, in the [architecture docs](ARCHITECTURE.md).
+works, in the [architecture docs](ARCHITECTURE.md). New to curling? The [glossary](GLOSSARY.md)
+explains the terms.
 
 ## Feature map
 
