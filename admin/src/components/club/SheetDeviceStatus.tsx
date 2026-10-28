@@ -1,13 +1,8 @@
-import type { Timestamp } from 'firebase/firestore';
-import { deviceHealth } from '../../lib/deviceHealth';
+import { clockSkew, deviceHealth, formatTime, formatUtcOffset, shortBuild } from '../../lib/deviceHealth';
 import { formatAgo } from '../../lib/format';
 import type { Sheet } from '../../types';
 import common from '../../styles/common.module.css';
-import styles from './SheetDeviceStatus.module.css';
-
-// A device clock this far from the server's is worth pointing out, since game
-// times are stamped by the device.
-const CLOCK_SKEW_WARNING_MS = 2 * 60_000;
+import { DeviceDetails } from './DeviceDetails';
 
 interface Props {
   sheet: Sheet;
@@ -16,33 +11,10 @@ interface Props {
   now: Date;
 }
 
-function shortBuild(buildId: string): string {
-  return buildId.slice(0, 7);
-}
-
-function formatTime(time: Timestamp | undefined): string | null {
-  return time ? time.toDate().toLocaleString() : null;
-}
-
-function formatUtcOffset(minutes: number): string {
-  const sign = minutes < 0 ? '-' : '+';
-  const abs = Math.abs(minutes);
-  const mm = String(abs % 60).padStart(2, '0');
-  return `UTC${sign}${Math.floor(abs / 60)}:${mm}`;
-}
-
-function clockSkew(device: NonNullable<Sheet['device']>): string | null {
-  if (!device.clientTime || !device.lastSeenAt) return null;
-  const skewMs = device.clientTime.toMillis() - device.lastSeenAt.toMillis();
-  if (Math.abs(skewMs) < CLOCK_SKEW_WARNING_MS) return null;
-  const minutes = Math.round(Math.abs(skewMs) / 60_000);
-  return `${minutes}m ${skewMs > 0 ? 'ahead' : 'behind'}`;
-}
-
 /** The app version, check-in state and device details of a paired sheet's scoreboard. */
 export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
   const device = sheet.device;
-  const health = deviceHealth(sheet, deployedBuildId, now.getTime());
+  const health = deviceHealth(device, deployedBuildId, now.getTime());
 
   if (!device || !health) {
     return (
@@ -112,20 +84,7 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
         )}
         {skew && <span className={common.warningChip}>Clock {skew}</span>}
       </div>
-      <details className={styles.deviceDetails}>
-        <summary>Device details</summary>
-        <dl className={styles.deviceDetailList}>
-          {details.map(
-            ([label, value]) =>
-              value && (
-                <div key={label} style={{ display: 'contents' }}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ),
-          )}
-        </dl>
-      </details>
+      <DeviceDetails details={details} />
     </>
   );
 }

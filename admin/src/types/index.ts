@@ -190,6 +190,23 @@ export interface DisplayLink {
   createdAt?: Timestamp;
   /** Updated at most hourly, when a display starts with the link. */
   lastUsedAt?: Timestamp;
+  /** What the screen on this link last said about itself, or whichever
+   *  reported last when it is open on more than one. */
+  device?: DisplayStatus;
+}
+
+/** What a display page last said about itself: what a scoreboard reports,
+ *  apart from what a browser has no use for, plus the page it is on. All
+ *  self-reported, and pages from before reporting send none of it. */
+export interface DisplayStatus
+  extends Pick<
+    DeviceStatus,
+    | 'appVersion' | 'buildId' | 'userAgent' | 'screen' | 'timezone' | 'utcOffsetMinutes' | 'lastSeenAt'
+    | 'clientTime' | 'sessionStartedAt' | 'updateTargetBuildId' | 'lastReloadAttemptAt'
+  > {
+  page?: 'bug' | 'warm-room' | 'bonspiel' | 'link';
+  /** The score bug's sheet. */
+  sheetId?: string;
 }
 
 /** A part of a bonspiel with its own final and winner: "A Event", "Pool 2". */

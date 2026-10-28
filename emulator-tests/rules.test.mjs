@@ -36,6 +36,7 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, 'clubs/club-a/config/scoreboard'), {});
   await setDoc(doc(db, 'clubs/club-b/config/scoreboard'), {});
   await setDoc(doc(db, 'appConfig/scoreboard'), { buildId: 'abc123' });
+  await setDoc(doc(db, 'appConfig/displays'), { buildId: 'def456' });
   await setDoc(doc(db, 'clubs/club-b'), { name: 'Club B' });
   await setDoc(doc(db, 'clubs/club-b/private/apiKey'), { key: 'secret-b' });
   await setDoc(doc(db, 'clubs/club-a/private/displayState'), { sheets: {} });
@@ -467,6 +468,25 @@ await check('attack: display reads another link\'s settings', 'deny', () =>
 await check('attack: display changes what its link shows', 'deny', () =>
   updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), { settings: { page: 'warm-room', view: 'full' } }));
 
+await check('display: reports on itself to its own link', 'allow', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), {
+    device: { buildId: 'def456', appVersion: '0.2.0', page: 'bug', lastSeenAt: serverTimestamp() },
+  }));
+
+await check('attack: display reports on itself to another link', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-2'), { device: { buildId: 'def456' } }));
+
+await check('attack: display reports with something other than a map', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), { device: 'def456' }));
+
+await check('attack: display reports an oversized status', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), {
+    device: Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`field${i}`, i])),
+  }));
+
+await check('attack: display reports and renames its link', 'deny', () =>
+  updateDoc(doc(displayA, 'clubs/club-a/displayLinks/link-1'), { device: {}, label: 'Mine now' }));
+
 await check('club admin: points a link at a sheet\'s score bug', 'allow', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
     label: 'YouTube stream',
@@ -740,6 +760,12 @@ await check('attack: unauthenticated write to app config', 'deny', () =>
 
 await check('attack: signed in device writes app config', 'deny', () =>
   setDoc(doc(anon, 'appConfig/scoreboard'), { buildId: 'evil' }));
+
+await check('app config: display reads the deployed display build', 'allow', () =>
+  getDoc(doc(displayA, 'appConfig/displays')));
+
+await check('attack: display writes app config', 'deny', () =>
+  setDoc(doc(displayA, 'appConfig/displays'), { buildId: 'evil' }));
 
 await env.cleanup();
 

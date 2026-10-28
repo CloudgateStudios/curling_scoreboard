@@ -29,6 +29,10 @@ appConfig/scoreboard
   buildId: string            // commit SHA of the deployed web build
   deployedAt: timestamp
 
+appConfig/displays
+  buildId: string            // commit SHA of the deployed functions, and so
+  deployedAt: timestamp      // of the display pages
+
 clubs/{clubId}
   name: string
 
@@ -107,6 +111,22 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   }
   createdAt: timestamp
   lastUsedAt?: timestamp     // when a display last started with it, at most hourly
+  device?: {                 // what the screen on it last said about itself; the
+                             // last to report, when it is open on more than one
+    appVersion?: string      // release, from app/pubspec.yaml at the deploy
+    buildId?: string         // commit SHA; absent on local builds
+    page: 'bug' | 'warm-room' | 'bonspiel' | 'link'
+    sheetId?: string         // the score bug's sheet
+    lastSeenAt: timestamp    // server time of the report
+    sessionStartedAt: timestamp
+    clientTime: timestamp    // the device's own clock
+    userAgent: string
+    screen: { width: int, height: int, pixelRatio: number }
+    timezone: string
+    utcOffsetMinutes: int
+    updateTargetBuildId?: string
+    lastReloadAttemptAt?: timestamp
+  }
 
 clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
   rockColors?: {             // absent means red and yellow
@@ -289,8 +309,8 @@ admin scripts.
 | Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
 | Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else |
 | Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config`, `leagues`, and `bonspiels` with their state |
-| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`, `private/displayBranding`, and `bonspiels` with their state; read its own link |
-| Anyone               | —                                       | —                       | Read `appConfig/scoreboard`                                                           |
+| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`, `private/displayBranding`, and `bonspiels` with their state; read its own link and write its `device` |
+| Anyone               | —                                       | —                       | Read `appConfig/scoreboard` and `appConfig/displays`                                  |
 
 A scoreboard's claims only tell the rules which sheet to look at. Access to
 its sheet has always been decided by the sheet's `scoreboardUid`, and reading
@@ -469,9 +489,10 @@ games, are added by `scripts/backfill-display-state.js` (see the README), or
 by their next change.
 
 A display page loaded before final scores came from `results` looks for
-`lastGame`, so it shows no final score until it is reloaded. The pages do
-not reload themselves when the functions are deployed, so reload the club's
-screens after that deploy.
+`lastGame`, so it shows no final score until it is reloaded. Pages from
+before they reloaded themselves after a deploy (see
+[Reloading display pages after a functions deploy](#reloading-display-pages-after-a-functions-deploy))
+need reloading by hand once.
 
 ## Display links
 
@@ -909,6 +930,14 @@ is otherwise invisible because writes are fire and forget.
 The public REST API builds its sheet responses field by field, so none of
 this is exposed there.
 
+The display pages report on themselves the same way, to their display
+link's `device` field (`buildStatus` in `display.js`): once signed in, when
+the page is shown again, when it learns a new build has been deployed, and
+every 30 minutes. The Displays tab shows each link's version, whether it is
+open, and "Update pending" while its `buildId` differs from
+`appConfig/displays`. Screens are often switched off between events, so a
+link that has gone quiet is shown as not open rather than as a problem.
+
 ## Admin portal
 
 Routes depend on the signed in role:
@@ -1086,6 +1115,30 @@ builds, but only between games.
    that build again only after ten minutes, so it never reload loops.
 
 Native builds and local builds without a `BUILD_ID` skip all of this.
+
+## Reloading display pages after a functions deploy
+
+The display pages are left open for weeks too, and OBS never reloads a
+browser source, so they reload themselves onto new versions the same way.
+The pages are served by the `display` function, so it is the functions
+deploy that updates them.
+
+1. Each functions deploy writes the commit SHA to
+   `lib/display/assets/build.json`, which the function serves at
+   `/display/assets/build.json` and puts in each page's config as
+   `buildId`, with the release version from `app/pubspec.yaml` as
+   `appVersion`, and once deployed writes it to `appConfig/displays`.
+2. `watchForUpdates` in `display.js` listens to `appConfig/displays`. As a
+   fallback it fetches `build.json` whenever the page is shown again (as OBS
+   does when a scene comes back on) and daily at 1 AM local time.
+3. When the deployed ID differs from the running one, the warm room,
+   bonspiel and link pages reload straight away. The score bug waits until
+   its sheet has no game on screen, so it never blinks out on a stream.
+4. The same ten minute guard as the scoreboard's keeps a reload that does
+   not take from looping. A page that cannot write `localStorage` does not
+   reload at all.
+
+Local and emulator builds have no `build.json` and skip all of this.
 
 ## Hosting headers
 

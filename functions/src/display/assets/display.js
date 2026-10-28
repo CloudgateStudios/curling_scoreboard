@@ -9,11 +9,12 @@ import {
   initializeAuth, onAuthStateChanged, signInWithCustomToken, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  connectFirestoreEmulator, doc, getFirestore, onSnapshot,
+  connectFirestoreEmulator, doc, getFirestore, onSnapshot, serverTimestamp, updateDoc,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {
   connectFunctionsEmulator, getFunctions, httpsCallable,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js';
+import { canReload, targetBuild, timeUntilNextDailyCheck } from './update-model.js';
 
 /** What the display function put in the page. */
 export const config = JSON.parse(document.getElementById('display-config').textContent);
@@ -141,6 +142,126 @@ export function followLink(settings) {
   location.replace(target.href);
 }
 
+const UPDATE_ATTEMPT_KEY = 'displayUpdateAttempt';
+
+function lastReloadAttempt() {
+  try {
+    return JSON.parse(localStorage.getItem(UPDATE_ATTEMPT_KEY));
+  } catch {
+    return null;
+  }
+}
+
+/** The build ID in build.json, which the deploy puts beside these files. */
+async function fetchDeployedBuildId() {
+  // The query string and no-store both keep any cache from answering.
+  const url = new URL(`build.json?t=${Date.now()}`, import.meta.url);
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) return null;
+  return (await res.json())?.buildId ?? null;
+}
+
+/**
+ * Watches for a newer deployment of the display pages and reloads onto it
+ * once readyToUpdate says nothing on screen would be lost. A display is
+ * left open for weeks, and OBS never reloads a browser source by itself.
+ * Mirrors UpdateService in the app: the deploy writes the new build ID to
+ * appConfig/displays, which the page listens to (see connect), and as a
+ * fallback build.json is fetched at 1 AM and whenever the page is shown
+ * again. onTargetChange is told when the build waiting to load changes.
+ * Returns { onDeployedBuildId, targetBuildId }, or null for builds without
+ * a build ID (local and emulator builds), which never update.
+ */
+function watchForUpdates(readyToUpdate, onTargetChange) {
+  if (!config.buildId) return null;
+  let target = null;
+
+  function reloadIfReady() {
+    if (!canReload(target, lastReloadAttempt(), Date.now()) || !readyToUpdate()) return;
+    // Recorded first, so a reload that does not take is not tried again
+    // straight away. Without storage there is no telling, so no reload.
+    try {
+      localStorage.setItem(UPDATE_ATTEMPT_KEY, JSON.stringify({ target, at: Date.now() }));
+    } catch {
+      return;
+    }
+    location.reload();
+  }
+
+  function onDeployedBuildId(buildId) {
+    const previous = target;
+    target = targetBuild(config.buildId, buildId);
+    if (target !== previous) onTargetChange();
+    reloadIfReady();
+  }
+
+  async function checkNow() {
+    try {
+      onDeployedBuildId(await fetchDeployedBuildId());
+    } catch (err) {
+      console.warn('Display could not check for a new version', err);
+    }
+  }
+
+  (function scheduleDailyCheck() {
+    setTimeout(() => {
+      checkNow();
+      scheduleDailyCheck();
+    }, timeUntilNextDailyCheck(new Date()));
+  })();
+  // OBS shows a source again when its scene comes back on.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkNow();
+  });
+  // A page that was busy when the build came in reloads once it is not.
+  setInterval(() => {
+    if (target) reloadIfReady();
+  }, 60_000);
+
+  return { onDeployedBuildId, targetBuildId: () => target };
+}
+
+// How often a display reports on itself between other reports. Matches
+// Constants.deviceStatusHeartbeat in the app, which the portal's offline
+// limit allows for.
+const STATUS_HEARTBEAT_MS = 30 * 60_000;
+
+// Start of this run of the page. If it keeps moving, the display is
+// reloading or crashing.
+const sessionStartedAt = new Date();
+
+/**
+ * What goes in the display link's `device` field: what is running on this
+ * screen and whether it has an update waiting. Mirrors buildStatus in the
+ * app's DeviceStatusService, which reports the same for a scoreboard, apart
+ * from what a browser source has no use for. Everything in it is
+ * self-reported, so it is for display only. Values that do not apply are
+ * left out, since Firestore takes no undefined.
+ */
+function buildStatus(updates) {
+  const now = new Date();
+  const lastAttempt = lastReloadAttempt();
+  const target = updates?.targetBuildId();
+  const status = {
+    // Server time, so the portal can trust it.
+    lastSeenAt: serverTimestamp(),
+    page: config.page,
+    userAgent: navigator.userAgent,
+    screen: { width: innerWidth, height: innerHeight, pixelRatio: devicePixelRatio },
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    utcOffsetMinutes: -now.getTimezoneOffset(),
+    // Compared with lastSeenAt, this shows a wrong clock.
+    clientTime: now,
+    sessionStartedAt,
+  };
+  if (config.appVersion) status.appVersion = config.appVersion;
+  if (config.buildId) status.buildId = config.buildId;
+  if (config.sheetId) status.sheetId = config.sheetId;
+  if (target) status.updateTargetBuildId = target;
+  if (typeof lastAttempt?.at === 'number') status.lastReloadAttemptAt = new Date(lastAttempt.at);
+  return status;
+}
+
 const RETRY_MIN_MS = 5_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
@@ -152,13 +273,20 @@ const RETRY_MAX_MS = 5 * 60_000;
  * null when it has none, and onLink the display link's settings, or null
  * once the link is removed. Each of extraDocs, { what, path, on }, has `on`
  * called with the club's document at `path`, relative to the club, or null
- * while there is none. Each is optional; the first of onSummary and
- * onLink given is the one the page needs, whose failures are retried.
+ * while there is none. readyToUpdate says whether the page can reload onto
+ * a newer version now (see watchForUpdates); without it, it always can.
+ * Each is optional; the first of onSummary and onLink given is the one the
+ * page needs, whose failures are retried.
  *
  * A display is left running for weeks, so every failure is retried, apart
  * from a link the server has refused, which needs someone to fix the URL.
  */
-export function connect({ onSummary, onStatus, onBranding, onLink, extraDocs = [] }) {
+export function connect({
+  onSummary, onStatus, onBranding, onLink, extraDocs = [], readyToUpdate = () => true,
+}) {
+  // Set once signed in, so the display can report on itself to its link.
+  let reportStatus = () => {};
+  const updates = watchForUpdates(readyToUpdate, () => reportStatus());
   const token = linkToken();
   if (!token) {
     onStatus('no-link');
@@ -221,6 +349,8 @@ export function connect({ onSummary, onStatus, onBranding, onLink, extraDocs = [
         await signInWithCustomToken(auth, session.data.token);
       }
       listen();
+      reportStatus = sendStatus;
+      sendStatus();
     } catch (err) {
       if (err?.code === 'functions/permission-denied' || err?.code === 'functions/invalid-argument') {
         onStatus('bad-link');
@@ -249,6 +379,11 @@ export function connect({ onSummary, onStatus, onBranding, onLink, extraDocs = [
       },
       onBranding && { what: 'branding', ref: doc(db, ...club, 'private', 'displayBranding'), on: onBranding },
       ...extraDocs.map(({ what, path, on }) => ({ what, ref: doc(db, ...club, ...path), on })),
+      updates && {
+        what: 'build',
+        ref: doc(db, 'appConfig', 'displays'),
+        on: (deployed) => updates.onDeployedBuildId(deployed?.buildId),
+      },
     ].filter(Boolean);
     const [main, ...rest] = watched;
     const dataOf = (snap) => (snap.exists() ? snap.data() : null);
@@ -274,6 +409,20 @@ export function connect({ onSummary, onStatus, onBranding, onLink, extraDocs = [
       retryLater();
     });
   }
+
+  // Overwrites the link's `device` field, as a scoreboard does its sheet's,
+  // so the portal can show what each screen is running. A link opened on
+  // more than one screen shows whichever reported last.
+  function sendStatus() {
+    updateDoc(doc(db, 'clubs', config.clubId, 'displayLinks', linkId), { device: buildStatus(updates) })
+      .catch((err) => console.warn('Display could not report its status', err));
+  }
+
+  setInterval(() => reportStatus(), STATUS_HEARTBEAT_MS);
+  // OBS shows a source again when its scene comes back on.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reportStatus();
+  });
 
   // A removed link's user can no longer renew its sign-in, so it is signed
   // out; start again, which reports the link as no longer valid.
