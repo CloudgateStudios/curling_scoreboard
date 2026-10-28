@@ -1,4 +1,5 @@
 appspot
+autonumber
 bonspieladmin
 clubadmin
 cupertino
@@ -9,6 +10,7 @@ gstatic
 iamcredentials
 ltrb
 maxage
+mindmap
 nosniff
 notmain
 nums
