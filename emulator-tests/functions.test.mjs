@@ -2004,9 +2004,15 @@ describe('the public scores page', () => {
     assert.equal(res.headers.get('access-control-allow-origin'), null);
     const etag = res.headers.get('etag');
     assert.ok(etag, 'has an ETag');
-    const live = await res.json();
+    const body = await res.text();
+    const live = JSON.parse(body);
     assert.equal(live.title, 'Scores Club');
     assert.equal(live.sheets.length, 5);
+
+    // The same data always makes the same body, and so the same ETag.
+    const second = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`);
+    assert.equal(await second.text(), body);
+    assert.equal(second.headers.get('etag'), etag);
 
     const again = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`, { headers: { 'If-None-Match': etag } });
     assert.equal(again.status, 304);

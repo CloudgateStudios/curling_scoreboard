@@ -108,6 +108,18 @@ function liveTeam(t: DisplayTeam, live: boolean): ScoresLiveTeam {
   return { ...team(t), hasHammer: live ? t.hasHammer : null };
 }
 
+// Maps come back from Firestore with their fields in no set order, so
+// everything sent is built afresh, field by field. The same data then always
+// makes the same JSON, and so the same ETag, which is what lets a poll that
+// finds nothing new be answered with a 304.
+function endsOf(ends: DisplayEnd[] | null): DisplayEnd[] | null {
+  return ends && ends.map((e) => ({ endNumber: e.endNumber, scoringTeamSlot: e.scoringTeamSlot, score: e.score }));
+}
+
+function drawsOf(draws: DisplayLeagueDraw[]): DisplayLeagueDraw[] {
+  return draws.map((d) => ({ day: d.day, start: d.start, end: d.end }));
+}
+
 /** The day's results for results.json, the latest first, as in the summary. */
 export function scoresResults(summary: DisplaySummary | null | undefined): ScoresResults {
   return {
@@ -117,7 +129,7 @@ export function scoresResults(summary: DisplaySummary | null | undefined): Score
       finishedAt: r.finishedAt.toMillis(),
       numberOfEnds: r.numberOfEnds,
       endsPlayed: r.endsPlayed,
-      league: r.league && { name: r.league.name, draws: r.league.draws },
+      league: r.league && { name: r.league.name, draws: drawsOf(r.league.draws ?? []) },
       bonspiel: r.bonspiel && { name: r.bonspiel.name },
       team1: team(r.team1),
       team2: team(r.team2),
@@ -153,7 +165,7 @@ export function scoresLive(
           numberOfEnds: game.numberOfEnds,
           team1: liveTeam(game.team1, live),
           team2: liveTeam(game.team2, live),
-          ends: game.ends,
+          ends: endsOf(game.ends),
         },
       };
     });
