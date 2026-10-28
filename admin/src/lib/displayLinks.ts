@@ -4,7 +4,7 @@ export type DisplayView = 'totals' | 'full' | 'cycle';
  *  event's bracket, or all of them in turn. */
 export type BonspielView = 'now' | 'schedule' | 'brackets' | 'cycle';
 /** What the score bug's caption names. */
-export type BugLabel = 'sheet' | 'league' | 'none';
+export type BugLabel = 'sheet' | 'league' | 'both' | 'none';
 /** Which side of the score bug the end box sits on. */
 export type BugEndSide = 'left' | 'right';
 
@@ -124,6 +124,7 @@ export function describeSettings(
     const parts = [`Score bug for ${(s.sheetId && sheetName(s.sheetId)) ?? 'a removed sheet'}`];
     if (s.scale !== undefined && s.scale !== 1) parts.push(`${s.scale}× size`);
     if (s.label === 'league') parts.push('league name');
+    if (s.label === 'both') parts.push('league and sheet names');
     if (s.label === 'none') parts.push('no name');
     if (s.end === 'left') parts.push('end on the left');
     return parts.join(', ');
