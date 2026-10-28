@@ -23,8 +23,8 @@ body {
   display: none !important;
 }
 
-/* The teams on the left, the end in a box on the right spanning both, and
-   an optional caption across the bottom. */
+/* The teams on the left, the end in a box on the right spanning both (or
+   on the left, with end=left), and an optional caption across the bottom. */
 .bug {
   display: inline-grid;
   grid-template-columns: minmax(0, 1fr) 4rem;
@@ -105,6 +105,22 @@ body {
   background: rgba(255, 255, 255, 0.12);
   border-left: 1px solid rgba(255, 255, 255, 0.14);
   text-align: center;
+}
+
+.bug.end-left {
+  grid-template-columns: 4rem minmax(0, 1fr);
+}
+
+.end-left .end {
+  grid-row: 1;
+  grid-column: 1;
+  border-left: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.end-left .teams {
+  grid-row: 1;
+  grid-column: 2;
 }
 
 .end-label {

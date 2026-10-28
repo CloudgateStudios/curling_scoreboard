@@ -470,7 +470,12 @@ await check('attack: display changes what its link shows', 'deny', () =>
 await check('club admin: points a link at a sheet\'s score bug', 'allow', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
     label: 'YouTube stream',
-    settings: { page: 'bug', sheetId: 'sheet-paired', scale: 1.5, label: 'league' },
+    settings: { page: 'bug', sheetId: 'sheet-paired', scale: 1.5, label: 'league', end: 'left' },
+  }));
+
+await check('attack: club admin puts the score bug\'s end somewhere other than left or right', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'bug', sheetId: 'sheet-paired', end: 'top' },
   }));
 
 await check('club admin: points a link at the warm room, cycling', 'allow', () =>

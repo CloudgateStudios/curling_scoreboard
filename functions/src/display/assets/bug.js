@@ -6,6 +6,8 @@
 //   scale=1.5          size, from 0.5 to 4
 //   label=league       what the caption under the bug names: sheet
 //                      (default), league or none, which leaves it off
+//   end=left           put the end box left of the names, rather than
+//                      right of the scores
 //   preview            while setting up: show an outlined placeholder of the
 //                      same size while the sheet has no game, instead of
 //                      nothing, so the bug can be placed in OBS between draws
@@ -19,10 +21,12 @@ const params = new URLSearchParams(location.search);
 const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
 const label = ['sheet', 'league', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
 const preview = params.has('preview') && params.get('preview') !== '0';
+const endLeft = params.get('end') === 'left';
 document.documentElement.style.setProperty('--scale', String(scale));
 
 const root = document.getElementById('display');
 const bug = el('div', 'bug hidden');
+bug.classList.toggle('end-left', endLeft);
 const status = el('p', 'status hidden');
 root.append(bug, status);
 

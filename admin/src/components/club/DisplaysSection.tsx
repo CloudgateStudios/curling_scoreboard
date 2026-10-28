@@ -5,7 +5,7 @@ import { db, functions, scoreboardSiteUrl } from '../../lib/firebase';
 import {
   DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayPreviewUrl, displayUrl,
   settingsToSave,
-  type BonspielView, type BugLabel, type DisplaySettings, type DisplayView,
+  type BonspielView, type BugEndSide, type BugLabel, type DisplaySettings, type DisplayView,
 } from '../../lib/displayLinks';
 import { errorMessage, formatAgo } from '../../lib/format';
 import type { Bonspiel, DisplayLink, Sheet } from '../../types';
@@ -195,6 +195,11 @@ const BUG_LABELS: { value: BugLabel; label: string }[] = [
   { value: 'sheet', label: 'The sheet name' },
   { value: 'league', label: 'The league name' },
   { value: 'none', label: 'None, for the smallest bug' },
+];
+
+const END_SIDES: { value: BugEndSide; label: string }[] = [
+  { value: 'right', label: 'Right of the scores' },
+  { value: 'left', label: 'Left of the names' },
 ];
 
 const VIEWS: { value: DisplayView; label: string }[] = [
@@ -437,6 +442,16 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
                   onChange={(e) => setSettings({ ...settings, label: e.target.value as BugLabel })}
                 >
                   {BUG_LABELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </label>
+              <label className={styles.field}>
+                End
+                <select
+                  className={common.input}
+                  value={settings.end ?? 'right'}
+                  onChange={(e) => setSettings({ ...settings, end: e.target.value as BugEndSide })}
+                >
+                  {END_SIDES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
               </label>
             </div>
