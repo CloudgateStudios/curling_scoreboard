@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version-file: admin/.nvmrc
+          node-version-file: .nvmrc
 
       - name: Install admin portal dependencies
         working-directory: ./admin

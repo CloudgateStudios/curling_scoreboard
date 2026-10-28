@@ -3,14 +3,11 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  // Node for admin/, functions/ and the scripts: 22 by default, for the
-  // functions and scripts, and 24 for admin/ and emulator-tests/, which
-  // `nvm use` picks up from their .nvmrc. Java for the Firebase emulators
-  // used by emulator-tests/.
+  // Node for admin/, functions/ and the scripts; Java for the Firebase
+  // emulators used by emulator-tests/.
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "22",
-      "additionalVersions": "24"
+      "version": "24"
     },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "21"
