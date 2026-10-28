@@ -5,7 +5,7 @@ rules cannot allow, Firestore triggers that keep summaries and bonspiel state
 up to date and post the webhook, and two Express apps served on the
 scoreboard's site through Hosting rewrites: the REST API at `/api/**` and the
 display pages at `/display/**`. They run as 2nd gen functions in
-`us-central1`, on Node 22.
+`us-central1`, on Node 24.
 
 The full list of functions, what fires each and who may call it, is in
 [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#cloud-functions).

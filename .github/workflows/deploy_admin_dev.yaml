@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version-file: .nvmrc
 
       - name: Install admin portal dependencies
         working-directory: ./admin
@@ -38,4 +38,4 @@ jobs:
           channelId: live
           target: admin
           entryPoint: .
-          firebaseToolsVersion: 15.32.0
+          firebaseToolsVersion: 15.34.0

@@ -47,7 +47,7 @@ flowchart LR
 ## Prerequisites
 
 - [Flutter](https://docs.flutter.dev/get-started/install) 3.47.6. The version is set by `environment.flutter` in `app/pubspec.yaml`, which CI reads too. With [FVM](https://fvm.app), run `fvm install` in `app/` to get it (`app/.fvmrc`).
-- [Node.js](https://nodejs.org/) 22 (see `.nvmrc`)
+- [Node.js](https://nodejs.org/) 24 (see `.nvmrc`), for everything: the functions run on it in production too
 - [Java](https://adoptium.net/) 21 or later, only for running the emulator tests
 - [Firebase CLI](https://firebase.google.com/docs/cli) — `npm install -g firebase-tools`
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) — for local credentials via `gcloud`
