@@ -170,14 +170,27 @@ Two templates fill in a plan for the coordinator, in the portal's template
 dialog. Both are in `admin/src/lib/bonspielTemplates.ts`.
 
 The knockout template fills a bonspiel in from scratch: up to 64 teams in
-one to four events, with the losers of each A round dropping to the next
-event (the usual club format) or every loss dropping a team one event (a
-triple knockout). Each event is built round by round, as teams reach it,
+one to four events. Where losers go is one of three rules:
+
+- **Four event, by size**, the draw clubs have long laid out by hand and the
+  default: A's losers, earliest first, fill B to half the field and then C to
+  a quarter, and B's earliest losers fill D to a quarter. Any other loss ends
+  a team's bonspiel. With B, C and D filling early, every final can be played
+  in the last draw.
+- **By A round**: A round 1's losers make up B, round 2's C, and so on. A loss
+  in any other event ends a team's bonspiel.
+- **Down one event**: a loss in any event drops a team to the next, A to B
+  and B to C, and a loss in the last ends it: the triple knockout.
+
+The loser of an event's final is its runner up and goes nowhere. Each event
+is built round by round, as teams reach it,
 with byes for the teams listed first once no more are coming, so no team
 has two. `knockoutPlan` in `admin/src/lib/bonspielTemplates.ts` then places
 the games in draws, those whose teams have waited longest first, never
 before the games they come from, never with a team twice in a draw and,
-where other games can fill the draw, not in the draw right after them.
+where other games can fill the draw, not in the draw right after them. Draws
+start at the first draw's time and are spaced by the minutes between draws;
+each later day starts at its own time and stops by the last draw's.
 
 The pools template, `poolsPlan`, splits the teams into up to eight pools,
 each a round robin, and sends the top one to three of each pool to a
