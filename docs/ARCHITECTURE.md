@@ -102,6 +102,7 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
     every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
     scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
     label?: 'sheet' | 'league' | 'none'  // the score bug's caption; sheet when absent
+    end?: 'left' | 'right'   // the side of the score bug its end box is on; right when absent
     earlier?: bool           // the warm room's earlier results beside the sheets; not when absent
   }
   createdAt: timestamp
@@ -487,7 +488,7 @@ https://curlingscoreboard.app/display/{clubId}#k=<token>
 
 That URL never has to change, because a link also says what its screens
 show, in `settings`: the warm room with its view, or a sheet's score bug
-with its size and caption. A new link shows the warm room's totals.
+with its size, caption and end side. A new link shows the warm room's totals.
 Club admins change the settings, and the link's name, in the portal, which
 writes them directly; the rules hold them to what the pages understand.
 The page at the link's URL reads its own link (the rules let a display read
@@ -581,7 +582,8 @@ live game, and the end (or Final) in a box beside the scores, as large as
 they are, and hides itself while the sheet is idle. A name too long for its
 row shrinks to 80% before it is cut short. `?scale=` (0.5 to 4) sizes it,
 and `?label=league` or `?label=none` changes or removes the sheet name in
-the caption under it. `?preview` is for setting it up: while the sheet has
+the caption under it, and `?end=left` moves the end box to the left of the
+names. `?preview` is for setting it up: while the sheet has
 no game it shows a faded, outlined stand-in at the bug's real size instead of nothing, so it can be placed in OBS between draws. A link's
 own URL carries `?preview` on to the page it opens, and the portal's
 Preview button opens a link that way.

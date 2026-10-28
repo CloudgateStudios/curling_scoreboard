@@ -25,10 +25,13 @@ describe('displayPreviewUrl', () => {
 describe('settingsToSave', () => {
   test('keeps a score bug\'s sheet and options, without the defaults', () => {
     assert.deepEqual(
-      settingsToSave({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'league', view: 'full' }),
-      { page: 'bug', sheetId: 's2', scale: 1.5, label: 'league' },
+      settingsToSave({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'league', end: 'left', view: 'full' }),
+      { page: 'bug', sheetId: 's2', scale: 1.5, label: 'league', end: 'left' },
     );
-    assert.deepEqual(settingsToSave({ page: 'bug', sheetId: 's2', scale: 1, label: 'sheet' }), { page: 'bug', sheetId: 's2' });
+    assert.deepEqual(
+      settingsToSave({ page: 'bug', sheetId: 's2', scale: 1, label: 'sheet', end: 'right' }),
+      { page: 'bug', sheetId: 's2' },
+    );
   });
 
   test('a score bug with no sheet falls back to the warm room', () => {
@@ -62,8 +65,8 @@ describe('describeSettings', () => {
   test('names the score bug\'s sheet and options', () => {
     assert.equal(describeSettings({ page: 'bug', sheetId: 's2' }, sheetName), 'Score bug for Sheet 2');
     assert.equal(
-      describeSettings({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'league' }, sheetName),
-      'Score bug for Sheet 2, 1.5× size, league name',
+      describeSettings({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'league', end: 'left' }, sheetName),
+      'Score bug for Sheet 2, 1.5× size, league name, end on the left',
     );
     assert.equal(describeSettings({ page: 'bug', sheetId: 'gone' }, sheetName), 'Score bug for a removed sheet');
   });

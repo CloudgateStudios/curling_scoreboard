@@ -106,6 +106,7 @@ export function linkPageUrl(settings) {
     path = `${club}/sheets/${encodeURIComponent(settings.sheetId)}/bug`;
     if (settings.scale && settings.scale !== 1) query.set('scale', String(settings.scale));
     if (settings.label && settings.label !== 'sheet') query.set('label', settings.label);
+    if (settings.end === 'left') query.set('end', 'left');
   } else {
     path = `${club}/warm-room`;
     if (settings?.view && settings.view !== 'totals') query.set('view', settings.view);

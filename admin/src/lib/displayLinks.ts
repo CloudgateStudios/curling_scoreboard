@@ -5,6 +5,8 @@ export type DisplayView = 'totals' | 'full' | 'cycle';
 export type BonspielView = 'now' | 'schedule' | 'brackets' | 'cycle';
 /** What the score bug's caption names. */
 export type BugLabel = 'sheet' | 'league' | 'none';
+/** Which side of the score bug the end box sits on. */
+export type BugEndSide = 'left' | 'right';
 
 /**
  * What a display link's screens show. Matches isDisplaySettings in
@@ -25,6 +27,8 @@ export interface DisplaySettings {
   scale?: number;
   /** The score bug's caption; the sheet name when absent. */
   label?: BugLabel;
+  /** The side of the score bug the end box is on; the right when absent. */
+  end?: BugEndSide;
   /** Whether the warm room lists the day's finished games beside the
    *  sheets; not when absent. */
   earlier?: boolean;
@@ -74,6 +78,7 @@ export function settingsToSave(settings: DisplaySettings): DisplaySettings {
       sheetId: settings.sheetId,
       ...(settings.scale !== undefined && settings.scale !== 1 && { scale: settings.scale }),
       ...(settings.label !== undefined && settings.label !== 'sheet' && { label: settings.label }),
+      ...(settings.end === 'left' && { end: 'left' as const }),
     };
   }
   const view = WARM_ROOM_VIEWS.includes(settings.view as DisplayView) ? settings.view as DisplayView : 'totals';
@@ -120,6 +125,7 @@ export function describeSettings(
     if (s.scale !== undefined && s.scale !== 1) parts.push(`${s.scale}× size`);
     if (s.label === 'league') parts.push('league name');
     if (s.label === 'none') parts.push('no name');
+    if (s.end === 'left') parts.push('end on the left');
     return parts.join(', ');
   }
   const view = (s.view ?? 'totals') as DisplayView;
