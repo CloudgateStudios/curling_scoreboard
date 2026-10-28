@@ -1,1198 +1,193 @@
 # Architecture
 
-<!-- cspell:ignore credentialless Embedder -->
+How the scoreboard app, the admin portal, the display pages and the Cloud
+Functions fit together on Firebase. This page is the map; each area has its
+own page under [`docs/architecture/`](architecture/) with the detail. For
+what the system does in plain terms, see [FEATURES](FEATURES.md); for setup
+and day to day commands, the [README](../README.md); for how to make and ship
+a change, [CONTRIBUTING](../CONTRIBUTING.md).
 
-How the scoreboard app, the admin portal and the Cloud Functions fit together
-on Firebase. For setup and day to day commands, see the [README](../README.md);
-for how to make and ship a change, see [CONTRIBUTING](../CONTRIBUTING.md).
+## The system at a glance
 
-## Overview
+```mermaid
+flowchart TB
+  subgraph sdk["Firebase SDK clients"]
+    direction LR
+    SB["Scoreboard app<br/>Flutter, one per sheet"]
+    AD["Admin portal<br/>React"]
+    DP["Display screens<br/>score bug, warm room, bonspiel"]
+  end
 
-| Piece        | Runs on                                                       | Talks to                                                                                            |
-| ------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `app/`       | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet`, `unpairSheet` functions                                         |
-| `admin/`     | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `updateClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `revokeDisplayLink` functions |
-| `functions/` | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access; also serves the display pages                                  |
+  subgraph http["Plain HTTP, no sign-in"]
+    direction LR
+    PS["Public scores page<br/>members' phones"]
+    INT["Club integrations<br/>websites, scripts"]
+  end
+
+  subgraph hosting["Firebase Hosting"]
+    direction LR
+    APP_SITE["Scoreboard site<br/>the web app, /api and /display"]
+    ADMIN_SITE["Admin site"]
+  end
+
+  subgraph functions["Cloud Functions"]
+    direction LR
+    CALL["Callable functions<br/>pairing, accounts, display links"]
+    API["api<br/>REST, read only"]
+    DISP["display<br/>pages and JSON"]
+    TRIG["Firestore triggers<br/>summaries, bonspiel state, webhook"]
+  end
+
+  subgraph data["Data"]
+    direction LR
+    AUTH["Auth<br/>roles as custom claims"]
+    FS[("Firestore")]
+  end
+
+  HOOK["Club's webhook<br/>Slack, Discord"]
+
+  sdk -- "load from" --> hosting
+  http --> APP_SITE
+  sdk -- "call" --> CALL
+  sdk -- "read and write,<br/>held to the rules" --> FS
+  APP_SITE --> API
+  APP_SITE --> DISP
+  CALL --> AUTH
+  CALL --> FS
+  API --> FS
+  DISP --> FS
+  FS -- "on write" --> TRIG
+  TRIG --> FS
+  TRIG --> HOOK
+```
+
+| Client             | Loads from                    | Reads and writes Firestore                                 | Calls                                              |
+| ------------------ | ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
+| Scoreboard app     | Scoreboard site (web builds)  | Writes `liveGame`, `games` and `device`; reads club config | `pairSheet`, `unpairSheet`                         |
+| Admin portal       | Admin site                    | Club data, leagues, bonspiels and settings                 | Account, display link and test webhook functions   |
+| Display screens    | `/display/**`                 | Listens to the display summary and its link                | `startDisplaySession`                              |
+| Public scores page | `/display/{clubId}/scores`    | Nothing: polls JSON the CDN caches                         | —                                                  |
+| Club integrations  | `/api/v1/**`                  | Nothing: the `api` function reads for them                 | —                                                  |
+
+| Piece                 | Runs on                                                       | Talks to                                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`app/`](../app/)             | Flutter web (Firebase Hosting, `app` target), Android, others | Firestore directly; the `pairSheet` and `unpairSheet` functions                                                                                                                             |
+| [`admin/`](../admin/)         | React SPA (Firebase Hosting, `admin` target)                  | Firestore directly; the `provisionClub`, `addClubAdmin`, `updateClubAdmin`, `removeClubAdmin`, `deleteSheet`, `createDisplayLink`, `resetDisplayLink`, `revokeDisplayLink` and `sendTestWebhook` functions |
+| [`functions/`](../functions/) | Cloud Functions (2nd gen, `us-central1`)                      | Firestore and Auth with admin access; also serves the REST API, the display pages and the public scores page                                                                               |
+| [`scripts/`](../scripts/)     | A developer's machine, with Application Default Credentials   | Firestore and Auth with admin access: seeding dev, one-off migrations and backfills, the first super admin                                                                                  |
+| [`emulator-tests/`](../emulator-tests/) | CI and developers' machines, against the Firebase emulators | The rules and the functions, the way the clients use them                                                                                                                             |
 
 There are two Firebase projects, `curling-scoreboard-dev` and
 `curling-scoreboard-prod`, with the same layout. Access control lives in
 `firestore.rules`; anything a client cannot be trusted to do runs in a Cloud
 Function instead.
 
-The scoreboard works fully offline and unpaired. Pairing with a club only adds
-syncing: nothing in scoring depends on Firebase.
+## What holds everywhere
 
-## Data model
+A few rules shape every part of the system, so they are worth knowing before
+the detail:
 
-```
-appConfig/scoreboard
-  buildId: string            // commit SHA of the deployed web build
-  deployedAt: timestamp
+- **The scoreboard never depends on Firebase.** It works fully offline and
+  unpaired. Pairing with a club only adds syncing, and every write is fire
+  and forget, so a failed write never interrupts scoring.
+- **A game result is recorded once.** The scoreboard writes one `games`
+  document at Finish Game. Everything else that shows a result is made from
+  it by a function, and can be made again.
+- **Functions rebuild from documents, not events.** Triggers can arrive late,
+  out of order or twice, so each one reads the documents as they are now and
+  writes the whole result in a transaction. A repeated delivery writes the
+  same thing again.
+- **Readers that stay open read one document.** Display screens are left on
+  for weeks, so each club has one summary document they listen to, and the
+  public scores page reads cached JSON, not Firestore.
+- **Secrets live under `private/`.** The API key, the scoreboard PIN and the
+  webhook URL are in `clubs/{clubId}/private/*`, which scoreboards and
+  displays cannot read.
+- **Roles are custom claims, set only by functions or scripts.** The rules
+  check them, and a scoreboard's access also depends on its sheet still
+  naming it.
 
-appConfig/displays
-  buildId: string            // commit SHA of the deployed functions, and so
-  deployedAt: timestamp      // of the display pages
+## The life of a game
 
-clubs/{clubId}
-  name: string
+Everything that shows a score, anywhere, starts from two writes the
+scoreboard makes.
 
-clubs/{clubId}/private/apiKey
-  key: string                // 32 hex characters
+```mermaid
+flowchart LR
+  GC["Scoreboard<br/>GameController"]
 
-clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
-  pin: string                // 4 to 8 digits
+  subgraph sheet["clubs/{clubId}/sheets/{sheetId}"]
+    LG["liveGame<br/>the game in progress"]
+    GD[("games/{gameId}<br/>the record")]
+  end
 
-clubs/{clubId}/private/webhook       // absent means no webhook
-  url: string                // https, where completed games are posted
-  games: 'all' | 'league' | 'bonspiel'   // every game, only league games, or only bonspiel games
-  template?: string          // the club's message, up to 1000 characters; absent for the default
-  timeZone?: string          // IANA zone for dates in the message; absent means UTC
+  GC -- "start, each score, team change" --> LG
+  GC -- "Finish Game: add the game and<br/>remove liveGame in one batch" --> GD
 
-clubs/{clubId}/private/webhookStatus // the last post, written by the functions
-  at: timestamp
-  kind: 'game' | 'test'
-  ok: bool
-  status?: int               // the receiver's HTTP status, if it answered
-  error?: string
+  LG -- "on sheet write" --> T1["syncDisplaySheet"]
+  GD -- "on create" --> T2["syncDisplayResults"]
+  GD -- "on create, bonspiel games" --> T3["syncBonspielResult"]
+  GD -- "on create" --> T4["sendCompletedGameWebhook"]
 
-clubs/{clubId}/private/displayState  // what the display pages show, written by the functions
-  sheets: {
-    [sheetId]: {
-      name: string
-      live: {                // the live game, or null; see liveGame below
-        updatedAt: timestamp | null
-        currentEnd: int
-        numberOfEnds: int | null           // null from scoreboard builds before it was sent
-        league: { name: string } | null
-        bonspiel: { id: string, name: string, gameId: string } | null   // a bonspiel game's
-        team1: { name: string, color: { name, hex } | null, score: int,
-                 hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
-        team2: { ...the same }
-        ends: [{ endNumber: int, scoringTeamSlot: 'team1' | 'team2' | null, score: int }] | null
-      } | null
-    }
-  }
-  results?: [{               // games finished in the last day, the latest first, at most 48;
-                             // each sheet's latest is its final score
-    gameId: string
-    sheetId: string
-    sheetName: string        // the sheet's name when the game finished
-    startedAt: timestamp | null
-    finishedAt: timestamp
-    numberOfEnds: int | null
-    endsPlayed: int          // the last end played; 0 when none were recorded
-    league: { name: string,
-              draws: [{ day: int, start: string, end: string }] } | null   // its league's draws, as the league had them
-    bonspiel: { ...as in live } | null
-    team1: { ...as in live, with hasHammer null }
-    team2: { ...the same }
-    ends: [...as in live]
-  }]
+  T1 --> DS[("private/displayState")]
+  T2 --> DS
+  T3 --> BS[("bonspiels/{id}/state/current")]
+  BP[("bonspiels/{id}<br/>the plan")] -- "on write" --> T5["syncBonspielPlan"]
+  T5 --> BS
+  T4 --> WH["Club's webhook<br/>Slack or Discord"]
 
-clubs/{clubId}/private/displayBranding // the warm room screen's title bar; absent for the default
-  title?: string             // up to 60 characters, in place of "Live Scores"
-  logo?: string              // a PNG, JPEG or WebP data URL, up to 250,000 characters
-
-clubs/{clubId}/private/publicScores // the public scores page's switch; absent when off
-  enabled: bool              // set by club admins in the portal
-
-clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
-  label: string              // up to 60 characters, e.g. "Warm room TV"
-  secretHash: string         // SHA-256 of the token's secret, in hex, which sign-in checks
-  token?: string             // the token itself, for the portal to show; absent on links made before it was kept
-  settings: {                // what the link's screens show
-    page: 'bug' | 'warm-room' | 'bonspiel'
-    sheetId?: string         // the score bug's sheet
-    bonspielId?: string      // the bonspiel screen's bonspiel
-    view?: 'totals' | 'full' | 'cycle'   // the warm room's; totals when absent
-         | 'now' | 'schedule' | 'brackets' | 'cycle'   // the bonspiel screen's; now when absent
-    every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
-    scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
-    label?: 'sheet' | 'league' | 'none'  // the score bug's caption; sheet when absent
-    end?: 'left' | 'right'   // the side of the score bug its end box is on; right when absent
-    earlier?: bool           // the warm room's earlier results beside the sheets; not when absent
-  }
-  createdAt: timestamp
-  lastUsedAt?: timestamp     // when a display last started with it, at most hourly
-  device?: {                 // what the screen on it last said about itself; the
-                             // last to report, when it is open on more than one
-    appVersion?: string      // release, from app/pubspec.yaml at the deploy
-    buildId?: string         // commit SHA; absent on local builds
-    page: 'bug' | 'warm-room' | 'bonspiel' | 'link'
-    sheetId?: string         // the score bug's sheet
-    lastSeenAt: timestamp    // server time of the report
-    sessionStartedAt: timestamp
-    clientTime: timestamp    // the device's own clock
-    userAgent: string
-    screen: { width: int, height: int, pixelRatio: number }
-    timezone: string
-    utcOffsetMinutes: int
-    updateTargetBuildId?: string
-    lastReloadAttemptAt?: timestamp
-  }
-
-clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
-  rockColors?: {             // absent means red and yellow
-    team1: { name: string, hex: string }   // hex is '#RRGGBB'
-    team2: { name: string, hex: string }
-  }
-
-clubs/{clubId}/leagues/{leagueId}
-  name: string
-  active: bool               // inactive leagues are not offered on scoreboards
-  seasonStart?: string       // 'YYYY-MM-DD', inclusive
-  seasonEnd?: string
-  draws: [{                  // when it plays each week, in the club's local time
-    day: int                 // 1 (Monday) to 7 (Sunday)
-    start: string            // 'HH:mm', 24 hour
-    end: string
-  }]
-  teams: [{
-    id: string               // stable across renames and imports
-    name: string
-    externalId?: string      // the team's ID in the club's own league software
-  }]
-
-clubs/{clubId}/bonspiels/{bonspielId}  // a bonspiel's plan, written by its coordinators
-  name: string
-  active: bool
-  startDate: string          // 'YYYY-MM-DD', the club's local time, inclusive
-  endDate: string
-  numberOfEnds: int          // 1 to 12, for every game unless its event says otherwise
-  events: [{
-    id: string
-    name: string             // "A Event"
-    numberOfEnds?: int
-    tiebreak?: string[]      // a pool's team IDs, in the order that breaks its ties
-  }]
-  teams: [{ id: string, name: string, externalId?: string }]
-  draws: [{
-    id: string
-    label: string            // "Draw 5"
-    start: string            // 'YYYY-MM-DDTHH:mm', the club's local time
-  }]
-  games: [{
-    id: string               // random; never shown, so the label can change
-    label: string            // "A7"
-    drawId: string
-    sheetId: string
-    eventId: string          // every game is in exactly one event
-    team1: Side              // throws the first rock color
-    team2: Side
-    result?: {               // the coordinator's; wins over a scoreboard's
-      winner: 'team1' | 'team2'
-      team1Score?: int
-      team2Score?: int
-    }
-  }]
-  // Side is { teamId } (placed), { from: gameId, result: 'winner' | 'loser' }
-  // (out of an earlier game), { rank: int, eventId } (a place in a pool's
-  // standings, from 1), or null (to be decided).
-
-clubs/{clubId}/bonspiels/{bonspielId}/state/current   // written by the functions
-  updatedAt: timestamp
-  results: {                 // the latest game a scoreboard recorded for each game
-    [gameId]: {
-      sheetId: string
-      sheetGameId: string    // the games document under the sheet
-      finishedAt: timestamp
-      team1: { teamId?: string, name: string, score: int }
-      team2: { ...the same }
-    }
-  }
-  games: {
-    [gameId]: {
-      status: 'waiting' | 'ready' | 'final'
-      team1: { teamId?: string, name: string } | null   // null until known
-      team2: { ...the same }
-      team1Score?: int
-      team2Score?: int
-      winner?: 'team1' | 'team2'
-      tied?: true            // a result with no winner, so nobody goes on
-      resultFrom?: 'coordinator' | 'scoreboard'
-      sheetId?: string       // where a scoreboard's result came from
-      sheetGameId?: string
-    }
-  }
-  events: {
-    [eventId]: {
-      finalGameId?: string   // the event's one game whose winner goes nowhere else in it
-      winner?: { teamId?: string, name: string }
-      standings?: [{         // a pool's, best first
-        teamId?: string
-        name: string
-        played: int
-        wins: int
-        losses: int
-        ties: int
-        points: int          // 2 a win, 1 a tie
-        place: int           // from 1; teams sharing one have the same
-        tied: bool           // shares its place
-      }]
-      complete?: bool        // a pool's: every game has a result
-    }
-  }
-
-clubs/{clubId}/admins/{uid}
-  email: string
-  displayName: string | null
-
-clubs/{clubId}/sheets/{sheetId}
-  name: string
-  pairingCode?: string       // set by an admin, removed once used
-  scoreboardUid?: string     // the paired scoreboard's anonymous Auth uid
-  pairedAt?: timestamp       // when that scoreboard paired
-  liveGame?: {               // the game in progress, removed when it ends
-    updatedAt: timestamp     // server time of the scoreboard's last write
-    currentEnd: int
-    numberOfEnds?: int       // absent from builds before it was sent
-    league?: { id: string, name: string }   // league games only
-    bonspiel?: { id: string, name: string, gameId: string }   // bonspiel games only
-    team1: { name: string, color: { name, hex }, score: int, hasHammer: bool,
-             hadLastStoneFirstEnd: bool,
-             teamId?: string, externalId?: string }   // the last two in league games
-    team2: { ...the same }
-    ends?: [...as in games below]   // the ends so far; absent from builds before it was sent
-  }
-  device?: {                 // what the scoreboard last said about itself
-    appVersion: string
-    buildId?: string         // commit SHA; absent on local builds
-    lastSeenAt: timestamp    // server time of the report
-    sessionStartedAt: timestamp
-    clientTime: timestamp    // the device's own clock
-    platform: string         // 'web', 'android', ...
-    renderer?: string        // web only: 'wasm' or 'js'
-    userAgent?: string
-    screen?: { width: int, height: int, pixelRatio: number }
-    timezone: string
-    utcOffsetMinutes: int
-    updateTargetBuildId?: string
-    lastReloadAttemptAt?: timestamp
-    lastSyncError?: { operation: string, message: string, at: timestamp }
-  }
-
-clubs/{clubId}/sheets/{sheetId}/games/{gameId}
-  startedAt: timestamp
-  finishedAt: timestamp
-  numberOfEnds: int
-  league?: { id: string, name: string }     // league games only
-  bonspiel?: { id: string, name: string, gameId: string }   // bonspiel games only; gameId is in its plan
-  team1: { name: string, color: { name, hex }, totalScore: int, hadLastStoneFirstEnd: bool,
-           teamId?: string, externalId?: string }     // the last two in league games
-  team2: { ...the same }
-  ends: [{
-    endNumber: int
-    scoringTeam: string | null       // team name; null for a blank end
-    scoringTeamSlot?: 'team1' | 'team2' | null
-    score: int
-    gameTimeInSeconds: int           // -1 on ends recorded before the game clock
-  }]
-  webhook?: {                        // set once the game is posted to the club's webhook
-    attemptedAt: timestamp
-    ok?: bool                        // absent if the post never finished
-    status?: int                     // the receiver's HTTP status, if it answered
-    error?: string
-  }
+  DS --> SCR["Score bug, warm room,<br/>bonspiel screen"]
+  DS --> PUB["Public scores page<br/>via the display function"]
+  BS --> SCR
+  BS --> PORTAL["Admin portal,<br/>scoreboards"]
+  LG --> REST_API["REST API"]
+  GD --> REST_API
+  BS --> REST_API
 ```
 
-Club IDs are readable slugs (`windy-city-curling`) when the super admin picks
-one, otherwise Firestore auto IDs. `scoringTeamSlot` was added because two
-teams can share a name; older games only have `scoringTeam`. A team's `name`
-is the name of its rock color in an open game and the league team's name in a
-league game; `color` is absent on games from before it was recorded.
-
-## Roles
-
-Roles are Firebase Auth custom claims, set only by Cloud Functions or the
-admin scripts.
-
-| Role                 | Claims                                  | Signs in with           | Can                                                                                   |
-| -------------------- | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
-| Super admin          | `role: 'superadmin'`                    | Email and password      | Everything: create clubs and club admins, rotate API keys, read and write all data   |
-| Club admin           | `role: 'clubadmin'`, `clubId`           | Email and password      | Their club: read it and its API key, generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, read game history |
-| Bonspiel admin       | `role: 'bonspieladmin'`, `clubId`       | Email and password      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else |
-| Paired scoreboard    | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous             | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config`, `leagues`, and `bonspiels` with their state |
-| Display              | `role: 'display'`, `clubId`, `linkId`   | Custom token from `startDisplaySession` | Its club: read `private/displayState`, `private/displayBranding`, and `bonspiels` with their state; read its own link and write its `device` |
-| Anyone               | —                                       | —                       | Read `appConfig/scoreboard` and `appConfig/displays`                                  |
-
-A scoreboard's claims only tell the rules which sheet to look at. Access to
-its sheet has always been decided by the sheet's `scoreboardUid`, and reading
-the club's `config` and `leagues` needs both: the claims and a sheet that still names that
-scoreboard. So a scoreboard that is disconnected or replaced loses access
-straight away, whatever its claims say.
-
-The first super admin of a project is created with
-`scripts/set-super-admin.js`; after that, `setSuperAdminClaim` promotes
-others. Club and bonspiel admins are created from the admin portal through
-`provisionClub` (a new club with its first admin and scoreboard PIN) and
-`addClubAdmin`, changed with `updateClubAdmin` (name, email, role and a new
-password), and taken off again with `removeClubAdmin`, which deletes the
-account. Each is listed in the club's `admins` collection with its `role`.
-`updateClubAdmin` revokes the user's refresh tokens when it changes their role
-or password, so the portal signs them out. A token issued before a removal or
-a change of role keeps its old claims until it expires, at most an hour later.
-
-Sheets are renamed and unpaired by writing the sheet directly. Deleting one
-goes through `deleteSheet` (super admins only), which also deletes its
-`games`, since a client delete would leave them behind.
-
-## Pairing a scoreboard
-
-1. A club admin generates a six character code for a sheet in the admin
-   portal. It is stored as `pairingCode` on the sheet.
-2. On the scoreboard's game setup screen, Connection opens the dialog the
-   code is entered in.
-3. The app signs in anonymously and calls the `pairSheet` callable function.
-4. `pairSheet` finds the sheet holding the code with a collection group query
-   and sets the caller's scoreboard claims. Then in a transaction it sets
-   `scoreboardUid` to the caller's uid, records `pairedAt`, and removes the
-   code along with any `device` status left by the previous scoreboard. It
-   clears the previous scoreboard's claims and returns the club and sheet IDs
-   and names.
-5. The app refreshes its ID token so the claims take effect, and saves those
-   four values in shared preferences. From then on it is paired.
-
-`pairSheet` refuses callers who already have an admin role, because setting
-the scoreboard claims would replace it.
-
-Clients cannot query or read pairing codes or club documents themselves. The
-rules used to allow that, which let any signed in client list every unpaired
-sheet's code and read every club's API key; moving the lookup into
-`pairSheet` closed it.
-
-## Disconnecting a scoreboard
-
-Disconnecting is kept out of the way, because scoreboards sit where anyone can
-tap at them. A connected scoreboard's setup screen only says "Connected as
-club – sheet". Pressing and holding that for four seconds, with a ring filling
-in meanwhile, opens a dialog showing the connection with a Disconnect button,
-and that asks for the club's admin PIN. Settings has nothing about the
-connection.
-
-Each club has one PIN. A super admin sets it when creating the club, and the
-club's admins can change it in the admin portal. It is kept in `clubs/{clubId}/private/scoreboardPin`, which scoreboards cannot read.
-The app sends what was typed to the `unpairSheet` callable function, which
-checks it, removes `scoreboardUid` from the sheet and clears the scoreboard's
-claims. The rules do not let a scoreboard remove its own `scoreboardUid`, so
-the PIN cannot be skipped. A club with no PIN set, which only clubs created
-before PINs can be, cannot disconnect its scoreboards until an admin sets one
-or `scripts/backfill-scoreboard-pins.js` gives it one.
-
-`unpairSheet` asks for no PIN when the sheet is not the caller's, which is
-the case for a scoreboard whose pairing was lost: there is nothing left to
-protect, and it lets that scoreboard be cleared and paired again. Nothing
-changes on the sheet.
-
-Once the function succeeds the app signs out and clears the saved values.
-Scoring carries on locally either way.
-
-A sheet can be taken away from a scoreboard without it being told: pairing
-another device replaces `scoreboardUid`, and the first one still has its saved
-values. It finds out when the rules refuse one of its writes, usually the
-status report it sends on startup. `SyncService` then sets
-`RegistrationService.pairingLost`, and the setup screen says scores are not
-syncing, and the connection dialog prompts to disconnect and pair again. A later write that succeeds clears
-it.
-
-## Syncing scores
-
-`SyncService` in the app does nothing unless the scoreboard is paired.
-Writes are fire and forget, so a failed write never interrupts scoring, and
-Firestore's offline cache sends them once the connection is back.
-
-`GameController`, which holds the game on the scoreboard, makes the calls at
-these points:
-
-| Event in the app         | Firestore write                                           |
-| ------------------------ | --------------------------------------------------------- |
-| The app starts           | Remove `liveGame`                                         |
-| A game is started        | Overwrite `liveGame` on the sheet                         |
-| A score is entered or edited | Overwrite `liveGame` on the sheet                     |
-| The teams are changed    | Overwrite `liveGame` on the sheet                         |
-| Finish Game              | Add a `games` document and remove `liveGame`, in one batch |
-
-A game is live from the moment it starts, so the first end shows at 0-0.
-
-A game that is never finished would otherwise stay live forever. The app
-does not persist game state, so it removes `liveGame` on startup. For a
-scoreboard that is switched off or offline, readers ignore a `liveGame`
-whose `updatedAt` is more than 120 minutes old: the REST API reports it as
-null and the admin portal shows the sheet as idle. The stored field is left
-alone until that scoreboard next starts up or starts a game.
-
-## Where game results live
-
-A finished game is recorded once, in the sheet's `games` document. Every
-other copy of a result is made from it by a function, or is a bonspiel
-coordinator's own entry, and each says where it came from:
-
-| Where | What it holds | Written by | Read by |
-| ----- | ------------- | ---------- | ------- |
-| `sheets/{sheetId}/games/{gameId}` | The record: teams, ends, times, and whether the webhook was sent it | The scoreboard, once, at Finish Game | REST API, webhook, everything below |
-| `sheets/{sheetId}.liveGame` | The game in progress, not yet a result | The scoreboard, on each change; removed at Finish Game | REST API, portal, `syncDisplaySheet` |
-| `private/displayState.sheets[id].live` | A trimmed copy of `liveGame` | `syncDisplaySheet` | Display pages |
-| `private/displayState.results` | The last day's games, trimmed, with their league's draws; each sheet's latest is its final score | `syncDisplayResults` | Display pages |
-| `bonspiels/{id}/state/current.results` | A bonspiel game's latest scores from a scoreboard, pointing back to its `games` document | `syncBonspielResult` | `resolveBonspiel` |
-| `bonspiels/{id}/state/current.games` | Each bonspiel game's result that counts, the coordinator's or the scoreboard's | `resolveBonspiel` | Portal, scoreboards, bonspiel screen, REST API |
-| `bonspiels/{id}.games[].result` | The coordinator's own result, not a copy | Bonspiel coordinators, in the portal | `resolveBonspiel` |
-
-Everything in the table made by a function can be made again from the
-`games` documents: `scripts/backfill-display-state.js` does it for the
-display summary, and a bonspiel's state is worked out again whenever its plan
-or one of its games changes. Outside Firestore, the club's webhook receiver
-keeps whatever it was sent, and each scoreboard's Firestore cache holds its
-writes until they are sent.
-
-## Display summary
-
-The score bug for live streams and the warm room screen show a club's sheets
-as they change. Reading the sheets themselves would cost a read per sheet
-each time a display looked, so each club has one summary document,
-`private/displayState`, that a display listens to instead: one read when it
-starts and one per change after that, however long it stays open.
-
-Two functions in `functions/src/display/triggers.ts` keep it up to date:
-
-- `syncDisplaySheet` fires on every write to a sheet and copies its name and
-  live game. A scoreboard's status report every half hour changes neither, so
-  it ends there without a read or a write. Otherwise it rebuilds the entry
-  from the sheet as it is now, in a transaction, rather than from the event:
-  events can arrive late, out of order or twice, and this way a late one
-  writes the current state again instead of an older one. A deleted sheet is
-  removed.
-- `syncDisplayResults` fires on each completed game and adds it to
-  `results`, with its league's weekly draws read from the league as it is
-  then. The list keeps the last day's games, latest first, up to 48, and a
-  game delivered twice is listed once. A game a scoreboard that was offline
-  delivers late goes in its place by when it finished.
-
-The first writes only the sheet's entry and the second only `results` (and
-the sheet's entry, for a sheet the summary has not seen yet), so neither
-undoes the other. The entries carry only what a display shows: league and
-team names, colors and scores, not the IDs integrations match on.
-
-A sheet's final score is its latest game in `results`, found by
-`lastGameOf`: by when it finished, so a game delivered late does not take
-the place of a later one. Each sheet's entry used to keep its own copy as
-`lastGame`; `syncDisplaySheet` replaces the whole entry, and the backfill
-script rewrites every one, so that field goes.
-
-What a display shows for a sheet is decided by `sheetView` in
-`functions/src/display/state.ts`, from the summary and the sheet's ID. A
-live game comes first, so the next draw replaces the final score as soon as
-its game starts. A live game that has gone two hours without a write is
-ignored, as in the REST API. Otherwise the sheet's latest result is shown as
-the final score for ten minutes after it finished, and after that the sheet
-is idle. That is worked out by the display from the
-times in the summary, so nothing has to be written when the ten minutes are
-up.
-
-Sheets that existed before the functions were deployed, and the last day's
-games, are added by `scripts/backfill-display-state.js` (see the README), or
-by their next change.
-
-A display page loaded before final scores came from `results` looks for
-`lastGame`, so it shows no final score until it is reloaded. Pages from
-before they reloaded themselves after a deploy (see
-[Reloading display pages after a functions deploy](#reloading-display-pages-after-a-functions-deploy))
-need reloading by hand once.
-
-## Display links
-
-A display, a warm room screen or an OBS browser source, has nobody to sign
-in, so it signs in with a link instead. A club admin makes one per screen on
-the portal's Displays tab, through
-`createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
-random bits in hex. The portal shows it built into the link's own URL,
-whenever a club admin opens the link:
-
-```
-https://curlingscoreboard.app/display/{clubId}#k=<token>
-```
-
-That URL never has to change, because a link also says what its screens
-show, in `settings`: the warm room with its view, or a sheet's score bug
-with its size, caption and end side. A new link shows the warm room's totals.
-Club admins change the settings, and the link's name, in the portal, which
-writes them directly; the rules hold them to what the pages understand.
-The page at the link's URL reads its own link (the rules let a display read
-that one link and no other) and moves on to the page the settings name,
-with `link=1` added after the `#`. A page opened that way keeps listening
-to the link and moves again when the settings change, so a screen can be
-pointed at another sheet or view from the portal, mid-stream if need be.
-A page opened at its own URL, without `link=1`, stays where it is.
-
-The token is kept on the link as `token`, so the URL can be copied again at
-any time, the way club admins can see the API key. Only the club's admins,
-super admins and the screen holding it can read it, and only the functions
-write it. Signing in still checks a SHA-256 hash of the secret, which is
-all that links made before the token was kept have; the portal shows those
-without a URL until they are given a new one.
-
-`resetDisplayLink` gives a link a new secret, and so a new URL, for one that
-got out or was lost before it was copied. The settings stay, and screens on
-the old URL stop within the hour, as for a removed link.
-
-One link works for every page at its club. The token goes after the `#`,
-which browsers never send to a server, so it stays out of request logs and
-`Referer` headers. The page reads it and calls `startDisplaySession`, which
-checks it in constant time and returns a custom token for the user
-`display:{clubId}:{linkId}` with the display claims. Those let the page read
-its club's display summary and nothing else. The club API key is never used:
-it would expose the whole API, and replacing it would break the club's other
-integrations.
-
-`revokeDisplayLink` deletes the link and its Auth user. No new session can
-start from it, and a screen already signed in stops within the hour, when
-its ID token expires and cannot be renewed. The rules do not look the link
-up on each read, which would cost a read every time a display listens.
-
-`lastUsedAt` is written at most once an hour, so a screen that reloads often
-does not write each time. A club can have 20 links.
-
-Minting custom tokens needs the functions' service account to be able to
-sign as itself; see "Display links" in the README.
-
-## Display pages
-
-The `display` function serves the display pages on the scoreboard's hosting
-site, under `/display/**` through a Hosting rewrite, like the API:
-
-- `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
-- `/display/{clubId}/warm-room`: every sheet, for a screen in the club
-- `/display/{clubId}/bonspiels/{bonspielId}`: a bonspiel's draws and brackets,
-  for a screen in the club
-- `/display/{clubId}`: a display link's own URL, which opens the page its
-  settings name
-- `/display/assets/*`: the pages' scripts and styles, from
-  `functions/src/display/assets`, which `npm run build` copies next to the
-  compiled function
-
-A page is the same for everyone and never reads Firestore on the server: the
-link's token is after the `#`, which the function never sees. The HTML only
-holds a JSON block saying which club and sheet to show, the Firebase web
-config, and the server's time. The script, `assets/display.js`, then:
-
-1. Signs in. A display already signed in as this link, from an earlier
-   load, carries on; otherwise it calls `startDisplaySession` with the token
-   and signs in with the custom token it returns. The sign-in is kept in the
-   browser's IndexedDB, so a reload does not start a new session.
-2. Listens to the club's `private/displayState` and redraws on each change.
-3. Redraws every 15 seconds as well, because a final score comes down ten
-   minutes after the game with no write to say so. `sheetView` and
-   `lastGameOf` there mirror the ones in `functions/src/display/state.ts`,
-   with the same limits passed
-   in through the page. Times are compared on the server's clock, worked out
-   from the time in the page, so a screen with its clock off still takes
-   the final score down on time.
-
-A display is left running for weeks, so everything is retried, backing off
-to five minutes: a failed sign-in, a listener the server ended, a sign-in
-that could not be renewed. A link the server refuses, or a URL with no
-token, is said on the page so it can be fixed while setting up; the page is
-otherwise silent about trouble and keeps showing the last scores.
-
-The Firebase SDK is loaded as ES modules from `www.gstatic.com`, pinned to
-the version the admin portal uses. Nothing is inline, so the
-`Content-Security-Policy` allows scripts only from the function and gstatic,
-connections only to the Firebase services the page uses, and no framing.
-Responses carry `X-Content-Type-Options: nosniff` and
-`Referrer-Policy: no-referrer`; pages are `no-store`, since they carry the
-server's time, and assets `no-cache`.
-
-The score bug is transparent, so an OBS browser source shows only the bug.
-It shows the two teams with their rock colors and scores, the hammer in a
-live game, and the end (or Final) in a box beside the scores, as large as
-they are, and hides itself while the sheet is idle. A name too long for its
-row shrinks to 80% before it is cut short. `?scale=` (0.5 to 4) sizes it,
-and `?label=league` or `?label=none` changes or removes the sheet name in
-the caption under it, and `?end=left` moves the end box to the left of the
-names. `?preview` is for setting it up: while the sheet has
-no game it shows a faded, outlined stand-in at the bug's real size instead of nothing, so it can be placed in OBS between draws. A link's
-own URL carries `?preview` on to the page it opens, and the portal's
-Preview button opens a link that way.
-
-The warm room screen shows every sheet in the summary, in name order with
-numbers in order ("Sheet 2" before "Sheet 10"), on a dark background meant
-for a TV. Each card has the sheet's name, the end or Final, the league, and
-both teams with their rock colors, scores and the hammer; an idle sheet is
-dimmed and says "No game". The page tries each number of columns and keeps
-the one that makes the cards largest, then sizes everything in a card from
-its width, so any number of sheets fills the screen without scrolling, on a
-1080p or 4K TV or one turned on its side. A clock in the corner, on the
-server's time, shows the screen is still running. The mouse pointer hides
-once it has been still for three seconds and comes back when it moves, so
-a mouse left by a TV does not sit over the scores.
-
-A club can give the screen its own title in place of "Live Scores", and a
-logo beside it, on the portal's Displays tab. Both are kept in `private/displayBranding`, which the page listens to
-alongside the summary: one more read when it starts, and one when the club
-changes them. The portal shrinks the logo in the browser to fit 800 by 200
-pixels and keeps it as a PNG, or WebP when a PNG would be too large, in a
-data URL. Keeping it in Firestore rather than Cloud Storage means the page
-needs nothing but Firestore, and the CSP already allows `data:` images. Any
-image the browser can show, SVG included, is redrawn as a plain image, and
-the rules accept only PNG, JPEG and WebP data URLs, so nothing that can
-carry a script is stored.
-
-`?view=full` shows each game end by end instead, like the scoreboard's own
-baseball layout: a column per end, the scoring team's points on its rock
-color and 0 for the other team, the end being played picked out, and the
-totals. It has as many columns as the game's `numberOfEnds`, or more once
-extra ends are played. Its cards are wider and shorter, so the layout asks
-for that shape. A live game from a scoreboard that does not send its ends
-yet is shown by its totals among them. `?view=cycle` shows the two in turn,
-`?every=` seconds each (20 by default).
-
-`?earlier=today` adds the day's finished games in a column to the right of
-the sheets (under them on a TV turned on its side), for a screen left on
-through several draws, such as one in the bar. It is a link setting, off
-unless a club admin turns it on, and a screen already following its link
-picks it up as soon as it is saved. The games are grouped by draw, the
-latest draw first, each headed by its start time and its leagues, and in
-sheet order under it: the sheet, then each team's rock color, name and
-score, the winner in bold, and "Final after 7 ends" for a game that ended
-early or went to extra ends. The column is hidden until the first game of
-the day finishes, and the sheets get its width back. With `?preview`, as the
-portal's Preview button opens it, the column shows before then too, faded and
-outlined like the score bug's stand-in, with a note that the day's results
-appear there as games finish, so whoever sets the screen up sees the room it
-takes.
-
-The grouping is worked out on the screen, in `results-model.js`, because it
-is at the club and so on the club's time, which is what leagues' draws are
-written in; the club has no time zone of its own. A league game goes under
-the league draw on that weekday that it started in, from half an hour
-before the draw starts, as on the scoreboard, until it ends. An open game,
-a bonspiel game, or a league game outside its league's draws joins a draw
-that started from half an hour before to 45 minutes after it did, and
-games with no draw to join are grouped with those that started within 45
-minutes of the first of them, under that start to the nearest quarter
-hour. The day starts at 4 in the morning, so a late draw that runs past
-midnight stays with its evening.
-
-The column never scrolls or turns over by itself. What does not fit is left
-off the bottom a whole game at a time, so the oldest games go first, and a
-draw with no games left goes too. It is sized from the screen's height, a
-720th of it to a design pixel (or a 1280th of its width if that is less),
-so it keeps its proportions on any 16:9 screen; on a TV turned on its side,
-the other way round.
-
-Both pages say Final, not the end, once a live game has played its ends
-and is not tied, as the scoreboard does before anyone taps Finish Game, and
-"Extra end" once a tied game goes past them. Where they show a game's
-league, a bonspiel game shows its bonspiel's name.
-
-The bonspiel screen, `bonspiel.js`, listens to the bonspiel's plan and state
-as well as the summary, which the rules let a display read. Its live scores
-come from the summary: a sheet's live or just finished game whose
-`bonspiel.id` is this bonspiel's is shown as the game its `gameId` names.
-What it works out from the plan and state, the draw on now and each event's
-bracket, is in `bonspiel-model.js`, which has neither Firebase nor the page
-in it, so the emulator tests run it. Its views, in the warm room's colors and
-sized to the screen:
-
-- `?view=now`, the default: the draw on now as large cards, one a sheet, with
-  each game's teams, live score and end, or Final; and the next draw's games
-  as a list, with any team not known yet as where it comes from ("Winner of
-  A3"). A draw is on from 30 minutes before it starts, as on the scoreboard.
-  On a screen turned on its side the cards go two across.
-- `?view=schedule`: a row a draw and a column a sheet, the draw on now marked.
-  When there are more draws than fit, they start from the one before it.
-- `?view=brackets`: each event as the portal's bracket view lays it out, one
-  at a time, sized so its biggest round fits; the subtitle names the winner
-  once there is one. A pool shows its standings instead.
-- `?view=cycle`: all of them in turn.
-
-With more than one screen, each shows for `?every=` seconds (20 by default).
-
-The rewrite needs the `display` function to exist, so in a new project deploy
-the functions before the scoreboard's hosting.
-
-## Public scores page
-
-`/display/{clubId}/scores` is the club's scores for members' phones: every
-sheet with its game, the event (the bonspiel's name, otherwise the league's),
-end and hammer, a tap to see a game end by end, and the day's results grouped
-by draw as the warm room groups them. A club admin turns it on in the portal,
-which sets `private/publicScores`. It has no sign-in: anyone with the address
-can see it, team names included.
-
-So that its cost does not grow with the number of people watching, the page
-loads no Firebase. It polls JSON from the `display` function, which Hosting's
-CDN caches, so only a cache miss reaches the function and Firestore
-(`functions/src/display/scores.ts` builds the JSON from the display summary):
-
-| Path, under `/display/{clubId}/scores/` | What | Cache-Control |
-|---|---|---|
-| `live.json` | each sheet and what it shows now, about a kilobyte, and versions of the other two | `public, max-age=15, s-maxage=30` |
-| `results.json` | the day's finished games | `public, max-age=60, s-maxage=300` |
-| `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
-
-A club without the page turned on gets a 404 for each, cached for a minute.
-Express gives each response an ETag and answers a matching `If-None-Match`
-with a 304, so a poll that finds nothing new costs only headers. A cache miss
-reads the switch and the summary; the branding, which holds the logo, is
-kept in each function instance for five minutes.
-
-The page (`assets/scores.js`, its timing in `assets/scores-model.js`) polls
-`live.json` every 30 seconds while any sheet has a game, every 5 minutes while
-none does, not at all while it is hidden, and stops after 30 minutes without a
-tap, scroll or key until it is touched again. It fetches `results.json` only
-when `live.json`'s `resultsVersion` changes. A score can take up to about a
-minute to reach a phone.
-
-## Rock colors
-
-The scoreboard is red and yellow out of the box: those two colors are built
-into the app (`RockColors.defaults`), so an unpaired or offline scoreboard
-needs nothing from Firebase to show them.
-
-A club that plays with other colors picks them in the admin portal from a
-fixed list, which writes `rockColors` to `clubs/{clubId}/config/scoreboard`.
-`RockColorsService` on a paired scoreboard listens to that document and keeps
-the last colors it saw in shared preferences, so they are still right when it
-starts up offline. Disconnecting clears them. Choosing red and yellow removes
-the setting, leaving the app's defaults as the only definition of them.
-
-Colors are read when a game starts and copied onto its teams, so a change
-never lands in the middle of a game. They are written with `liveGame` and the
-completed game as each team's `color`, and the team `name` is the color's
-name ("Blue", "Green"), which is what the REST API returns.
-
-## Leagues and teams
-
-A league is one document holding its weekly schedule and its teams. Teams are
-embedded, not a subcollection, so a scoreboard gets everything it needs to
-offer teams in one read per league, and an import replaces a league's teams
-in a single write.
-
-Club admins manage leagues in the admin portal: by hand on a league's page,
-or by importing a CSV file with one row per team.
-
-```
-league,day,start,end,team,external_id
-Monday Night,Mon,18:30,20:30,Team Smith,1042
-```
-
-Only `league` and `team` are required. The file is parsed in the browser
-(`admin/src/lib/leagueCsv.ts`) and the portal shows what would be added,
-renamed and removed before writing anything, all in one batch. Leagues match
-by name. Teams match by `external_id` when both sides have one, otherwise by
-name, and keep their `id`, so a re-import or a rename does not orphan games
-recorded against a team. Teams the file does not mention are kept or removed,
-whichever the admin chooses. Times and days are plain values with no time
-zone: scoreboards compare them with their own clock.
-
-Dates and times are stored as strings for the same reason. A Firestore
-timestamp is an instant, and "Mondays at 18:30" is not one.
-
-### League games on the scoreboard
-
-`LeagueService` on a paired scoreboard listens to its club's active leagues
-and, like the rock colors, keeps the last ones it saw for an offline start.
-The game setup screen fills the display, and each of its settings is a row
-of equal-width segments spanning the same width, so the controls line up down
-both edges and grow with the screen.
-
-While there are any leagues, the setup screen gains one bar above its settings.
-Leaving the bar alone starts an open game exactly as before.
-
-The left of the bar is the league. It follows the scoreboard's local clock:
-if exactly one league is in a draw (from half an hour before it starts until
-it ends, within the league's season) the bar names it and marks it as playing
-now, and a club's only league is always named. Tapping it opens a modal of
-the club's leagues, the ones playing now first, to choose another; that
-clears any teams already picked. The modal puts leagues two across once there
-are more than three and shares its height between the rows, so a club's ten
-or so leagues are all on screen without scrolling. The bar re-reads the clock every minute, because the setup
-screen is left open between games, sometimes overnight.
-
-The right of the bar opens a full screen team picker for that league. With no
-league to go on, it asks for the league first and carries straight on.
-
-The picker is only teams: no title and no league control, so the buttons get
-the room. Every team in the league is one large button on a fixed four by
-four grid, which holds the thirteen teams of the largest league expected. A
-smaller league leaves cells empty instead of growing its buttons, so the
-screen looks the same from one league to the next; only a league of more than
-sixteen changes the grid. All buttons share one text size, capped so that
-most leagues match, and smaller only when a team name is unusually long. The first team tapped throws the first rock color and the
-second the other. Two slots at the top show who is picked; tapping a slot or
-a picked team clears it, a third tap replaces the second team, and a swap
-button exchanges the colors. Cancel and Done are bottom right. Back on the
-setup screen the bar shows the matchup and the hammer choice names the two
-teams.
-
-Done sits in the same corner as Start Game, so the setup screen ignores taps
-for a moment after the picker closes. Otherwise a double tap on Done would
-start the game.
-
-### Changing the teams during a game
-
-Teams forget to pick their names, or pick the wrong ones. While a club has
-leagues, a Teams button on the scoreboard and a tap on the team names under
-the scores both open the same team picker, at any point until the game
-finishes.
-A league game picks from its own league, starting from the teams it has; an
-open game asks for the league first and becomes a league game. The rock
-colors stay as they are, so the swap button is how a matchup put on the wrong
-colors is fixed.
-
-Once a team has a name of its own, the scoreboard shows both names on their
-rock colors under the total scores, so the players can check them. An open
-game has none, as its names would only spell out the colors.
-
-The game carries the league and each team's `teamId` and `externalId`, which
-are written with `liveGame` and the completed game. The name and IDs are
-copied when the teams are picked, so the record stands by itself whatever
-happens to the league afterwards, and it is what a later score reporter needs
-to match a result to a team.
-
-## Bonspiels
-
-A bonspiel runs over a few days, with up to 32 teams. The draw times and
-sheets are known ahead, but most of the teams in a game come out of the
-games before it. The format changes from one bonspiel to the next, so none is
-stored: the plan is a list of games, and each side of a game says where its
-team comes from. A side is a team placed by the coordinator, the winner or
-loser of a game in an earlier draw, or to be decided. A knockout's A, B and C
-events, games placed by hand, and anything in between are all written that
-way. An event's final is its one game whose winner goes to no other game in
-the event, and the final's winner wins the event. Nothing has to mark it.
-
-An event with more than one such game is a pool, played as a round robin
-or any other way, and its standings decide it. A side can be a place in a
-pool's standings, `{ rank, eventId }`, which is how pools send their top
-teams on to a playoff. Teams are ranked by points, two for a win and one for
-a tie; teams level on points by the points from the games between them;
-and teams level still by the event's `tiebreak`, an order of team IDs the
-coordinator sets after a last stone draw or a tiebreak game. Teams the
-tiebreak does not order share a place. A place only sends its team on once
-every game in the pool has a result and nobody shares it.
-
-Club admins and bonspiel admins plan bonspiels on the portal's Bonspiels tab.
-The portal saves the whole plan at once, after checking that it makes sense:
-every game is in a draw and an event and on one of the club's sheets, one
-game to a sheet in each draw, no team twice in a draw, a game only comes from
-games in earlier draws, and no game's winner or loser, or pool's place, goes
-to two games. A place in a pool comes from a pool whose games are all in
-earlier draws.
-The rules only check the plan's outline, as they do for leagues.
-
-Each bonspiel's state, who is in each game and how it went, is kept apart
-from the plan in `state/current`, and only the functions write it. A
-coordinator saving the plan then never overwrites a result that has just
-come in, or the other way round, and the bracket is worked out in one place.
-`resolveBonspiel` in `functions/src/bonspiels/state.ts` works it out in draw
-order: a placed team is that team, a side from another game is that
-game's winner or loser once it has one, and a place in a pool is the team
-in it once the pool is played. A game's result is the coordinator's,
-if there is one, otherwise the latest game a scoreboard recorded for it. A
-scoreboard's result also says who actually played, which wins over the plan,
-so a game played by other teams after a last minute change still sends the
-right teams on. A tied game sends nobody on until the coordinator says who
-won. A game that refers to one that does not exist, or to itself, is left
-waiting rather than failing the bonspiel.
-
-Two functions in `functions/src/bonspiels/triggers.ts` rebuild the state in a
-transaction:
-
-- `syncBonspielPlan` on every write to a plan. A deleted plan takes its
-  state with it.
-- `syncBonspielResult` on each completed game that carries a bonspiel tag,
-  `bonspiel: { id, name, gameId }`, adding it to the state's `results`
-  unless a later game is already kept for that bonspiel game. Other games
-  are let go without a read.
-
-Like the display summary, both rebuild from the documents as they are, never
-from the event, so a late or repeated delivery writes the same thing again.
-
-Hammer is not part of a plan: it stays a choice on the scoreboard, as in any
-other game.
-
-### On the scoreboard
-
-`BonspielService` follows the paired club's active bonspiels and, for each,
-the games of its state: one listener on the bonspiels and one per bonspiel,
-like `LeagueService`. It keeps the last it saw in shared preferences, so a
-scoreboard that starts offline on a bonspiel weekend still has them.
-
-On a bonspiel's dates, the setup screen's league bar gives way to a
-bonspiel bar offering this sheet's game in the current draw. A draw is
-current from 30 minutes before it starts, the league lead time, until the
-same time before the next; before the first draw it is the first. The game's
-teams are those the state has worked out, or those the coordinator placed,
-and a side still to come shows where it comes from ("Winner of A3", "Pool
-A #1"), filling
-in as the state changes. Start Game starts it, to its event's number of ends
-unless others are picked. A bonspiel game's result only counts with its
-teams, so a game with a side not known yet asks for the teams first, in the
-league team picker: the teams of the games or pool it comes from first, or else
-those not in another game of the draw, and every team behind a button.
-
-The bar's left side opens a chooser with this sheet's games from the draw
-before the current one on, the current draw's games on other sheets, for a
-game moved at the last minute, and a way to league games, whose chooser
-leads back. Its cross sets the game aside for an open game.
-
-The game carries `bonspiel: { id, name, gameId }` and each team's `teamId`
-and `externalId` in `liveGame` and its completed game, which is what
-`syncBonspielResult` reads. During the game the Teams button picks its
-teams again, offering its own and those free in its draw first. The REST
-API returns the tag as each game's `bonspiel`, and the completed game
-webhook does not count a bonspiel game among league games, although its
-teams have IDs.
-
-## Scoreboard status
-
-So the admin portal can show what each sheet is running, a paired scoreboard
-reports on itself. `DeviceStatusService` builds the report and `SyncService`
-overwrites the sheet's `device` field with it:
-
-- when the app starts
-- right after pairing
-- when the app returns to the foreground
-- when it learns a new build has been deployed
-- every 30 minutes in between (`Constants.deviceStatusHeartbeat`)
-
-`lastSeenAt` is the server's time, so the portal can trust it; everything else
-is whatever the app says, and is only ever displayed. The portal calls a
-scoreboard offline once it has missed two heartbeats (65 minutes), and shows
-"Update pending" while its `buildId` differs from `appConfig/scoreboard`.
-`lastSyncError` is the most recent failed write since the app started, which
-is otherwise invisible because writes are fire and forget.
-
-The public REST API builds its sheet responses field by field, so none of
-this is exposed there.
-
-The display pages report on themselves the same way, to their display
-link's `device` field (`buildStatus` in `display.js`): once signed in, when
-the page is shown again, when it learns a new build has been deployed, and
-every 30 minutes. The Displays tab shows each link's version, whether it is
-open, and "Update pending" while its `buildId` differs from
-`appConfig/displays`. Screens are often switched off between events, so a
-link that has gone quiet is shown as not open rather than as a problem.
-
-## Admin portal
-
-Routes depend on the signed in role:
-
-- Super admin: `/` lists every club and creates new ones; `/clubs/:clubId`
-  shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
-  `/clubs/:clubId/leagues/:leagueId` a league;
-  `/clubs/:clubId/bonspiels/:bonspielId` a bonspiel.
-- Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
-  `/leagues/:leagueId` a league; `/bonspiels/:bonspielId` a bonspiel.
-- Bonspiel admin: the club admin's routes without the league page.
-
-The club page has five tabs, the one open kept in the URL (`?tab=`). Bonspiel
-admins only get Sheets & Games, with nothing to change and no pairing codes,
-and Bonspiels; the other tabs are not mounted for them at all.
-
-
-- **Sheets & Games**: sheets with their live games, scoreboard status and
-  pairing codes, beside the games from the last seven days.
-- **Leagues**: the club's leagues.
-- **Bonspiels**: the club's bonspiels, newest first. Each opens on its own
-  page: its details, events and teams (typed, or pasted one to a line), and
-  a draw board with the draws down the side and the sheets across. Tapping a
-  game sets its teams and its result; tapping an empty cell adds one. The
-  board shows each game as the functions last worked it out, with the edits
-  not yet saved laid over it. Beside it, Brackets shows each event in
-  rounds, a game's round being one past the latest game in the event its
-  winners come from, ending at the final and the event's winner. A pool
-  shows its standings and its games instead, and where teams share a place
-  the coordinator orders them with Move up, which saves as the event's
-  `tiebreak`. Duplicate
-  copies a bonspiel's events, draws and games to new dates, without its teams
-  or results, to run it again.
-
-  The knockout template fills a bonspiel in from scratch: up to 64 teams in
-  one to four events, with the losers of each A round dropping to the next
-  event (the usual club format) or every loss dropping a team one event (a
-  triple knockout). Each event is built round by round, as teams reach it,
-  with byes for the teams listed first once no more are coming, so no team
-  has two. `knockoutPlan` in `admin/src/lib/bonspielTemplates.ts` then places
-  the games in draws, those whose teams have waited longest first, never
-  before the games they come from, never with a team twice in a draw and,
-  where other games can fill the draw, not in the draw right after them.
-
-  The pools template, `poolsPlan`, splits the teams into up to eight pools,
-  each a round robin, and sends the top one to three of each pool to a
-  knockout playoff ending in one final: first places meet the other pools'
-  lowest qualifiers, and the best seeds get any byes. What either template
-  makes is an ordinary plan, edited like any other.
-- **Displays**: the display links, the warm room screen's title and logo, and
-  the switch for the public scores page, with its address. A link can show the
-  warm room, a sheet's score bug or one of the club's bonspiels.
-- **Settings**, one group at a time, also kept in the URL (`?section=`), with
-  a list of groups beside it, or a dropdown on a narrow window:
-  - Scoreboards: the rock colors and the scoreboard admin PIN.
-  - Integrations: the API key and the completed game webhook, which once
-    saved is shown in short until it is edited.
-  - Users: super admins only. Adds, edits and removes the club's club and
-    bonspiel admins.
-
-Every tab and group stays mounted while hidden, so a half-made change
-survives moving between them. Only super admins can add sheets, rotate the
-key or add club admins, and the portal tags what only they see. (The rules
-would let a club admin write their club's sheets; the portal just doesn't
-offer it.)
-
-## Public REST API
-
-The `api` function is an Express app, served on the scoreboard's hosting site
-under `/api/**` through a Hosting rewrite. It is read only:
-
-- `GET /api/v1/clubs/{clubId}`
-- `GET /api/v1/clubs/{clubId}/sheets/{sheetId}`
-- `GET /api/v1/clubs/{clubId}/sheets/{sheetId}/games?limit=`
-- `GET /api/v1/clubs/{clubId}/leagues`
-- `GET /api/v1/clubs/{clubId}/leagues/{leagueId}`
-- `GET /api/v1/clubs/{clubId}/bonspiels`
-- `GET /api/v1/clubs/{clubId}/bonspiels/{bonspielId}`
-
-Live and completed games carry `league` (null for an open game) and, in a
-league game, each team's `teamId` and `externalId`, which match the teams the
-league endpoints return. A bonspiel game carries `bonspiel`, naming the game
-in its bonspiel's plan, which the bonspiel endpoint returns with each
-game's teams worked out, its score and where each side comes from, and each
-pool's standings. A live game also carries `numberOfEnds` and the
-`ends` played so far, in the same form as a completed game's; both are null
-for a game from a scoreboard build that predates them.
-
-Every request needs the club's key in the `X-API-Key` header, compared in
-constant time against `clubs/{clubId}/private/apiKey`. The full description is
-`app/web/openapi.yaml`, rendered at `/api-docs/` on the same site.
-
-Club websites and display pages are expected to call the API from the
-browser, so it allows any origin (`Access-Control-Allow-Origin: *`) for `GET`
-with the `X-API-Key` header, never with credentials, and lets browsers cache
-the preflight for a day. A key used in browser code is visible to anyone who
-views the page; an integration that needs to keep its key private should call
-the API from a server.
-
-## Completed game webhook
-
-A club can have each finished game posted to a URL, usually a Slack or
-Discord incoming webhook. A club admin or super admin sets it under Settings,
-Integrations in the admin portal, along with whether to post every game, only league
-games or only bonspiel games. A league game here is one where either team has a
-`teamId` and that is not a bonspiel game.
-
-`sendCompletedGameWebhook` is a Firestore trigger on new `games` documents, so
-it fires on the Finish Game write and nothing in the scoreboard app knows
-about it. A game nobody finishes is never posted, and a scoreboard that was
-offline posts its games when it reconnects.
-
-The body is JSON: `text` and `content` both hold the message, because Slack
-reads the first and Discord the second, followed by `event`, `club`, `sheet` and the
-`game` exactly as the REST API returns it. It is described under Webhooks in
-`app/web/openapi.yaml`.
-
-- **Quiet on Discord.** Every post carries `flags: 4096`, Discord's
-  `SUPPRESS_NOTIFICATIONS`, so results land in the channel without buzzing
-  anyone's phone, and `allowed_mentions: { parse: [] }`, so an `@everyone`
-  or role mention typed into a club's template pings nobody. Slack ignores
-  both.
-- **Message.** The club can write its own message in the portal, with
-  variables in braces such as `{team1}`, `{league}` or `{date}`, filled in by
-  `functions/src/webhookMessage.ts`. Without one it is the result on one line
-  ("Monday Night, Sheet 2: Team Smith 7, Team Jones 4"), or for a bonspiel
-  game its bonspiel and game ("Fall Spiel A7, Sheet 2: ..."). `{bonspiel}`,
-  `{bonspielGame}` and `{event}` come from the bonspiel's plan. Dates and times are
-  written in the time zone saved with the template, which the portal
-  defaults to the admin's own. `{date}`, `{shortDate}` and `{weekday}` are
-  the day the game started, so a late draw that runs past midnight keeps
-  the night it was played; `{finishDate}` is the day it ended. A name in braces that is not a variable is
-  posted as written, and the portal warns about it. The portal lists the
-  variables with sample values for its preview in
-  `admin/src/lib/webhookMessage.ts`, so a new variable goes in both.
-- **Once per game.** Triggers can be delivered more than once, so the function
-  sets `webhook.attemptedAt` on the game in a transaction before posting and
-  skips a game that already has it. A post that fails is not sent again later.
-- **Retries.** No answer within 8 seconds, a 5xx or a 429 is tried twice more
-  within the same run. Other answers are final.
-- **Where it may post.** The URL comes from a club admin and the request is
-  made from inside Google Cloud, so it must be `https`, must resolve to a
-  public address, and redirects are not followed. The functions emulator
-  skips these checks so the tests can post to a local server.
-- **Status.** The outcome of each post (`ok`, the HTTP `status`, any `error`)
-  is written to the game's `webhook` field, which the portal shows when a
-  game is expanded, and marks on the game's row when it failed. The last
-  post, game or test, is also written to `private/webhookStatus` for the
-  portal's settings. That is a separate document so the rule on `private/webhook`
-  can allow club admins exactly the settings they choose. The REST API leaves the
-  game's `webhook` field out.
-
-The portal's Send Test button calls `sendTestWebhook`, which posts a sample
-message to the saved URL, with the club's template filled in for a made up
-game, and returns how it went. The URL is treated like a
-password: it lives under `private`, which scoreboards cannot read, and the
-portal shows it masked once saved.
-
-## Reloading scoreboards after a web deploy
-
-Scoreboards are left open for weeks, so the web app reloads itself onto new
-builds, but only between games.
-
-1. Each web deploy builds with `--dart-define=BUILD_ID=<commit SHA>`, writes
-   `build.json` with the same ID next to the app, and then writes it to
-   `appConfig/scoreboard`.
-2. `UpdateService` listens to `appConfig/scoreboard`. As a fallback it also
-   fetches `build.json` at startup, whenever the app returns to the
-   foreground, and daily at 1 AM local time.
-3. When the deployed ID differs from the running one, the scoreboard waits
-   until the game start dialog is showing (no game in progress), then for two
-   minutes without a touch, then shows a 15 second countdown banner and
-   reloads. Any touch restarts the wait.
-4. If a reload does not pick up the new build (a stale cache, say), it tries
-   that build again only after ten minutes, so it never reload loops.
-
-Native builds and local builds without a `BUILD_ID` skip all of this.
-
-## Reloading display pages after a functions deploy
-
-The display pages are left open for weeks too, and OBS never reloads a
-browser source, so they reload themselves onto new versions the same way.
-The pages are served by the `display` function, so it is the functions
-deploy that updates them.
-
-1. Each functions deploy writes the commit SHA to
-   `lib/display/assets/build.json`, which the function serves at
-   `/display/assets/build.json` and puts in each page's config as
-   `buildId`, with the release version from `app/pubspec.yaml` as
-   `appVersion`, and once deployed writes it to `appConfig/displays`.
-2. `watchForUpdates` in `display.js` listens to `appConfig/displays`. As a
-   fallback it fetches `build.json` whenever the page is shown again (as OBS
-   does when a scene comes back on) and daily at 1 AM local time.
-3. When the deployed ID differs from the running one, the warm room,
-   bonspiel and link pages reload straight away. The score bug waits until
-   its sheet has no game on screen, so it never blinks out on a stream.
-4. The same ten minute guard as the scoreboard's keeps a reload that does
-   not take from looping. A page that cannot write `localStorage` does not
-   reload at all.
-
-Local and emulator builds have no `build.json` and skip all of this.
-
-## Hosting headers
-
-The scoreboard is built with WebAssembly and served cross-origin isolated
-(`Cross-Origin-Opener-Policy: same-origin`,
-`Cross-Origin-Embedder-Policy: credentialless`), with `Cache-Control:
-no-cache` so a reload always fetches the newest build. See `firebase.json`.
-
-Those headers are set on `/` and `/!(display){,/**}`, everything but
-`/display/**`. Hosting applies its header rules to rewritten responses too,
-replacing the function's own, so a rule that matched `/display/**` would stop
-the public scores page's JSON from being cached by the CDN. The `display`
-function sets its own Cache-Control on everything it serves.
-
-## Environments
-
-The app picks its Firebase project at build time with
-`--dart-define=FIREBASE_ENV=dev|prod` (dev by default), choosing between
-`lib/firebase_options_dev.dart` and `lib/firebase_options_prod.dart`. The admin
-portal does the same with `VITE_ENV=prod`. Firebase web config values are not
-secrets and are committed.
+[Where game results live](architecture/data-model.md#where-game-results-live)
+lists every copy, who writes it and who reads it.
+
+## Cloud Functions
+
+Every function the `functions/` package exports, from `functions/src/index.ts`.
+
+| Function                   | Kind                         | Fires on, or who may call it                                      | Source                       |
+| -------------------------- | ---------------------------- | ----------------------------------------------------------------- | ---------------------------- |
+| `api`                      | HTTPS (Express)              | `/api/**` through Hosting; a club's `X-API-Key`                   | `index.ts`, `routes/`        |
+| `display`                  | HTTPS (Express)              | `/display/**` through Hosting; anyone                             | `display/pages.ts`           |
+| `provisionClub`            | Callable                     | Super admins: a new club, its first admin and scoreboard PIN      | `admin.ts`                   |
+| `setSuperAdminClaim`       | Callable                     | Super admins                                                      | `admin.ts`                   |
+| `addClubAdmin`             | Callable                     | Super admins                                                      | `admin.ts`                   |
+| `updateClubAdmin`          | Callable                     | Super admins                                                      | `admin.ts`                   |
+| `removeClubAdmin`          | Callable                     | Super admins                                                      | `admin.ts`                   |
+| `deleteSheet`              | Callable                     | Super admins                                                      | `admin.ts`                   |
+| `pairSheet`                | Callable                     | A signed in scoreboard with no admin role                         | `pairing.ts`                 |
+| `unpairSheet`              | Callable                     | The paired scoreboard, with the club's PIN                        | `pairing.ts`                 |
+| `createDisplayLink`        | Callable                     | The club's admins and super admins                                | `display/links.ts`           |
+| `resetDisplayLink`         | Callable                     | The club's admins and super admins                                | `display/links.ts`           |
+| `revokeDisplayLink`        | Callable                     | The club's admins and super admins                                | `display/links.ts`           |
+| `startDisplaySession`      | Callable                     | Anyone holding a display link's token                             | `display/links.ts`           |
+| `sendTestWebhook`          | Callable                     | The club's admins and super admins                                | `webhook.ts`                 |
+| `syncDisplaySheet`         | Firestore, document written  | `clubs/{clubId}/sheets/{sheetId}`                                 | `display/triggers.ts`        |
+| `syncDisplayResults`       | Firestore, document created  | `clubs/{clubId}/sheets/{sheetId}/games/{gameId}`                  | `display/triggers.ts`        |
+| `syncBonspielPlan`         | Firestore, document written  | `clubs/{clubId}/bonspiels/{bonspielId}`                           | `bonspiels/triggers.ts`      |
+| `syncBonspielResult`       | Firestore, document created  | `clubs/{clubId}/sheets/{sheetId}/games/{gameId}`                  | `bonspiels/triggers.ts`      |
+| `sendCompletedGameWebhook` | Firestore, document created  | `clubs/{clubId}/sheets/{sheetId}/games/{gameId}`                  | `webhook.ts`                 |
+
+Callable functions check their callers themselves, so each must be public;
+see "Adding a new callable Cloud Function" in the README.
+
+## Where to read more
+
+| Page                                                        | What it covers                                                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [Data model](architecture/data-model.md)                    | Every Firestore document and field, who writes each, and where game results live                                      |
+| [Auth and roles](architecture/auth-and-roles.md)            | The six roles, how each gets its claims, what the rules let each read and write, and managing accounts                |
+| [Scoreboard app](architecture/scoreboard.md)                | The app's structure, pairing, disconnecting, syncing scores, rock colors and status reports                           |
+| [Leagues and teams](architecture/leagues.md)                | League documents, the CSV import, and picking league teams on the scoreboard                                          |
+| [Bonspiels](architecture/bonspiels.md)                      | Bonspiel plans, how the state and brackets are worked out, pools, templates, and bonspiel games on the scoreboard     |
+| [Displays](architecture/displays.md)                        | The display summary, display links, the score bug, warm room and bonspiel screens, and the public scores page         |
+| [Admin portal](architecture/admin-portal.md)                | Routes by role, and what each tab and settings group does                                                             |
+| [REST API and webhook](architecture/api-and-webhook.md)     | The public read only API and the completed game webhook                                                               |
+| [Deploys and updates](architecture/deploys-and-updates.md)  | Environments, CI and the deploy pipeline, how scoreboards and display pages update themselves, and hosting headers    |

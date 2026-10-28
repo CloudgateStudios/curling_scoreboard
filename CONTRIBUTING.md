@@ -1,8 +1,9 @@
 # Contributing
 
 How to make a change and get it shipped. Setup lives in the
-[README](README.md), and how the pieces fit together in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+[README](README.md), how the pieces fit together in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and what the system does in
+[docs/FEATURES.md](docs/FEATURES.md).
 
 ## Pull requests
 
@@ -88,6 +89,28 @@ remove a string when you remove its last use.
   new project.
 - **Indexes**: add them to `firestore.indexes.json`, not in the console, so
   they deploy everywhere.
+
+## Keeping the docs current
+
+Update the docs in the same PR as the change they describe. Where to look:
+
+| When you change                                       | Update                                                                                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| A Firestore document or field                         | The tree and diagram in `docs/architecture/data-model.md`                                    |
+| `firestore.rules` or a role                           | The tables in `docs/architecture/auth-and-roles.md`                                          |
+| A Cloud Function, added, removed or newly called      | The functions table in `docs/ARCHITECTURE.md`, and the table of pieces if a client calls it   |
+| How a feature works                                   | Its page in `docs/architecture/`                                                             |
+| What users can do                                     | `docs/FEATURES.md`                                                                           |
+| The REST API's responses or the webhook's body        | `app/web/openapi.yaml`, and `docs/architecture/api-and-webhook.md`                          |
+| A product's folders, scripts or build flags           | That folder's README                                                                         |
+| A script in `scripts/`                                | The table in `scripts/README.md`                                                             |
+| A workflow                                            | The Deployments tables in the README, and `docs/architecture/deploys-and-updates.md`         |
+
+Diagrams are [Mermaid](https://mermaid.js.org) blocks in the Markdown, which
+GitHub draws; check them in the PR's rich diff. In a label, quote the text
+(`A["..."]`), use `<br/>` for a line break, and avoid `*` and `_` in pairs,
+which Mermaid takes as Markdown emphasis. Text in diagrams is spell checked
+like the rest.
 
 ## Generated and release-managed files
 

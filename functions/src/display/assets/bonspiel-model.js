@@ -3,7 +3,8 @@
 // here touches the page or Firebase, so the emulator tests can run it.
 //
 // The plan is clubs/{clubId}/bonspiels/{bonspielId} and the state its
-// state/current, both described in docs/ARCHITECTURE.md. The portal works the
+// state/current, both described in docs/architecture/data-model.md and
+// docs/architecture/bonspiels.md. The portal works the
 // same things out in admin/src/lib/bonspiels.ts, and the scoreboard in
 // app/lib/models/bonspiel.dart.
 
