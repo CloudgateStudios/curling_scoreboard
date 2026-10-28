@@ -7,7 +7,7 @@
   // emulators used by emulator-tests/.
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "22"
+      "version": "24"
     },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "21"

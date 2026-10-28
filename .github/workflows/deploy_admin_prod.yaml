@@ -16,9 +16,19 @@ jobs:
         with:
           ref: ${{ github.event.inputs.version }}
 
+      # The Node version comes from the tag being deployed, but never below 24:
+      # tags up to 0.3.0 say 22 in .nvmrc, or have none, and the portal in
+      # the recent ones already needs 24 for the firebase web SDK.
+      - name: Read Node version
+        id: node
+        run: |
+          version=$(cat .nvmrc 2>/dev/null || echo 24)
+          [ "$version" -ge 24 ] || version=24
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: ${{ steps.node.outputs.version }}
 
       - name: Install admin portal dependencies
         working-directory: ./admin
@@ -38,4 +48,4 @@ jobs:
           channelId: live
           target: admin
           entryPoint: .
-          firebaseToolsVersion: 15.32.0
+          firebaseToolsVersion: 15.34.0

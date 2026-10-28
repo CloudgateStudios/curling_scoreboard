@@ -16,9 +16,15 @@ jobs:
         with:
           ref: ${{ github.event.inputs.version }}
 
+      # The Node version comes from the tag being deployed. A tag from before
+      # .nvmrc existed falls back to the version this workflow pinned then.
+      - name: Read Node version
+        id: node
+        run: echo "version=$(cat .nvmrc 2>/dev/null || echo 22)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: ${{ steps.node.outputs.version }}
 
       - name: Install dependencies
         working-directory: ./functions
