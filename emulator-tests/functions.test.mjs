@@ -2014,7 +2014,12 @@ describe('the public scores page', () => {
     assert.equal(await second.text(), body);
     assert.equal(second.headers.get('etag'), etag);
 
-    const again = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`, { headers: { 'If-None-Match': etag } });
+    // As the page's fetch with cache: 'no-cache' asks. Given If-None-Match by
+    // hand, fetch would otherwise add Cache-Control: no-cache, to which
+    // Express never answers 304.
+    const again = await fetch(`${PAGES_URL}/${clubId}/scores/live.json`, {
+      headers: { 'If-None-Match': etag, 'Cache-Control': 'max-age=0' },
+    });
     assert.equal(again.status, 304);
     assert.equal(await again.text(), '');
   });
