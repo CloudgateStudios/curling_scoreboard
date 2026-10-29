@@ -75,15 +75,23 @@ service cloud.firestore {
           && color.hex.matches('^#[0-9a-fA-F]{6}$');
     }
 
+    // What the score bug calls a league or bonspiel in place of its name,
+    // short enough to fit its caption.
+    function isShortName(name) {
+      return name is string && name.size() > 0 && name.size() <= 30;
+    }
+
     // Only the outline of a league is checked. Club admins are trusted with
     // their own club's teams; this just keeps the document a sensible size
     // and shape for the scoreboards that read it.
     function isLeague(league) {
       return league.keys().hasAll(['name', 'active', 'draws', 'teams'])
-          && league.keys().hasOnly(['name', 'active', 'seasonStart', 'seasonEnd', 'draws', 'teams'])
+          && league.keys().hasOnly(['name', 'shortName', 'active', 'seasonStart', 'seasonEnd',
+                                    'draws', 'teams'])
           && league.name is string
           && league.name.size() > 0
           && league.name.size() <= 80
+          && isShortName(league.get('shortName', 'x'))
           && league.active is bool
           && league.draws is list
           && league.draws.size() <= 30
@@ -98,11 +106,12 @@ service cloud.firestore {
     function isBonspiel(bonspiel) {
       return bonspiel.keys().hasAll(['name', 'active', 'startDate', 'endDate', 'numberOfEnds',
                                      'events', 'teams', 'draws', 'games'])
-          && bonspiel.keys().hasOnly(['name', 'active', 'startDate', 'endDate', 'numberOfEnds',
-                                      'events', 'teams', 'draws', 'games'])
+          && bonspiel.keys().hasOnly(['name', 'shortName', 'active', 'startDate', 'endDate',
+                                      'numberOfEnds', 'events', 'teams', 'draws', 'games'])
           && bonspiel.name is string
           && bonspiel.name.size() > 0
           && bonspiel.name.size() <= 80
+          && isShortName(bonspiel.get('shortName', 'x'))
           && bonspiel.active is bool
           && bonspiel.startDate is string
           && bonspiel.startDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')

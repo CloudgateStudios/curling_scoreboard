@@ -261,6 +261,9 @@ await check('club admin: create a league', 'allow', () =>
 await check('club admin: update a league with a season', 'allow', () =>
   setDoc(doc(adminA, 'clubs/club-a/leagues/monday'), { ...league, seasonStart: '2026-10-01' }));
 
+await check('club admin: give a league a short name for the score bug', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/monday'), { ...league, shortName: 'Mixed 4s' }));
+
 await check('club admin: list their leagues', 'allow', () =>
   getDocs(collection(adminA, 'clubs/club-a/leagues')));
 
@@ -300,6 +303,12 @@ await check('attack: club admin creates a league in another club', 'deny', () =>
 
 await check('attack: league with no name', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, name: '' }));
+
+await check('attack: league with a short name too long for the score bug', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, shortName: 'x'.repeat(31) }));
+
+await check('attack: league with an empty short name', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, shortName: '' }));
 
 await check('attack: league whose teams are not a list', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/leagues/bad'), { ...league, teams: 'everyone' }));
@@ -710,6 +719,9 @@ await check('bonspiel admin: update a bonspiel with a result', 'allow', () =>
     ...bonspiel, games: [{ ...bonspiel.games[0], result: { winner: 'team1' } }],
   }));
 
+await check('bonspiel admin: give a bonspiel a short name for the score bug', 'allow', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/fall'), { ...bonspiel, shortName: 'Founders Cup' }));
+
 await check('bonspiel admin: list the bonspiels', 'allow', () =>
   getDocs(collection(bonspielA, 'clubs/club-a/bonspiels')));
 
@@ -754,6 +766,9 @@ await check('attack: unpaired device reads a bonspiel', 'deny', () =>
 
 await check('attack: bonspiel with no name', 'deny', () =>
   setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, name: '' }));
+
+await check('attack: bonspiel with a short name that is not text', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, shortName: 4 }));
 
 await check('attack: bonspiel with a date that is not a date', 'deny', () =>
   setDoc(doc(bonspielA, 'clubs/club-a/bonspiels/bad'), { ...bonspiel, startDate: 'Friday' }));

@@ -135,12 +135,52 @@ export function newTeamId(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
 }
 
+// The parts of a name that say when it plays, which a short name leaves out
+// so it stays right if the league moves to another night. A day may be
+// short ("Thurs") or plural, and joined to others ("Monday & Wednesday"). A
+// time of day goes only with the day before it, so "Monday Late Night
+// Doubles" keeps "Late Night".
+// "Sun" is left alone, as it is a word in a name more often than a day.
+const DAY = String.raw`(?:mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sunday)s?\.?`;
+const TIME_OF_DAY = String.raw`(?:night|evening|morning|afternoon|daytime)s?`;
+const END = String.raw`(?=$|[\s\-–—:|,/()])`;
+const WHEN = [
+  new RegExp(String.raw`\b${DAY}(?:\s*(?:&|and|/|,|\+)\s*${DAY})*(?:\s+${TIME_OF_DAY})?${END}`, 'gi'),
+  new RegExp(String.raw`\b(?:fall|autumn|winter|spring|summer)(?:\s+season)?${END}`, 'gi'),
+  new RegExp(String.raw`\bsession\s*#?\d+${END}`, 'gi'),
+  new RegExp(String.raw`\b(?:19|20)\d{2}(?:\s*[-–/]\s*(?:19|20)?\d{2})?${END}`, 'g'),
+];
+const SEPARATORS = '-–—:|,/&+';
+
+/**
+ * A short name for the score bug, from a league's or bonspiel's name
+ * without the day, time of day, season and year: "Thursday Night
+ * Competitive" is "Competitive", and "Founders Cup 2026" is "Founders Cup".
+ * Null when that leaves nothing useful, or nothing shorter, or still too
+ * long for the bug.
+ */
+export function suggestShortName(name: string): string | null {
+  let short = name;
+  for (const pattern of WHEN) short = short.replace(pattern, ' ');
+  const separator = `[\\s${SEPARATORS}]`;
+  short = short
+    .replace(/\(\s*\)/g, ' ')
+    // A run of separators left where words were taken out becomes one.
+    .replace(new RegExp(`\\s*([${SEPARATORS}])(?:\\s*[${SEPARATORS}])+\\s*`, 'g'), ' $1 ')
+    .replace(new RegExp(`^(?:${separator}|and\\b)+|(?:${separator}|\\band)+$`, 'gi'), '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!short || /^leagues?$/i.test(short) || short === name.trim() || short.length > 30) return null;
+  return short;
+}
+
 /** Reads a league document defensively: it may have been written by an
  *  older portal or by hand. */
 export function leagueFrom(id: string, data: Record<string, unknown>): League {
   return {
     id,
     name: typeof data.name === 'string' ? data.name : '',
+    shortName: typeof data.shortName === 'string' && data.shortName ? data.shortName : undefined,
     active: data.active !== false,
     seasonStart: typeof data.seasonStart === 'string' ? data.seasonStart : undefined,
     seasonEnd: typeof data.seasonEnd === 'string' ? data.seasonEnd : undefined,
@@ -154,6 +194,7 @@ export function leagueFrom(id: string, data: Record<string, unknown>): League {
 export function leagueData(league: Omit<League, 'id'>): Record<string, unknown> {
   return {
     name: league.name.trim(),
+    ...(league.shortName?.trim() ? { shortName: league.shortName.trim() } : {}),
     active: league.active,
     ...(league.seasonStart ? { seasonStart: league.seasonStart } : {}),
     ...(league.seasonEnd ? { seasonEnd: league.seasonEnd } : {}),

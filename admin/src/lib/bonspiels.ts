@@ -70,6 +70,7 @@ export function bonspielFrom(id: string, data: Record<string, unknown>): Bonspie
   return {
     id,
     name: str(data.name),
+    ...(str(data.shortName) ? { shortName: str(data.shortName) } : {}),
     active: data.active !== false,
     startDate: str(data.startDate),
     endDate: str(data.endDate),
@@ -126,6 +127,7 @@ export function bonspielData(bonspiel: Omit<Bonspiel, 'id'>): Record<string, unk
   );
   return {
     name: bonspiel.name.trim(),
+    ...(bonspiel.shortName?.trim() ? { shortName: bonspiel.shortName.trim() } : {}),
     active: bonspiel.active,
     startDate: bonspiel.startDate,
     endDate: bonspiel.endDate,
@@ -250,6 +252,7 @@ export function duplicateBonspiel(bonspiel: Bonspiel, name: string, startDate: s
   const unplaced = (side: BonspielSide): BonspielSide => (side && 'teamId' in side ? null : side);
   return {
     name: name.trim(),
+    ...(bonspiel.shortName ? { shortName: bonspiel.shortName } : {}),
     active: true,
     startDate,
     endDate: addDays(bonspiel.endDate, days),
