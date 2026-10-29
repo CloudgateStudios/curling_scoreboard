@@ -107,6 +107,7 @@ Update the docs in the same PR as the change they describe. Where to look:
 | A Cloud Function, added, removed or newly called      | The functions table in `docs/ARCHITECTURE.md`, and the table of pieces if a client calls it   |
 | How a feature works                                   | Its page in `docs/architecture/`                                                             |
 | What users can do                                     | `docs/FEATURES.md`                                                                           |
+| What a club admin does in the portal, step by step    | Its guide in `docs/guides/`, which the portal also shows under Help                          |
 | The REST API's responses or the webhook's body        | `app/web/openapi.yaml`, and `docs/architecture/api-and-webhook.md`                          |
 | A product's folders, scripts or build flags           | That folder's README                                                                         |
 | A script in `scripts/`                                | The table in `scripts/README.md`                                                             |

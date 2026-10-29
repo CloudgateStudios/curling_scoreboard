@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Link } from 'react-router-dom';
 import { auth } from '../lib/firebase';
 import styles from './LoginPage.module.css';
 
@@ -55,6 +56,7 @@ export function LoginPage() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        <Link to="/help" className={styles.helpLink}>Guides for club admins</Link>
       </div>
     </div>
   );

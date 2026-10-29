@@ -11,6 +11,8 @@ iamcredentials
 ltrb
 maxage
 mindmap
+noopener
+noreferrer
 nosniff
 notmain
 nums

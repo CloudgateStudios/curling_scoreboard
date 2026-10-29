@@ -6,4 +6,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  server: {
+    // The help pages are read from the guides in docs/guides.
+    fs: { allow: ['.', '../docs/guides'] },
+  },
 });

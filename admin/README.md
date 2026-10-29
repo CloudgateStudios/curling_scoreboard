@@ -28,14 +28,16 @@ npm run build
 ```
 
 Tests are Node's built in test runner over `src/lib/*.test.mjs`, so they
-cover the logic in `src/lib/`, not the components.
+cover the logic in `src/lib/`, not the components. `guides.ts` uses Vite's
+`import.meta.glob`, so it has no test; the help tests read the guides
+themselves and check every link between them.
 
 ## Layout
 
 | Path                          | What is in it                                                                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `src/App.tsx`                 | Sign-in and the routes for each role                                                                           |
-| `src/pages/`                  | One file a route: the super admin's club list, a club, a sheet's game history, a league, a bonspiel, sign-in  |
+| `src/pages/`                  | One file a route: the super admin's club list, a club, a sheet's game history, a league, a bonspiel, sign-in, help |
 | `src/components/club/`        | The club page's tabs and settings groups, one component a section                                             |
 | `src/components/bonspiel/`    | The bonspiel page: draw board, game and template dialogs, bracket view                                         |
 | `src/lib/`                    | Logic with no React in it, with its tests beside it                                                            |
@@ -62,4 +64,6 @@ cover the logic in `src/lib/`, not the components.
 | `gameWebhook.ts`        | How a game's webhook post went                                                                     |
 | `credentials.ts`        | Generating API keys and pairing codes                                                              |
 | `unsavedChanges.ts`     | Warning before leaving with unsaved edits                                                          |
+| `guides.ts`             | The guides in `docs/guides/`, read in when the portal is built, for the help pages                 |
+| `helpMarkdown.ts`       | A guide as HTML, with its links and heading ids as GitHub gives them                               |
 | `format.ts`             | Durations, times ago and error messages for display                                                |

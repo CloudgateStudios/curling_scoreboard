@@ -67,6 +67,7 @@ jobs:
               - '.github/workflows/deploy_functions_*.yaml'
             admin:
               - 'admin/**'
+              - 'docs/guides/**'
               - '.github/workflows/validate_pr.yaml'
               - '.github/workflows/deploy_admin_*.yaml'
             emulator:
