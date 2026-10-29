@@ -87,3 +87,11 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.helpLink {
+  display: block;
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #1a73e8;
+}
