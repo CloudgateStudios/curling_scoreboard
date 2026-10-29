@@ -139,6 +139,16 @@ export function LeagueDetail({ user }: Props) {
                   onChange={(e) => edit({ name: e.target.value })}
                 />
               </label>
+              <label className={common.label}>
+                Short name on the score bug
+                <input
+                  className={common.input}
+                  value={league.shortName ?? ''}
+                  maxLength={30}
+                  placeholder={league.name}
+                  onChange={(e) => edit({ shortName: e.target.value || undefined })}
+                />
+              </label>
               <label className={common.checkboxLabel}>
                 <input
                   type="checkbox"

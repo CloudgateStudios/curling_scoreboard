@@ -141,6 +141,7 @@ export function leagueFrom(id: string, data: Record<string, unknown>): League {
   return {
     id,
     name: typeof data.name === 'string' ? data.name : '',
+    shortName: typeof data.shortName === 'string' && data.shortName ? data.shortName : undefined,
     active: data.active !== false,
     seasonStart: typeof data.seasonStart === 'string' ? data.seasonStart : undefined,
     seasonEnd: typeof data.seasonEnd === 'string' ? data.seasonEnd : undefined,
@@ -154,6 +155,7 @@ export function leagueFrom(id: string, data: Record<string, unknown>): League {
 export function leagueData(league: Omit<League, 'id'>): Record<string, unknown> {
   return {
     name: league.name.trim(),
+    ...(league.shortName?.trim() ? { shortName: league.shortName.trim() } : {}),
     active: league.active,
     ...(league.seasonStart ? { seasonStart: league.seasonStart } : {}),
     ...(league.seasonEnd ? { seasonEnd: league.seasonEnd } : {}),

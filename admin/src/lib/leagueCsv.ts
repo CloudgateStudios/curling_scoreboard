@@ -230,6 +230,7 @@ export function planLeagueImport(
       existingId: current?.id ?? null,
       league: {
         name: current?.name ?? incoming.name,
+        shortName: current?.shortName,
         active: current?.active ?? true,
         seasonStart: current?.seasonStart,
         seasonEnd: current?.seasonEnd,

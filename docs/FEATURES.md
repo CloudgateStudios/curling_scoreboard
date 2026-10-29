@@ -147,8 +147,10 @@ it shows from there at any time, even mid-stream, without touching the
 screen.
 
 - **Score bug** for live streams: a transparent overlay of one sheet's score
-  for OBS, with the teams' rock colors, hammer and end. It hides itself
-  between games, and has a preview mode for placing it.
+  for OBS, with the teams' rock colors, hammer and end. Its caption can name
+  the league or bonspiel by a short name, and a long team name slides along
+  now and then to show the rest. It hides itself between games, and has a
+  preview mode for placing it.
 - **Warm room screen** for a TV: every sheet at once, filling the screen at
   any size or way round. It can show totals, every end, or both in turn, the
   day's finished games down the side, and the club's own title and logo.

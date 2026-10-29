@@ -44,7 +44,7 @@ export interface DisplayLiveGame {
   currentEnd: number;
   /** Null until the scoreboard sends it with the live game. */
   numberOfEnds: number | null;
-  league: { name: string } | null;
+  league: DisplayLeague | null;
   /** The bonspiel game this is, which the bonspiel display shows it as. */
   bonspiel: DisplayBonspiel | null;
   team1: DisplayTeam;
@@ -58,17 +58,27 @@ export interface DisplayFinishedGame {
   startedAt: TimestampLike | null;
   finishedAt: TimestampLike;
   numberOfEnds: number | null;
-  league: { name: string } | null;
+  league: DisplayLeague | null;
   bonspiel: DisplayBonspiel | null;
   team1: DisplayTeam;
   team2: DisplayTeam;
   ends: DisplayEnd[];
 }
 
+/** A game's league. */
+export interface DisplayLeague {
+  name: string;
+  /** What the score bug calls it, from the league as it is now. Absent when
+   *  it has no short name. */
+  shortName?: string;
+}
+
 /** Which bonspiel game a game is. */
 export interface DisplayBonspiel {
   id: string;
   name: string;
+  /** As for a league. */
+  shortName?: string;
   /** The game's ID in the bonspiel's plan. */
   gameId: string;
 }
@@ -106,7 +116,7 @@ export interface DisplayResult extends Omit<DisplayFinishedGame, 'league'> {
   sheetName: string;
   /** The last end played, or 0 for a game with no ends recorded. */
   endsPlayed: number;
-  league: { name: string; draws: DisplayLeagueDraw[] } | null;
+  league: (DisplayLeague & { draws: DisplayLeagueDraw[] }) | null;
 }
 
 /** How long a finished game stays in the summary's results: well past the
@@ -257,6 +267,31 @@ export function leagueDraws(league: Data | undefined): DisplayLeagueDraw[] {
   });
 }
 
+/** A league or bonspiel document's short name, or null when it has none. */
+export function shortNameOf(event: Data | undefined): string | null {
+  const name = event?.['shortName'];
+  return typeof name === 'string' && name.trim() !== '' ? name.trim() : null;
+}
+
+/**
+ * [game] with the short names its league and bonspiel have now, from their
+ * documents, for the score bug. A game only carries the names the
+ * scoreboard had, and a club can add or change a short name at any time.
+ */
+export function withShortNames<G extends { league: DisplayLeague | null; bonspiel: DisplayBonspiel | null }>(
+  game: G,
+  league: Data | undefined,
+  bonspiel: Data | undefined,
+): G {
+  const leagueName = shortNameOf(league);
+  const bonspielName = shortNameOf(bonspiel);
+  return {
+    ...game,
+    league: game.league && leagueName ? { ...game.league, shortName: leagueName } : game.league,
+    bonspiel: game.bonspiel && bonspielName ? { ...game.bonspiel, shortName: bonspielName } : game.bonspiel,
+  };
+}
+
 /**
  * The results entry for [game], played on [sheetId], named [sheetName]. The
  * draws are its league's, or empty for a game outside a league.
@@ -272,7 +307,7 @@ export function displayResult(
     sheetId,
     sheetName,
     endsPlayed: Math.max(0, ...game.ends.map((end) => end.endNumber)),
-    league: game.league && { name: game.league.name, draws },
+    league: game.league && { ...game.league, draws },
   };
 }
 

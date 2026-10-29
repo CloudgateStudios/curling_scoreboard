@@ -129,4 +129,10 @@ describe('sortTeams', () => {
       ['Adams', 'Moore', 'Wilson'],
     );
   });
+  test('a short name is kept trimmed, and left out when blank', () => {
+    const base = { name: 'Monday Mixed 4s', active: true, draws: [], teams: [] };
+    assert.equal(leagueData({ ...base, shortName: ' Mixed 4s ' }).shortName, 'Mixed 4s');
+    assert.equal('shortName' in leagueData({ ...base, shortName: '  ' }), false);
+    assert.equal(leagueFrom('x', { ...base, shortName: 'Mixed 4s' }).shortName, 'Mixed 4s');
+  });
 });

@@ -135,6 +135,8 @@ export interface LeagueTeam {
 export interface League {
   id: string;
   name: string;
+  /** What the score bug calls it, such as "Mixed 4s". Absent means the name. */
+  shortName?: string;
   /** Inactive leagues are kept but not offered on scoreboards. */
   active: boolean;
   /** `YYYY-MM-DD`, inclusive. Absent means no limit on that side. */
@@ -264,6 +266,8 @@ export interface BonspielGame {
 export interface Bonspiel {
   id: string;
   name: string;
+  /** What the score bug calls it. Absent means the name. */
+  shortName?: string;
   /** Inactive bonspiels are kept but not offered on scoreboards. */
   active: boolean;
   /** `YYYY-MM-DD`, inclusive. */

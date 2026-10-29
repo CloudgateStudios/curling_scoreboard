@@ -1443,6 +1443,27 @@ describe('display summary', () => {
     assert.equal(result.ends.length, 4);
   });
 
+  test('gives a game\'s league and bonspiel their short names, for the score bug', async () => {
+    await db.doc(`${club}/leagues/mixed`).set({
+      name: 'Monday Mixed 4s', shortName: 'Mixed 4s', active: true, teams: [], draws: [],
+    });
+    await db.doc(`${club}/bonspiels/founders`).set({
+      name: 'Founders Cup 2026', shortName: 'Founders Cup', active: true, startDate: '2026-11-06',
+      endDate: '2026-11-08', numberOfEnds: 8, events: [], teams: [], draws: [], games: [],
+    });
+    const sheetRef = db.doc(`${club}/sheets/s-short`);
+    const league = { id: 'mixed', name: 'Monday Mixed 4s' };
+    await sheetRef.set({ name: 'Sheet Short', liveGame: { ...liveGame, league } });
+    const sheet = await waitFor('the live game', async () => (await sheetOf('s-short'))?.live && sheetOf('s-short'));
+    assert.deepEqual(sheet.live.league, { name: 'Monday Mixed 4s', shortName: 'Mixed 4s' });
+
+    const bonspiel = { id: 'founders', name: 'Founders Cup 2026', gameId: 'a1' };
+    await sheetRef.collection('games').doc('short').set({ ...completedGame(minutesAgo(2)), league: null, bonspiel });
+    const result = await waitFor('the result', async () =>
+      ((await stateDoc.get()).get('results') ?? []).find((r) => r.gameId === 'short'));
+    assert.deepEqual(result.bonspiel, { ...bonspiel, shortName: 'Founders Cup' });
+  });
+
   test('clears the last game a sheet had before final scores came from the results', async () => {
     await stateDoc.set({ sheets: { 's-legacy': { name: 'Sheet Legacy', live: null, lastGame: { gameId: 'old' } } } }, { merge: true });
     await db.doc(`${club}/sheets/s-legacy`).set({ name: 'Sheet Legacy', liveGame });
