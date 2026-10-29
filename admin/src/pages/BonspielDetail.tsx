@@ -16,6 +16,7 @@ import { BracketView } from '../components/bonspiel/BracketView';
 import { DrawBoard } from '../components/bonspiel/DrawBoard';
 import { GameDialog } from '../components/bonspiel/GameDialog';
 import { TemplateDialog } from '../components/bonspiel/TemplateDialog';
+import { ShortNameSuggestion } from '../components/ShortNameSuggestion';
 import common from '../styles/common.module.css';
 import styles from './BonspielDetail.module.css';
 
@@ -288,6 +289,17 @@ function BonspielPage({ user }: Props) {
                   maxLength={80}
                   onChange={(e) => edit({ name: e.target.value })}
                 />
+              </label>
+              <label className={common.label}>
+                Short name on the score bug
+                <input
+                  className={common.input}
+                  value={bonspiel.shortName ?? ''}
+                  maxLength={30}
+                  placeholder={bonspiel.name}
+                  onChange={(e) => edit({ shortName: e.target.value || undefined })}
+                />
+                <ShortNameSuggestion name={bonspiel.name} shortName={bonspiel.shortName} onUse={(shortName) => edit({ shortName })} />
               </label>
               <label className={common.checkboxLabel}>
                 <input

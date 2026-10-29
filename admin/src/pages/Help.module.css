@@ -1,0 +1,147 @@
+/* The list of guides beside the one being read. */
+.layout {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 46rem);
+  gap: 1.5rem;
+  align-items: start;
+  justify-content: center;
+}
+
+.guides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: sticky;
+  top: calc(56px + 1rem);
+}
+
+.guides a {
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+}
+
+.guides a:hover {
+  background: #f1f3f6;
+  color: #1a1a2e;
+}
+
+.guides a[aria-current='page'] {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+/* The guide itself, styled much as GitHub shows Markdown. */
+.guide {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #24292f;
+}
+
+.guide :global(h1) {
+  font-size: 1.6rem;
+  margin: 0 0 1rem;
+  letter-spacing: -0.01em;
+}
+
+.guide :global(h2) {
+  font-size: 1.2rem;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #eee;
+}
+
+.guide :global(h3) {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* Leaves room for the sticky nav when a link jumps to a heading. */
+.guide :global(:is(h1, h2, h3)) {
+  scroll-margin-top: calc(56px + 1rem);
+}
+
+.guide :global(p),
+.guide :global(ul),
+.guide :global(ol),
+.guide :global(table) {
+  margin: 0 0 1rem;
+}
+
+.guide :global(ul),
+.guide :global(ol) {
+  padding-left: 1.5rem;
+}
+
+.guide :global(li + li) {
+  margin-top: 0.25rem;
+}
+
+.guide :global(a) {
+  color: #1a73e8;
+}
+
+.guide :global(code) {
+  background: #f1f3f6;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+}
+
+.guide :global(pre) {
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+
+.guide :global(pre code) {
+  background: none;
+  padding: 0;
+}
+
+.guide :global(table) {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.guide :global(th),
+.guide :global(td) {
+  border: 1px solid #e0e0e0;
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.guide :global(th) {
+  background: #f6f8fa;
+}
+
+.guide :global(img) {
+  max-width: 100%;
+}
+
+.guide > :last-child {
+  margin-bottom: 0;
+}
+
+/* Phones: the list of guides goes above, as a row that scrolls. */
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guides {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .guides a {
+    white-space: nowrap;
+  }
+}

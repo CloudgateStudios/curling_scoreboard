@@ -37,7 +37,8 @@ top (in place of "Live Scores") and adds your club's logo. Press **Save**.
 Under **Shows**, choose **Score bug for** the sheet. Then pick its **Size**,
 the **Caption under the bug** (the sheet name, the league name, both, or
 none), and
-which side the **End** box is on.
+which side the **End** box is on. The caption uses a league's or bonspiel's
+short name if it has one; give it one on the league's or bonspiel's page.
 
 1. In OBS, add a **Browser** source and paste the URL. Leave the size at your
    canvas's, such as 1920 × 1080.

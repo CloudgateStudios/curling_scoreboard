@@ -37,6 +37,11 @@ Importing again is safe. Leagues are matched by name, and teams by
 On **Leagues**, press **+ Add League**, name it, and press **Save**. Then
 press **Edit →** on it:
 
+- **Short name on the score bug**, optional: what a stream's score bug calls
+  the league, such as "Mixed 4s" for "Monday Mixed 4s". Leave it blank to use
+  the name. A new league, added or imported, starts with one made from its
+  name without the day, time of day, season and year; while it has none, the
+  portal offers one under the field.
 - **Active: offered on scoreboards when starting a league game**. Clear it
   between seasons.
 - **Season starts** and **Season ends**, both optional.

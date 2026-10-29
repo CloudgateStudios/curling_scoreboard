@@ -6,6 +6,7 @@ import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
 import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId, sortTeams } from '../lib/leagues';
 import type { AuthUser, League, LeagueDraw, LeagueTeam } from '../types';
+import { ShortNameSuggestion } from '../components/ShortNameSuggestion';
 import common from '../styles/common.module.css';
 import styles from './LeagueDetail.module.css';
 
@@ -138,6 +139,17 @@ export function LeagueDetail({ user }: Props) {
                   maxLength={80}
                   onChange={(e) => edit({ name: e.target.value })}
                 />
+              </label>
+              <label className={common.label}>
+                Short name on the score bug
+                <input
+                  className={common.input}
+                  value={league.shortName ?? ''}
+                  maxLength={30}
+                  placeholder={league.name}
+                  onChange={(e) => edit({ shortName: e.target.value || undefined })}
+                />
+                <ShortNameSuggestion name={league.name} shortName={league.shortName} onUse={(shortName) => edit({ shortName })} />
               </label>
               <label className={common.checkboxLabel}>
                 <input

@@ -245,11 +245,16 @@ The score bug is transparent, so an OBS browser source shows only the bug.
 It shows the two teams with their rock colors and scores, the hammer in a
 live game, and the end (or Final) in a box beside the scores, as large as
 they are, and hides itself while the sheet is idle. A name too long for its
-row shrinks to 80% before it is cut short. `?scale=` (0.5 to 4) sizes it,
+row shrinks to 80% before it is cut short. Every 30 seconds a name still
+cut short slides slowly along to show the rest, waits two seconds and slides
+back; the two teams take turns, and nothing moves just after a score changes,
+with reduced motion on, or with `?scroll=0`. `?scale=` (0.5 to 4) sizes it,
 and `?label=league` or `?label=none` changes or removes the sheet name in
 the caption under it (`?label=both` names the league on the left and the
 sheet on the right), and `?end=left` moves the end box to the left of the
-names. `?preview` is for setting it up: while the sheet has
+names. The caption names a league or bonspiel by its short name when it has
+one. The games only carry the full name, so the functions read the short
+name from the league or bonspiel as they write the display summary. `?preview` is for setting it up: while the sheet has
 no game it shows a faded, outlined stand-in at the bug's real size instead of nothing, so it can be placed in OBS between draws. A link's
 own URL carries `?preview` on to the page it opens, and the portal's
 Preview button opens a link that way.

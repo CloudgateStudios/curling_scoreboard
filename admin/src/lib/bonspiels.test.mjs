@@ -122,6 +122,12 @@ describe('bonspielFrom and bonspielData', () => {
     assert.deepEqual(bonspielFrom('x', stored), { id: 'x', ...p });
   });
 
+  test('round trips a short name, and leaves out a blank one', () => {
+    const stored = bonspielData(plan({ shortName: 'Founders Cup' }));
+    assert.equal(bonspielFrom('x', stored).shortName, 'Founders Cup');
+    assert.equal('shortName' in bonspielData(plan({ shortName: ' ' })), false);
+  });
+
   test('stores a result with only the scores given', () => {
     const stored = bonspielData(withGame('a1', { result: { winner: 'team2', team1Score: undefined } }));
     assert.deepEqual(stored.games[0].result, { winner: 'team2' });

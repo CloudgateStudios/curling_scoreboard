@@ -41,6 +41,21 @@
   text-align: center;
 }
 
+/* The guide for the tab being shown, at the end of the tab bar. */
+.guideLink {
+  margin-left: auto;
+  align-self: center;
+  padding: 0.4rem 0.25rem 0.4rem 1rem;
+  font-size: 0.85rem;
+  color: #1a73e8;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.guideLink:hover {
+  text-decoration: underline;
+}
+
 .tabSelected .tabCount {
   background: #e8f0fe;
   color: #1967d2;

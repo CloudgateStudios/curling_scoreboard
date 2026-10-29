@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { compareLeagues, leagueFrom } from '../lib/leagues';
 import { bonspielFrom } from '../lib/bonspiels';
 import { confirmLeave } from '../lib/unsavedChanges';
+import { guideFor } from '../lib/guides';
 import type { Bonspiel, Club, League, Sheet, UserRole } from '../types';
 import { RecentGames } from '../components/club/RecentGames';
 import { ApiKeySection } from '../components/club/ApiKeySection';
@@ -22,22 +23,23 @@ import { ClubHeader } from '../components/club/ClubHeader';
 import common from '../styles/common.module.css';
 import styles from './ClubDetail.module.css';
 
-// Bonspiel admins only get the sheets, read only, and the bonspiels.
+// Bonspiel admins only get the sheets, read only, and the bonspiels. Each
+// tab links to the guide in docs/guides for it.
 const TABS = [
-  { id: 'sheets', label: 'Sheets & Games', bonspielAdmin: true },
-  { id: 'leagues', label: 'Leagues', bonspielAdmin: false },
-  { id: 'bonspiels', label: 'Bonspiels', bonspielAdmin: true },
-  { id: 'displays', label: 'Displays', bonspielAdmin: false },
-  { id: 'settings', label: 'Settings', bonspielAdmin: false },
+  { id: 'sheets', label: 'Sheets & Games', bonspielAdmin: true, guide: 'connect-a-scoreboard' },
+  { id: 'leagues', label: 'Leagues', bonspielAdmin: false, guide: 'set-up-leagues' },
+  { id: 'bonspiels', label: 'Bonspiels', bonspielAdmin: true, guide: 'run-a-bonspiel' },
+  { id: 'displays', label: 'Displays', bonspielAdmin: false, guide: 'set-up-a-display' },
+  { id: 'settings', label: 'Settings', bonspielAdmin: false, guide: null },
 ] as const;
 
 type Tab = (typeof TABS)[number]['id'];
 
 // The Settings tab shows one group at a time, so each fits on a screen.
 const SETTINGS_GROUPS = [
-  { id: 'scoreboards', label: 'Scoreboards', superAdminOnly: false },
-  { id: 'integrations', label: 'Integrations', superAdminOnly: false },
-  { id: 'admins', label: 'Users', superAdminOnly: true },
+  { id: 'scoreboards', label: 'Scoreboards', superAdminOnly: false, guide: 'connect-a-scoreboard' },
+  { id: 'integrations', label: 'Integrations', superAdminOnly: false, guide: 'post-results-to-chat' },
+  { id: 'admins', label: 'Users', superAdminOnly: true, guide: null },
 ] as const;
 
 type SettingsGroup = (typeof SETTINGS_GROUPS)[number]['id'];
@@ -62,6 +64,12 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
   const settingsGroups = SETTINGS_GROUPS.filter((g) => !g.superAdminOnly || isSuperAdmin);
   const settingsGroup: SettingsGroup =
     settingsGroups.find((g) => g.id === searchParams.get('section'))?.id ?? 'scoreboards';
+  // Connecting a scoreboard is done in Settings, which bonspiel admins
+  // cannot open, so their sheets tab has no guide.
+  const guideSlug = tab === 'settings'
+    ? SETTINGS_GROUPS.find((g) => g.id === settingsGroup)?.guide
+    : isBonspielAdmin && tab === 'sheets' ? null : TABS.find((t) => t.id === tab)?.guide;
+  const guide = guideSlug ? guideFor(guideSlug) : undefined;
 
   const [fetchedClub, setFetchedClub] = useState<Club | null>(null);
   const [sheets, setSheets] = useState<Sheet[]>([]);
@@ -173,6 +181,11 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
             {t.id === 'displays' && <span className={styles.tabCount}>{displayLinkCount}</span>}
           </button>
         ))}
+        {guide && (
+          <a className={styles.guideLink} href={guide.path} target="_blank" rel="noopener">
+            Guide: {guide.title}
+          </a>
+        )}
       </div>
 
       {/* Every tab stays mounted and the others are hidden, so a half-made

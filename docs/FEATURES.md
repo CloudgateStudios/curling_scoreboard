@@ -113,8 +113,10 @@ Club admins run their club from the admin portal in a browser.
   and logo, and the switch for the public scores page.
 - **Integrations.** The club's API key, and where to post finished games.
 
-How it works: [Admin portal](architecture/admin-portal.md). Step by step: the
-[guides for club admins](guides/).
+- **Help.** The [guides for club admins](guides/README.md), in the portal
+  under Help, with a link on each tab to its guide. They need no sign-in.
+
+How it works: [Admin portal](architecture/admin-portal.md#help).
 
 ## Bonspiels
 
@@ -147,8 +149,10 @@ it shows from there at any time, even mid-stream, without touching the
 screen.
 
 - **Score bug** for live streams: a transparent overlay of one sheet's score
-  for OBS, with the teams' rock colors, hammer and end. It hides itself
-  between games, and has a preview mode for placing it.
+  for OBS, with the teams' rock colors, hammer and end. Its caption can name
+  the league or bonspiel by a short name, and a long team name slides along
+  now and then to show the rest. It hides itself between games, and has a
+  preview mode for placing it.
 - **Warm room screen** for a TV: every sheet at once, filling the screen at
   any size or way round. It can show totals, every end, or both in turn, the
   day's finished games down the side, and the club's own title and logo.

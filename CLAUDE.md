@@ -43,7 +43,7 @@ Run the checks for every product you touch before pushing. CI runs the same.
 | `app/`            | `dart format --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`, `dart run translations_cleaner list-unused-terms --abort-on-unused` |
 | `admin/`          | `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`                                                                   |
 | `functions/`      | `npm run build`, `npm run lint`                                                                                                   |
-| `emulator-tests/` | `npm test` (needs Java 21+; builds `functions/` first)                                                                            |
+| `emulator-tests/` | `npm test` (needs Java 21+ and `npm install` in `scripts/`; builds `functions/` first)                                            |
 | `scripts/`        | `node --check` on each changed file                                                                                               |
 | Everything        | `npx cspell -c .github/cspell.json "**/*.{md,dart,ts,tsx,yaml,yml,html,css}"`                                                     |
 

@@ -1,0 +1,5 @@
+/* Under the field, at its start, rather than across the label's width. */
+.suggestion {
+  align-self: flex-start;
+  font-weight: 400;
+}

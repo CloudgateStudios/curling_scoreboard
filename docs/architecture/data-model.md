@@ -97,8 +97,9 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
         updatedAt: timestamp | null
         currentEnd: int
         numberOfEnds: int | null           // null from scoreboard builds before it was sent
-        league: { name: string } | null
-        bonspiel: { id: string, name: string, gameId: string } | null   // a bonspiel game's
+        league: { name: string, shortName?: string } | null   // shortName from the league as it is now
+        bonspiel: { id: string, name: string, shortName?: string,
+                    gameId: string } | null   // a bonspiel game's
         team1: { name: string, color: { name, hex } | null, score: int,
                  hasHammer: bool | null, hadLastStoneFirstEnd: bool | null }
         team2: { ...the same }
@@ -115,7 +116,7 @@ clubs/{clubId}/private/displayState  // what the display pages show, written by 
     finishedAt: timestamp
     numberOfEnds: int | null
     endsPlayed: int          // the last end played; 0 when none were recorded
-    league: { name: string,
+    league: { name: string, shortName?: string,
               draws: [{ day: int, start: string, end: string }] } | null   // its league's draws, as the league had them
     bonspiel: { ...as in live } | null
     team1: { ...as in live, with hasHammer null }
@@ -173,6 +174,7 @@ clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
 
 clubs/{clubId}/leagues/{leagueId}
   name: string
+  shortName?: string         // what the score bug calls it, such as 'Mixed 4s'; up to 30 characters
   active: bool               // inactive leagues are not offered on scoreboards
   seasonStart?: string       // 'YYYY-MM-DD', inclusive
   seasonEnd?: string
@@ -189,6 +191,7 @@ clubs/{clubId}/leagues/{leagueId}
 
 clubs/{clubId}/bonspiels/{bonspielId}  // a bonspiel's plan, written by its coordinators
   name: string
+  shortName?: string         // as for a league, such as 'Founders Cup'
   active: bool
   startDate: string          // 'YYYY-MM-DD', the club's local time, inclusive
   endDate: string

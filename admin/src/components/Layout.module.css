@@ -63,6 +63,17 @@
   color: white;
 }
 
+.navLink {
+  color: #ccc;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: white;
+  text-decoration: underline;
+}
+
 .main {
   flex: 1;
   padding: 2rem 1.5rem;

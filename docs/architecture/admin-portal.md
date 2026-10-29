@@ -32,6 +32,8 @@ flowchart LR
 - Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
   `/leagues/:leagueId` a league; `/bonspiels/:bonspielId` a bonspiel.
 - Bonspiel admin: the club admin's routes without the league page.
+- Anyone, signed in or not: `/help` lists the guides for club admins and
+  `/help/:guide` shows one. See [Help](#help).
 
 ## The club page
 
@@ -102,3 +104,23 @@ survives moving between them. Only super admins can add sheets, rotate the
 key or add club admins, and the portal tags what only they see. (The rules
 would let a club admin write their club's sheets; the portal just doesn't
 offer it.)
+
+Each tab, and each Settings group, links to its guide at the end of the tab
+bar. The link opens in a new tab, like Help in the top bar, so a half-made
+change is not lost.
+
+## Help
+
+The help pages are the Markdown guides in
+[`docs/guides/`](../guides/README.md), read into the portal when it is built
+with Vite's `import.meta.glob`. They always match the build they ship in, and
+a change to a guide reaches the portal on the next deploy, dev on a merge and
+prod on a release. The guides' README is the page at `/help`, and its table
+sets the order of the list beside each guide.
+
+`src/lib/helpMarkdown.ts` turns a guide into HTML with `marked`, the way
+GitHub shows it: headings get GitHub's ids, so a link to a heading works in
+both places. A link to another guide stays in the portal; a link to anything
+else in the repo, such as these architecture pages, opens on GitHub. The help
+pages need no sign-in, so a link to one can be sent to someone without an
+account; the sign-in page links to them too.

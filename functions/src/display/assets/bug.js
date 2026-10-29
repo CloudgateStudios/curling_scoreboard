@@ -6,9 +6,12 @@
 //   scale=1.5          size, from 0.5 to 4
 //   label=league       what the caption under the bug names: sheet
 //                      (default), league, both (the league on the left, the
-//                      sheet on the right) or none, which leaves it off
+//                      sheet on the right) or none, which leaves it off.
+//                      A league or bonspiel goes by its short name, if the
+//                      club gave it one
 //   end=left           put the end box left of the names, rather than
 //                      right of the scores
+//   scroll=0           never slide a name that is cut short to show the rest
 //   preview            while setting up: show an outlined placeholder of the
 //                      same size while the sheet has no game, instead of
 //                      nothing, so the bug can be placed in OBS between draws
@@ -23,6 +26,7 @@ const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
 const label = ['sheet', 'league', 'both', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
 const preview = params.has('preview') && params.get('preview') !== '0';
 const endLeft = params.get('end') === 'left';
+const scrollNames = params.get('scroll') !== '0';
 document.documentElement.style.setProperty('--scale', String(scale));
 
 const root = document.getElementById('display');
@@ -75,7 +79,8 @@ function showCaption(main, sheetName) {
 function showLabel(sheet, view) {
   if (label === 'none') return showCaption('', '');
   if (label === 'sheet') return showCaption(sheet.name, '');
-  const event = view.game.league?.name ?? view.game.bonspiel?.name;
+  const nameOf = (event) => event && (event.shortName || event.name);
+  const event = nameOf(view.game.league) ?? nameOf(view.game.bonspiel);
   if (!event) return showCaption(sheet.name, '');
   showCaption(event, label === 'both' ? sheet.name : '');
 }
@@ -127,9 +132,74 @@ const nameWatch = new ResizeObserver(fitNames);
 nameWatch.observe(rows.team1.name);
 nameWatch.observe(rows.team2.name);
 
+// A name still cut short once it is as small as it goes slides slowly along
+// to show the rest now and then, waits, and slides back. One name at a time,
+// taking turns, and not while a score has just changed, so it never pulls
+// the eye from the game.
+const SCROLL_EVERY_MS = 30_000;
+// In rem a second, so it keeps the same pace at any scale.
+const SCROLL_SPEED = 2.5;
+const SCROLL_HOLD_MS = 2_000;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// The name sliding now, if any, and which team's turn is next.
+let scrolling = null;
+let scrollTurn = 0;
+let lastScoreChange = 0;
+
+function stopScroll() {
+  if (!scrolling) return;
+  scrolling.scrollLeft = 0;
+  scrolling.classList.remove('scrolling');
+  scrolling = null;
+}
+
+// Moves [name] from one place to another at the set pace, easing in and
+// out. False if it was stopped on the way.
+function slide(name, from, to) {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const duration = (Math.abs(to - from) / (SCROLL_SPEED * rem)) * 1000;
+  const start = performance.now();
+  return new Promise((resolve) => {
+    function step(time) {
+      if (scrolling !== name) return resolve(false);
+      const done = Math.min((time - start) / duration, 1);
+      name.scrollLeft = from + (to - from) * (1 - Math.cos(Math.PI * done)) / 2;
+      if (done < 1) requestAnimationFrame(step);
+      else resolve(true);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+async function scrollName(name) {
+  scrolling = name;
+  // Clipped rather than ending in an ellipsis while it moves.
+  name.classList.add('scrolling');
+  const distance = name.scrollWidth - name.clientWidth;
+  if (await slide(name, 0, distance)) {
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_HOLD_MS));
+    await slide(name, distance, 0);
+  }
+  if (scrolling === name) stopScroll();
+}
+
+function scrollNext() {
+  if (!scrollNames || reducedMotion.matches || !onAir || scrolling) return;
+  if (performance.now() - lastScoreChange < 3_000) return;
+  for (let i = 0; i < 2; i++) {
+    const name = rows[(scrollTurn + i) % 2 === 0 ? 'team1' : 'team2'].name;
+    if (name.scrollWidth - name.clientWidth > 1) {
+      scrollTurn = (scrollTurn + i + 1) % 2;
+      scrollName(name);
+      return;
+    }
+  }
+}
+
 function showTeam(parts, team, view, changed) {
   const hex = team.color?.hex ?? '#666666';
   parts.stripe.style.background = hex;
+  if (parts.name.textContent !== team.name && scrolling === parts.name) stopScroll();
   parts.name.textContent = team.name;
   parts.name.title = team.name;
   // Hidden but kept in the grid, so the scores line up either way.
@@ -138,6 +208,7 @@ function showTeam(parts, team, view, changed) {
   parts.score.style.background = hex;
   parts.score.style.color = textColorOn(hex);
   if (changed) {
+    lastScoreChange = performance.now();
     parts.score.classList.remove('changed');
     // Restarts the animation when two changes come close together.
     void parts.score.offsetWidth;
@@ -180,6 +251,7 @@ function render() {
   onAir = false;
   const message = STATUS_MESSAGES[linkStatus];
   if (message) {
+    stopScroll();
     bug.classList.add('hidden');
     showStatus(message);
     return;
@@ -188,6 +260,7 @@ function render() {
 
   const sheet = summary?.sheets?.[config.sheetId];
   if (!sheet) {
+    stopScroll();
     bug.classList.add('hidden');
     showStatus(summary ? 'This sheet is not in the club\'s scores yet.' : null);
     return;
@@ -197,6 +270,7 @@ function render() {
   const view = sheetView(summary, config.sheetId, now());
   if (view.kind === 'idle') {
     shown = null;
+    stopScroll();
     if (preview) showPlaceholder(sheet);
     else bug.classList.add('hidden');
     return;
@@ -236,3 +310,4 @@ connect({
 // A final score is taken down ten minutes after the game ends, with no write
 // to say so, and an abandoned game expires the same way.
 setInterval(render, 15_000);
+setInterval(scrollNext, SCROLL_EVERY_MS);
