@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
-import { formatDraws, leagueData } from '../../lib/leagues';
+import { formatDraws, leagueData, suggestShortName } from '../../lib/leagues';
 import type { League } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
 import { LeagueWeek } from './LeagueWeek';
@@ -30,7 +30,9 @@ export function LeaguesSection({ clubId, leagues, onOpenLeague }: Props) {
     try {
       const ref = await addDoc(
         collection(db, 'clubs', clubId, 'leagues'),
-        leagueData({ name: newName, active: true, draws: [], teams: [] }),
+        leagueData({
+          name: newName, shortName: suggestShortName(newName) ?? undefined, active: true, draws: [], teams: [],
+        }),
       );
       setNewName('');
       setAdding(false);

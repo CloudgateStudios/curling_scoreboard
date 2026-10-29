@@ -177,6 +177,14 @@ describe('planLeagueImport', () => {
     assert.deepEqual(plan.added, ['A']);
   });
 
+  test('suggests a short name for a new league, and keeps an existing league\'s own', () => {
+    const [created] = planLeagueImport(existing, [{ name: 'Friday Fun', draws: [], teams: [] }], 'merge', newId);
+    assert.equal(created.league.shortName, 'Fun');
+    const named = [{ ...existing[0], shortName: 'Mondays' }];
+    assert.equal(planLeagueImport(named, incoming, 'merge', newId)[0].league.shortName, 'Mondays');
+    assert.equal(planLeagueImport(existing, incoming, 'merge', newId)[0].league.shortName, undefined);
+  });
+
   test('importing the same file twice changes nothing', () => {
     const [first] = planLeagueImport([], incoming, 'replace', newId);
     const stored = [{ id: 'league-2', ...first.league }];
