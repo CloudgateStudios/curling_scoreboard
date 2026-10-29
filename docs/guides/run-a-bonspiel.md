@@ -12,7 +12,8 @@ someone a bonspiel admin under **Settings**, **Users**.
 On **Bonspiels**, press **+ Add Bonspiel**, name it, **Save**, then
 **Open →**. Under **Details** set the dates and **Ends per game**, and tick
 **Active: offered on scoreboards during its dates**. A **Short name on the
-score bug**, such as "Founders Cup", is optional.
+score bug**, such as "Founders Cup" for "Founders Cup 2026", is optional;
+the portal offers one under the field when it can.
 
 ## 2. Add the teams
 

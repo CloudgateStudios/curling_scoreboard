@@ -1,4 +1,5 @@
 import type { League, LeagueDraw, LeagueTeam } from '../types';
+import { suggestShortName } from './leagues.ts';
 
 // Importing leagues and their teams from a CSV file: one row per team, with
 // the league's name and schedule repeated on each of its rows.
@@ -230,7 +231,9 @@ export function planLeagueImport(
       existingId: current?.id ?? null,
       league: {
         name: current?.name ?? incoming.name,
-        shortName: current?.shortName,
+        // A new league starts with a suggested short name; an existing one
+        // keeps its own.
+        shortName: current ? current.shortName : suggestShortName(incoming.name) ?? undefined,
         active: current?.active ?? true,
         seasonStart: current?.seasonStart,
         seasonEnd: current?.seasonEnd,

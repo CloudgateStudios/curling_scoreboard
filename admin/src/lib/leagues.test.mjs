@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   compareLeagues, drawConflicts, formatConflict, formatDraws, leagueData, leagueFrom, scheduledDraws,
-  sortTeams,
+  sortTeams, suggestShortName,
 } from './leagues.ts';
 
 function league(name, draws = [], extra = {}) {
@@ -134,5 +134,39 @@ describe('sortTeams', () => {
     assert.equal(leagueData({ ...base, shortName: ' Mixed 4s ' }).shortName, 'Mixed 4s');
     assert.equal('shortName' in leagueData({ ...base, shortName: '  ' }), false);
     assert.equal(leagueFrom('x', { ...base, shortName: 'Mixed 4s' }).shortName, 'Mixed 4s');
+  });
+});
+
+describe('suggestShortName', () => {
+  test('leaves out when a league plays', () => {
+    for (const [name, short] of [
+      ['Monday Mixed 4s', 'Mixed 4s'],
+      ['Thursday Night Competitive', 'Competitive'],
+      ['Sunday Brunch League', 'Brunch League'],
+      ['Tuesday Morning Seniors', 'Seniors'],
+      ['Thurs. Night Open', 'Open'],
+      ['Mondays Over/Under', 'Over/Under'],
+      ['Monday & Wednesday Doubles', 'Doubles'],
+      ['Fall 2026 – Wednesday Doubles', 'Doubles'],
+      ['Winter Session 2: Friday Mixed', 'Mixed'],
+      ['Mixed (Monday)', 'Mixed'],
+      ['2026-27 Learn to Curl', 'Learn to Curl'],
+      ['Founders Cup 2026', 'Founders Cup'],
+    ]) {
+      assert.equal(suggestShortName(name), short, name);
+    }
+  });
+
+  test('keeps words that only look like a time', () => {
+    assert.equal(suggestShortName('Monday Late Night Doubles'), 'Late Night Doubles');
+    assert.equal(suggestShortName('Wednesday Wedding Party'), 'Wedding Party');
+    assert.equal(suggestShortName('Sun Valley Open'), null);
+  });
+
+  test('suggests nothing when there is nothing to leave out, or nothing left', () => {
+    assert.equal(suggestShortName('Open Teams'), null);
+    assert.equal(suggestShortName('Monday Night'), null);
+    assert.equal(suggestShortName('Monday Night League'), null);
+    assert.equal(suggestShortName('Monday The Very Long Name of a Competitive Open League'), null);
   });
 });
