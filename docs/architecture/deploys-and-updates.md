@@ -111,7 +111,8 @@ deploy that updates them.
    does when a scene comes back on) and daily at 1 AM local time.
 3. When the deployed ID differs from the running one, the warm room,
    bonspiel and link pages reload straight away. The score bug waits until
-   its sheet has no game on screen, so it never blinks out on a stream.
+   its sheet has no game on screen, so a game never blinks out on a stream;
+   its idle card can, for the moment the reload takes.
 4. The same ten minute guard as the scoreboard's keeps a reload that does
    not take from looping. A page that cannot write `localStorage` does not
    reload at all.

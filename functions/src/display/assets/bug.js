@@ -1,6 +1,7 @@
 // The score bug: a sheet's two teams, their rock colors and scores, for an
 // OBS browser source. The page is transparent, so it sits over the video
-// without a chroma key, and it hides itself while the sheet has no game.
+// without a chroma key. While the sheet has no game it shows the sheet's name
+// at the same size, so it can be placed in OBS at any time.
 //
 // Options, in the query string:
 //   scale=1.5          size, from 0.5 to 4
@@ -12,9 +13,6 @@
 //   end=left           put the end box left of the names, rather than
 //                      right of the scores
 //   scroll=0           never slide a name that is cut short to show the rest
-//   preview            while setting up: show an outlined placeholder of the
-//                      same size while the sheet has no game, instead of
-//                      nothing, so the bug can be placed in OBS between draws
 
 import {
   STATUS_MESSAGES, config, connect, el, endLabel, followLink, followsLink, now, sheetView,
@@ -24,7 +22,6 @@ import {
 const params = new URLSearchParams(location.search);
 const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
 const label = ['sheet', 'league', 'both', 'none'].includes(params.get('label')) ? params.get('label') : 'sheet';
-const preview = params.has('preview') && params.get('preview') !== '0';
 const endLeft = params.get('end') === 'left';
 const scrollNames = params.get('scroll') !== '0';
 document.documentElement.style.setProperty('--scale', String(scale));
@@ -49,6 +46,11 @@ function teamRow() {
 const rows = { team1: teamRow(), team2: teamRow() };
 const teams = el('div', 'teams');
 teams.append(rows.team1.row, rows.team2.row);
+const idleCard = el('div', 'idle-card');
+const idleSheet = el('span', 'idle-sheet');
+const idleNote = el('span', 'idle-note');
+idleNote.textContent = 'No game right now';
+idleCard.append(idleSheet, idleNote);
 const end = el('div', 'end');
 const endName = el('span', 'end-label');
 const endValue = el('span', 'end-value');
@@ -57,7 +59,7 @@ const caption = el('div', 'caption');
 const captionMain = el('span', 'caption-main');
 const captionSheet = el('span', 'caption-sheet');
 caption.append(captionMain, captionSheet);
-bug.append(teams, end, caption);
+bug.append(teams, idleCard, end, caption);
 
 let summary = undefined;
 let linkStatus = 'connecting';
@@ -216,30 +218,21 @@ function showTeam(parts, team, view, changed) {
   }
 }
 
-// What an idle sheet shows with ?preview: the bug at its real size, faded
-// and outlined, so it can be placed in OBS before a game starts.
-function showPlaceholder(sheet) {
-  for (const [slot, name] of [['team1', 'Team 1'], ['team2', 'Team 2']]) {
-    const parts = rows[slot];
-    parts.stripe.style.background = '';
-    parts.name.textContent = name;
-    parts.name.title = '';
-    parts.hammer.classList.add('off');
-    parts.score.textContent = '0';
-    parts.score.style.background = '';
-    parts.score.style.color = '';
-    parts.score.classList.remove('changed');
-  }
-  if (label === 'both') showCaption('League', sheet.name);
-  else showCaption(label === 'none' ? '' : sheet.name, '');
-  endName.textContent = 'End';
+// What an idle sheet shows: its name over the team rows, which stay in the
+// grid unseen, so the bug is the size a game's will be. The caption has the
+// same reason to stay, kept open by a space, unless the link leaves it off.
+function showIdle(sheet) {
+  idleSheet.textContent = sheet.name;
+  idleSheet.title = sheet.name;
+  showCaption(label === 'none' ? '' : ' ', '');
+  endName.textContent = '';
   endValue.textContent = '–';
   endValue.classList.remove('word');
   end.title = 'No game';
   bug.classList.remove('final');
-  bug.classList.add('placeholder');
+  bug.classList.add('idle');
   bug.classList.remove('hidden');
-  fitNames();
+  fitName(idleSheet);
 }
 
 function showStatus(message) {
@@ -271,11 +264,10 @@ function render() {
   if (view.kind === 'idle') {
     shown = null;
     stopScroll();
-    if (preview) showPlaceholder(sheet);
-    else bug.classList.add('hidden');
+    showIdle(sheet);
     return;
   }
-  bug.classList.remove('placeholder');
+  bug.classList.remove('idle');
 
   const { game } = view;
   const key = view.kind === 'final' ? game.gameId : 'live';

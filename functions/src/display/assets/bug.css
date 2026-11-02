@@ -39,9 +39,16 @@ body {
   animation: appear 300ms ease-out;
 }
 
+/* The idle card shares this cell, so it can't change the bug's size. */
+.teams,
+.idle-card {
+  grid-row: 1;
+  grid-column: 1;
+  min-width: 0;
+}
+
 .teams {
   display: grid;
-  min-width: 0;
 }
 
 .team {
@@ -123,7 +130,8 @@ body {
   border-right: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-.end-left .teams {
+.end-left .teams,
+.end-left .idle-card {
   grid-row: 1;
   grid-column: 2;
 }
@@ -182,19 +190,41 @@ body {
   flex-shrink: 0;
 }
 
-/* The ?preview stand-in for an idle sheet: the bug's size and place, but
-   plainly not a game. */
-.bug.placeholder {
-  opacity: 0.6;
-  outline: 2px dashed rgba(255, 255, 255, 0.8);
-  outline-offset: -2px;
-  animation: none;
+/* An idle sheet: its name where the teams go, which stay in the grid unseen
+   to hold the bug at a game's size. */
+.idle-card {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 1rem;
 }
 
-.placeholder .stripe,
-.placeholder .score {
-  background: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.85);
+.bug.idle .idle-card {
+  display: flex;
+}
+
+.bug.idle .teams {
+  visibility: hidden;
+}
+
+/* bug.js shrinks a long name as it does a team's. */
+.idle-sheet {
+  font-size: 2.4rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idle-note {
+  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.bug.idle .end-value {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Shown only when the link is wrong, so it can be fixed while setting up. */

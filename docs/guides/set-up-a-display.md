@@ -44,9 +44,8 @@ short name if it has one; give it one on the league's or bonspiel's page.
    canvas's, such as 1920 × 1080.
 2. The page is transparent with the bug in its top left corner. Move or crop
    the source to place it.
-3. Between games the bug hides itself. To place it then, press **Preview** in
-   the portal to see it outlined, or add `?preview` just before the `#` in
-   OBS's URL while you set up, and take it out after.
+3. Between games the bug shows the sheet's name and "No game right now". It is
+   the same size as during a game, so you can place it at any time.
 
 ## A bonspiel screen
 

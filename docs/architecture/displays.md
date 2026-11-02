@@ -244,7 +244,11 @@ server's time, and assets `no-cache`.
 The score bug is transparent, so an OBS browser source shows only the bug.
 It shows the two teams with their rock colors and scores, the hammer in a
 live game, and the end (or Final) in a box beside the scores, as large as
-they are, and hides itself while the sheet is idle. A name too long for its
+they are. While the sheet is idle it shows the sheet's name and "No game right
+now" instead, with a dash in the end box. The team rows and caption stay in
+the layout unseen, so the card is always the size a game's bug will be, at
+any scale and with any caption or end side, and can be used to place the bug
+in OBS between draws. A name too long for its
 row shrinks to 80% before it is cut short. Every 30 seconds a name still
 cut short slides slowly along to show the rest, waits two seconds and slides
 back; the two teams take turns, and nothing moves just after a score changes,
@@ -254,10 +258,7 @@ the caption under it (`?label=both` names the league on the left and the
 sheet on the right), and `?end=left` moves the end box to the left of the
 names. The caption names a league or bonspiel by its short name when it has
 one. The games only carry the full name, so the functions read the short
-name from the league or bonspiel as they write the display summary. `?preview` is for setting it up: while the sheet has
-no game it shows a faded, outlined stand-in at the bug's real size instead of nothing, so it can be placed in OBS between draws. A link's
-own URL carries `?preview` on to the page it opens, and the portal's
-Preview button opens a link that way.
+name from the league or bonspiel as they write the display summary.
 
 ### Warm room screen
 
@@ -304,9 +305,9 @@ score, the winner in bold, and "Final after 7 ends" for a game that ended
 early or went to extra ends. The column is hidden until the first game of
 the day finishes, and the sheets get its width back. With `?preview`, as the
 portal's Preview button opens it, the column shows before then too, faded and
-outlined like the score bug's stand-in, with a note that the day's results
-appear there as games finish, so whoever sets the screen up sees the room it
-takes.
+outlined, with a note that the day's results appear there as games finish, so
+whoever sets the screen up sees the room it takes. A link's own URL carries
+`?preview` on to the page it opens.
 
 The grouping is worked out on the screen, in `results-model.js`, because it
 is at the club and so on the club's time, which is what leagues' draws are

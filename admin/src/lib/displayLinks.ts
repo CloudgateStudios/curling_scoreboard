@@ -51,8 +51,8 @@ export function displayUrl(siteUrl: string, clubId: string, token: string): stri
 
 /**
  * The link's URL in preview mode, for checking a screen while setting it up:
- * a score bug shows an outlined placeholder while its sheet has no game,
- * rather than nothing.
+ * a warm room shows its earlier results column, outlined, before the first
+ * game of the day finishes.
  */
 export function displayPreviewUrl(siteUrl: string, clubId: string, token: string): string {
   return displayUrl(siteUrl, clubId, token).replace('#', '?preview#');
