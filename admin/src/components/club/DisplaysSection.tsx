@@ -335,9 +335,9 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
               </div>
               <p className={styles.urlHint}>
                 Put it on the screen, or add it to OBS as a Browser source. It never needs to
-                change: the screen follows whatever this link is set to show below. Preview shows
-                a score bug outlined while its sheet has no game; adding ?preview before the # in
-                OBS does the same while you place it.
+                change: the screen follows whatever this link is set to show below. A score bug
+                shows its sheet's name between games, at its full size, so you can place it at any
+                time. Preview shows a warm room's results column before the first game finishes.
               </p>
             </div>
           ) : (

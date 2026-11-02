@@ -361,7 +361,7 @@ html.cursor-idle body {
 }
 
 /* With ?preview before the day has results: the column at its real size,
-   faded and outlined like the score bug's stand-in. */
+   faded and outlined. */
 .rail.placeholder {
   opacity: 0.6;
   outline: 2px dashed rgba(255, 255, 255, 0.8);
