@@ -70,6 +70,8 @@ document. The rest, path by path, under `clubs/{clubId}`:
 | `displayLinks/{linkId}`     | read; change `label` and `settings`     | —                   | —                                         | its own: read; write `device`   |
 | `admins/{uid}`              | read                                    | —                   | —                                         | —                               |
 | `config/scoreboard`         | read, write                             | —                   | read¹                                     | —                               |
+| `config/club`               | read, write                             | —                   | read¹                                     | —                               |
+| `config/stream`             | read, write                             | —                   | read¹                                     | —                               |
 | `leagues/{leagueId}`        | read, write, delete                     | —                   | read¹                                     | —                               |
 | `bonspiels/{bonspielId}`    | read, write, delete                     | read, write, delete | read¹                                     | read                            |
 | `bonspiels/{id}/state/*`    | read                                    | read                | read¹                                     | read                            |
@@ -80,7 +82,8 @@ document. The rest, path by path, under `clubs/{clubId}`:
 `scoreboardUid`.
 
 Writes are also held to a shape: the PIN to digits, the webhook to an
-`https` URL and the settings the portal offers, a display link's settings to
+`https` URL and the settings the portal offers, the time zone to a zone
+name, stream titles to their three kinds and lengths, a display link's settings to
 what the pages understand, the logo to a PNG, JPEG or WebP data URL, and
 leagues and bonspiels to their outline. Every rule has cases in
 `emulator-tests/rules.test.mjs`.

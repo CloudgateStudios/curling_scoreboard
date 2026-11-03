@@ -18,6 +18,11 @@ league,day,start,end,team,external_id
 Monday Night,Mon,18:30,20:30,Team Smith,1042
 ```
 
+A league that shares the ice with another at the same time can add a
+`sheets` column naming its draw's sheets, separated by semicolons:
+`Sheet 1;Sheet 2`. Names match the club's sheets ignoring case, and a name
+that matches none is reported on its row.
+
 ```mermaid
 flowchart LR
   CSV["CSV file<br/>one row a team"] --> PARSE["leagueCsv.ts<br/>parsed in the browser"]
@@ -38,7 +43,23 @@ whichever the admin chooses. Times and days are plain values with no time
 zone: scoreboards compare them with their own clock.
 
 Dates and times are stored as strings for the same reason. A Firestore
-timestamp is an instant, and "Mondays at 18:30" is not one.
+timestamp is an instant, and "Mondays at 18:30" is not one. The functions
+have no club clock, so they read the club's time zone from `config/club`;
+see [What is on a sheet now](api-and-webhook.md#what-is-on-a-sheet-now).
+
+## Split leagues
+
+Some clubs run two leagues at once, each on some of the sheets. A draw can
+list its sheets in `sheetIds`; a draw without them has the whole ice, which
+is every league saved before sheets existed. On a league's page each draw
+has its sheets as buttons under it, **All sheets** first. Ticking every
+sheet is stored as none, so a sheet added later joins the draw.
+
+The sheets are a fact about one draw rather than the league, as a league can
+play sheets 1 to 3 one night and 4 to 6 another. The week view only flags
+two draws that overlap when they can be on the same sheet, the scoreboard's
+league bar asks which league is playing on its own sheet, and the API's
+`/now` matches a stream on a sheet to the league on it.
 
 ## League games on the scoreboard
 
@@ -50,7 +71,7 @@ flowchart TD
   B -- "no" --> OPEN["No bar:<br/>open games only"]
   B -- "yes" --> C{"Only one league?"}
   C -- "yes" --> NAMED["The bar names it"]
-  C -- "no" --> D{"Exactly one league in a draw?<br/>From 30 minutes before it starts<br/>until it ends, in its season"}
+  C -- "no" --> D{"Exactly one league in a draw on this sheet?<br/>From 30 minutes before it starts<br/>until it ends, in its season"}
   D -- "yes" --> NOW["The bar names it,<br/>marked Playing now"]
   D -- "no" --> CHOOSE["The bar says<br/>Choose league"]
   NAMED --> PICK["Pick teams: one button a team.<br/>The first tapped throws the first color"]
@@ -73,9 +94,9 @@ While there are any leagues, the setup screen gains one bar above its settings.
 Leaving the bar alone starts an open game exactly as before.
 
 The left of the bar is the league. It follows the scoreboard's local clock:
-if exactly one league is in a draw (from half an hour before it starts until
-it ends, within the league's season) the bar names it and marks it as playing
-now, and a club's only league is always named. Tapping it opens a modal of
+if exactly one league is in a draw on this sheet (from half an hour before it
+starts until it ends, within the league's season) the bar names it and marks
+it as playing now, and a club's only league is always named. Tapping it opens a modal of
 the club's leagues, the ones playing now first, to choose another; that
 clears any teams already picked. The modal puts leagues two across once there
 are more than three and shares its height between the rows, so a club's ten

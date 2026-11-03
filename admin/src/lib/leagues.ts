@@ -109,7 +109,7 @@ export function shareASheet(a: LeagueDraw, b: LeagueDraw): boolean {
 }
 
 /**
- * A draw's sheets after [sheetId] is ticked or unticked, given every sheet
+ * A draw's sheets after [sheetId] is turned on or off, given every sheet
  * the club has. Every sheet, or none, is stored as no sheets, which means
  * the whole ice, so a sheet added later is in the draw too.
  */

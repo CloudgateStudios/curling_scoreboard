@@ -22,6 +22,10 @@ The quickest way, for all your leagues at once and again each season.
    local time. `external_id` is the team's ID in your own league software, if
    you have one. The import dialog has **Download this as a sample CSV** to
    start from.
+
+   If two leagues play at the same time on different sheets, add a `sheets`
+   column with the sheets each one uses, separated by semicolons, such as
+   `Sheet 1;Sheet 2`. Leave it out for a league that has the whole ice.
 2. Open **Leagues**, press **Import CSV** and choose the file.
 3. Choose what happens to **Teams already in a league that are not in the
    file**: **Keep them** or **Remove them**.
@@ -47,9 +51,12 @@ press **Edit →** on it:
 - **Season starts** and **Season ends**, both optional.
 - **Schedule**: **+ Add Draw** for each weekly time slot. A scoreboard
   suggests the league from half an hour before a draw starts until it ends.
+  Under each draw, **All sheets** is chosen; if the league shares the ice
+  with another at that time, tap the sheets it plays on instead, so each
+  scoreboard suggests the league on its own sheet.
 - **Teams**: **+ Add Team**, with an optional external ID.
 
 Press **Save Changes**.
 
 The Leagues tab shows a week of every league's draws, and flags any that
-overlap.
+overlap on the same sheet.
