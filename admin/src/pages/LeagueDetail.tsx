@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
-import { DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId, sortTeams } from '../lib/leagues';
-import type { AuthUser, League, LeagueDraw, LeagueTeam } from '../types';
+import { compareNatural } from '../lib/bonspiels';
+import {
+  DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId, sortTeams, toggleDrawSheet,
+} from '../lib/leagues';
+import type { AuthUser, League, LeagueDraw, LeagueTeam, Sheet } from '../types';
 import { ShortNameSuggestion } from '../components/ShortNameSuggestion';
 import common from '../styles/common.module.css';
 import styles from './LeagueDetail.module.css';
@@ -23,6 +26,7 @@ export function LeagueDetail({ user }: Props) {
   const navigate = useNavigate();
 
   const [league, setLeague] = useState<League | null>(null);
+  const [sheets, setSheets] = useState<Sheet[]>([]);
   const [missing, setMissing] = useState(false);
   const [dirty, setDirty] = useState(false);
   // The same flag for the snapshot listener, which must see the current
@@ -49,6 +53,18 @@ export function LeagueDetail({ user }: Props) {
       setLeague((current) => (current && dirtyRef.current ? current : leagueFrom(snap.id, snap.data())));
     });
   }, [clubId, leagueId]);
+
+  // For the sheets a draw plays on, when leagues share the ice.
+  useEffect(() => {
+    if (!clubId) return;
+    return onSnapshot(collection(db, 'clubs', clubId, 'sheets'), (snap) => {
+      setSheets(
+        snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Sheet, 'id'>) }))
+          .sort((a, b) => compareNatural(a.name, b.name)),
+      );
+    });
+  }, [clubId]);
 
   function edit(change: Partial<League>) {
     setLeague((current) => (current ? { ...current, ...change } : current));
@@ -194,42 +210,73 @@ export function LeagueDetail({ user }: Props) {
             </div>
             <p className={common.blurb}>
               When this league plays each week. A scoreboard suggests the league when a game is started
-              during one of its draws, using the scoreboard's own clock.
+              during one of its draws, using the scoreboard's own clock. A league that shares the ice
+              with another at the same time can be given its sheets.
             </p>
             {league.draws.map((draw, index) => (
               // Draws have no identity of their own, and the list only changes
               // through this form, so the position is a stable enough key.
-              <div key={index} className={styles.leagueFieldRow}>
-                <select
-                  className={common.input}
-                  aria-label="Day"
-                  value={draw.day}
-                  onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
-                >
-                  {DAY_NAMES.map((name, i) => (
-                    <option key={name} value={i + 1}>{name}</option>
-                  ))}
-                </select>
-                <input
-                  type="time"
-                  className={common.input}
-                  aria-label="Start"
-                  value={draw.start}
-                  onChange={(e) => editDraw(index, { start: e.target.value })}
-                />
-                <input
-                  type="time"
-                  className={common.input}
-                  aria-label="End"
-                  value={draw.end}
-                  onChange={(e) => editDraw(index, { end: e.target.value })}
-                />
-                <button
-                  className={common.ghostButton}
-                  onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
-                >
-                  Remove
-                </button>
+              <div key={index} className={styles.draw}>
+                <div className={styles.leagueFieldRow}>
+                  <select
+                    className={common.input}
+                    aria-label="Day"
+                    value={draw.day}
+                    onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
+                  >
+                    {DAY_NAMES.map((name, i) => (
+                      <option key={name} value={i + 1}>{name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    className={common.input}
+                    aria-label="Start"
+                    value={draw.start}
+                    onChange={(e) => editDraw(index, { start: e.target.value })}
+                  />
+                  <input
+                    type="time"
+                    className={common.input}
+                    aria-label="End"
+                    value={draw.end}
+                    onChange={(e) => editDraw(index, { end: e.target.value })}
+                  />
+                  <button
+                    className={common.ghostButton}
+                    onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
+                  >
+                    Remove
+                  </button>
+                </div>
+                {sheets.length > 1 && (
+                  <div className={styles.drawSheets} role="group" aria-label="Sheets">
+                    <button
+                      type="button"
+                      aria-pressed={!draw.sheetIds?.length}
+                      className={!draw.sheetIds?.length ? styles.sheetChipSelected : styles.sheetChip}
+                      onClick={() => editDraw(index, { sheetIds: [] })}
+                    >
+                      All sheets
+                    </button>
+                    {sheets.map((sheet) => {
+                      const selected = !!draw.sheetIds?.includes(sheet.id);
+                      return (
+                        <button
+                          key={sheet.id}
+                          type="button"
+                          aria-pressed={selected}
+                          className={selected ? styles.sheetChipSelected : styles.sheetChip}
+                          onClick={() => editDraw(index, {
+                            sheetIds: toggleDrawSheet(draw.sheetIds, sheet.id, sheets.map((s) => s.id)),
+                          })}
+                        >
+                          {sheet.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
             {league.draws.length === 0 && (

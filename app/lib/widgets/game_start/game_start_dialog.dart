@@ -200,7 +200,7 @@ class _GameStartDialogState extends State<GameStartDialog> {
   League? _currentLeague() =>
       _matchup?.league ??
       _chosenLeague ??
-      League.suggested(widget.leagues, widget.now());
+      League.suggested(widget.leagues, widget.now(), sheetId: widget.sheetId);
 
   /// During a bonspiel, the league chooser leads back to its games.
   Future<League?> _showLeagueChooser() {
@@ -211,6 +211,7 @@ class _GameStartDialogState extends State<GameStartDialog> {
       context,
       leagues: widget.leagues,
       now: widget.now(),
+      sheetId: widget.sheetId,
       bonspielName: bonspiel?.name,
       onBonspiel: () => setState(() => _leagueInstead = false),
     );
@@ -379,6 +380,7 @@ class _GameStartDialogState extends State<GameStartDialog> {
                     matchup: matchup,
                     league: _currentLeague,
                     now: widget.now,
+                    sheetId: widget.sheetId,
                     // During a bonspiel the chooser also leads back to it.
                     canChangeLeague:
                         widget.leagues.length > 1 ||
@@ -644,6 +646,7 @@ class _LeagueBar extends StatefulWidget {
     required this.matchup,
     required this.league,
     required this.now,
+    required this.sheetId,
     required this.canChangeLeague,
     required this.onChooseLeague,
     required this.onPickTeams,
@@ -656,6 +659,9 @@ class _LeagueBar extends StatefulWidget {
   /// The league a game started now would be in, if that is known.
   final League? Function() league;
   final DateTime Function() now;
+
+  /// This scoreboard's sheet, for a league that plays on only some of them.
+  final String? sheetId;
 
   /// False at a club with a single league, where there is nothing to change.
   final bool canChangeLeague;
@@ -720,7 +726,11 @@ class _LeagueBarState extends State<_LeagueBar> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              league != null && league.isPlayingAt(widget.now())
+                              league != null &&
+                                      league.isPlayingAt(
+                                        widget.now(),
+                                        sheetId: widget.sheetId,
+                                      )
                                   ? l10n.leaguePlayingNowLabel
                                   : l10n.gameStartDialogLeagueBarLeagueLabel,
                               style: const TextStyle(fontSize: 24),

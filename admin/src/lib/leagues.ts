@@ -101,8 +101,29 @@ function seasonsOverlap(a: League, b: League): boolean {
   return true;
 }
 
+/** Whether two draws can be on the same sheet. A draw with no sheets has
+ *  the whole ice. */
+export function shareASheet(a: LeagueDraw, b: LeagueDraw): boolean {
+  if (!a.sheetIds?.length || !b.sheetIds?.length) return true;
+  return a.sheetIds.some((id) => b.sheetIds!.includes(id));
+}
+
+/**
+ * A draw's sheets after [sheetId] is ticked or unticked, given every sheet
+ * the club has. Every sheet, or none, is stored as no sheets, which means
+ * the whole ice, so a sheet added later is in the draw too.
+ */
+export function toggleDrawSheet(sheetIds: string[] | undefined, sheetId: string, allSheetIds: string[]): string[] {
+  const current = sheetIds?.length ? sheetIds.filter((id) => allSheetIds.includes(id)) : [];
+  const next = current.includes(sheetId) ? current.filter((id) => id !== sheetId) : [...current, sheetId];
+  if (next.length === 0 || allSheetIds.every((id) => next.includes(id))) return [];
+  // In the club's order, so the same choice is always stored the same way.
+  return allSheetIds.filter((id) => next.includes(id));
+}
+
 /** The pairs of draws that overlap. Only active leagues count, and only when
- *  their seasons overlap too. Draws that meet end to start do not conflict. */
+ *  their seasons overlap too. Draws that meet end to start, or are on
+ *  different sheets, do not conflict. */
 export function drawConflicts(leagues: League[]): DrawConflict[] {
   const draws = scheduledDraws(leagues.filter((l) => l.active));
   const conflicts: DrawConflict[] = [];
@@ -112,6 +133,7 @@ export function drawConflicts(leagues: League[]): DrawConflict[] {
       const b = draws[j];
       if (a.draw.day !== b.draw.day) continue;
       if (a.start >= b.end || b.start >= a.end) continue;
+      if (!shareASheet(a.draw, b.draw)) continue;
       if (!seasonsOverlap(a.league, b.league)) continue;
       conflicts.push({ a, b });
     }
@@ -198,7 +220,12 @@ export function leagueData(league: Omit<League, 'id'>): Record<string, unknown> 
     active: league.active,
     ...(league.seasonStart ? { seasonStart: league.seasonStart } : {}),
     ...(league.seasonEnd ? { seasonEnd: league.seasonEnd } : {}),
-    draws: sortDraws(league.draws),
+    draws: sortDraws(league.draws).map((d) => ({
+      day: d.day,
+      start: d.start,
+      end: d.end,
+      ...(d.sheetIds?.length ? { sheetIds: d.sheetIds } : {}),
+    })),
     teams: sortTeams(league.teams).map((t) => ({
       id: t.id,
       name: t.name.trim(),

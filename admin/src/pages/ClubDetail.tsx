@@ -211,7 +211,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
       {!isBonspielAdmin && (
         <>
           <div role="tabpanel" hidden={tab !== 'leagues'}>
-            <LeaguesSection clubId={resolvedClubId} leagues={leagues} onOpenLeague={handleOpenLeague} />
+            <LeaguesSection clubId={resolvedClubId} leagues={leagues} sheets={sheets} onOpenLeague={handleOpenLeague} />
           </div>
 
           <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
