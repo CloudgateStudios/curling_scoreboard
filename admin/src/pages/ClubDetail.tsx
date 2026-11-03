@@ -12,6 +12,7 @@ import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
 import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
+import { StreamsSection } from '../components/club/StreamsSection';
 import { TimeZoneSection } from '../components/club/TimeZoneSection';
 import { WebhookSection } from '../components/club/WebhookSection';
 import { DisplaysSection } from '../components/club/DisplaysSection';
@@ -256,6 +257,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
                 <TimeZoneSection clubId={resolvedClubId} />
                 <ApiKeySection clubId={resolvedClubId} canRegenerate={isSuperAdmin} />
                 <WebhookSection clubId={resolvedClubId} />
+                <StreamsSection clubId={resolvedClubId} />
               </div>
               {isSuperAdmin && (
                 <div hidden={settingsGroup !== 'admins'}>

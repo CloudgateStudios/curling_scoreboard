@@ -99,6 +99,17 @@ service cloud.firestore {
           && league.teams.size() <= 300;
     }
 
+    // A club's stream title and description for one kind of answer from
+    // the API's /now. Either may be left out for the default.
+    function isStreamTemplate(template) {
+      return template is map
+          && template.keys().hasOnly(['title', 'description'])
+          && (!('title' in template)
+              || (template.title is string && template.title.size() <= 300))
+          && (!('description' in template)
+              || (template.description is string && template.description.size() <= 5000));
+    }
+
     // The outline of a bonspiel's plan, as for leagues: the people running
     // it are trusted with what is in it, and the portal checks that the
     // games make sense. This keeps the document a sensible size and shape
@@ -278,6 +289,19 @@ service cloud.firestore {
             && (!('timeZone' in request.resource.data)
                 || (request.resource.data.timeZone is string
                     && request.resource.data.timeZone.matches('^[A-Za-z0-9_+/-]{1,64}$')));
+      }
+
+      // The club's own stream titles and descriptions. Removing them puts
+      // the API back on the defaults.
+      match /config/stream {
+        allow write: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['templates'])
+            && (!('templates' in request.resource.data)
+                || (request.resource.data.templates is map
+                    && request.resource.data.templates.keys().hasOnly(['league', 'bonspiel', 'none'])
+                    && isStreamTemplate(request.resource.data.templates.get('league', {}))
+                    && isStreamTemplate(request.resource.data.templates.get('bonspiel', {}))
+                    && isStreamTemplate(request.resource.data.templates.get('none', {}))));
       }
 
       // Leagues and their teams. Club admins manage them; the club's paired
