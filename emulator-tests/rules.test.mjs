@@ -247,6 +247,28 @@ await check('attack: club admin stores other settings in the scoreboard config',
 await check('attack: club admin writes another config document', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/config/other'), { rockColors: blueGreen }));
 
+// --- the club's time zone ---
+await check('club admin: set their club time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('scoreboard: read its club time zone', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/config/club')));
+
+await check('club admin: remove their club time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: deleteField() }, { merge: true }));
+
+await check('attack: club admin sets another club time zone', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('attack: scoreboard sets its club time zone', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('attack: time zone that is not a zone name', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: '<script>' }));
+
+await check('attack: club admin stores other settings with the time zone', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago', extra: true }));
+
 // --- leagues ---
 const league = {
   name: 'Monday Night',

@@ -269,6 +269,17 @@ service cloud.firestore {
                     && isRockColor(request.resource.data.rockColors.team2)));
       }
 
+      // The club's time zone, which the functions need to read a league's
+      // or bonspiel's local times, as the scoreboards do with their own
+      // clock. Removing it leaves the club without one.
+      match /config/club {
+        allow write: if isClubAdmin(clubId)
+            && request.resource.data.keys().hasOnly(['timeZone'])
+            && (!('timeZone' in request.resource.data)
+                || (request.resource.data.timeZone is string
+                    && request.resource.data.timeZone.matches('^[A-Za-z0-9_+/-]{1,64}$')));
+      }
+
       // Leagues and their teams. Club admins manage them; the club's paired
       // scoreboards read them to offer teams when a league game is started.
       match /leagues/{leagueId} {

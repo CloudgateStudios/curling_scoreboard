@@ -3,6 +3,7 @@ import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
+import { BROWSER_TIME_ZONE, timeZoneChoices } from '../../lib/timeZones';
 import { useUnsavedChanges } from '../../lib/unsavedChanges';
 import {
   DEFAULT_TEMPLATE, MAX_TEMPLATE_LENGTH, MESSAGE_VARIABLES, previewTemplate, unknownVariables,
@@ -48,18 +49,6 @@ function maskUrl(url: string): string {
   } catch {
     return '…';
   }
-}
-
-const BROWSER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// Every zone the browser knows, with the browser's own and the saved one in
-// case either is missing from the list.
-function timeZoneChoices(saved: string | undefined): string[] {
-  const supportedValuesOf = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
-  const zones = new Set(supportedValuesOf?.('timeZone') ?? []);
-  zones.add(BROWSER_TIME_ZONE);
-  if (saved) zones.add(saved);
-  return [...zones].sort();
 }
 
 /** What is stored for the template: nothing when it is the default. */
