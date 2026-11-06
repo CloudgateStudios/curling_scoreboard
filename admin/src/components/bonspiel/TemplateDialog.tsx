@@ -19,6 +19,13 @@ interface Props {
 const TIME = /^\d{2}:\d{2}$/;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
+// Hands out ids in order: prefix0, prefix1 and so on. A fresh one for each
+// preview keeps the ids the same from one render to the next.
+function idCounter(prefix: string): () => string {
+  let next = 0;
+  return () => `${prefix}${next++}`;
+}
+
 type Format = 'knockout' | 'pools';
 
 /** Fills a bonspiel in as a knockout, or as pools and playoffs: its events,
@@ -66,8 +73,7 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
     ? poolsPlan(order, { ...schedule, teams: teamCount, pools, qualifiers }, newId)
     : knockoutPlan(order, { ...schedule, teams: teamCount, events, losers }, newId));
   // Quick enough to work out afresh as each option changes, even for 64 teams.
-  let previewId = 0;
-  const preview = problem ? null : make(bonspiel.teams, () => `preview${previewId++}`);
+  const preview = problem ? null : make(bonspiel.teams, idCounter('preview'));
 
   function handleApply() {
     if (problem) return;
