@@ -4,6 +4,7 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -2316,6 +2317,43 @@ describe('the public scores page', () => {
       }
     }
     assert.equal((await fetch(`${PAGES_URL}/club%3Cb%3E/scores/live.json`)).status, 404);
+  });
+
+  // The CDN keeps a copy per full URL, so a query string would skip it and
+  // reach Firestore on every request.
+  test('answers 404, cached briefly, to any query string but the logo version', async () => {
+    for (const path of ['live.json?x=1', 'results.json?x=1', 'logo?v=1&x=1', 'logo?x=1']) {
+      const res = await fetch(`${PAGES_URL}/${clubId}/scores/${path}`);
+      assert.equal(res.status, 404, path);
+      assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60', path);
+    }
+    assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/live.json`)).status, 200);
+  });
+});
+
+// The emulator ignores instance ceilings, so this reads them from the
+// definitions the deploy would use. A new function without one fails here.
+describe('instance ceilings', () => {
+  test('every function has one, and the public ones are as planned', () => {
+    const script = `
+      const fns = require(${JSON.stringify(new URL('../functions/lib/index.js', import.meta.url).pathname)});
+      const out = {};
+      for (const [name, fn] of Object.entries(fns)) if (fn && fn.__endpoint) out[name] = fn.__endpoint.maxInstances;
+      console.log(JSON.stringify(out));
+    `;
+    const ceilings = JSON.parse(execFileSync(process.execPath, ['-e', script], {
+      env: { ...process.env, GCLOUD_PROJECT: PROJECT_ID },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString());
+    assert.ok(Object.keys(ceilings).length > 10);
+    for (const [name, max] of Object.entries(ceilings)) {
+      assert.ok(Number.isInteger(max) && max > 0, `${name} has no ceiling`);
+    }
+    assert.equal(ceilings.api, 5);
+    assert.equal(ceilings.display, 10);
+    assert.equal(ceilings.startDisplaySession, 3);
+    assert.equal(ceilings.pairSheet, 3);
+    assert.equal(ceilings.provisionClub, 2);
   });
 });
 

@@ -179,6 +179,15 @@ Every function the `functions/` package exports, from `functions/src/index.ts`.
 Callable functions check their callers themselves, so each must be public;
 see "Adding a new callable Cloud Function" in the README.
 
+Each function has a ceiling on how many instances may run at once, set in
+`functions/src/limits.ts`: 5 for `api`, 10 for `display` and the triggers,
+3 for the callables anyone can call (`pairSheet`, `unpairSheet`,
+`startDisplaySession`), and 2 for the rest. The ceiling caps what a flood or
+a runaway client can cost. A request beyond it gets a 429 before our code
+runs, and a trigger's event is delivered again later. A new function gets
+the default of 2 unless it sets its own, and the emulator tests check that
+none is left without one.
+
 ## Where to read more
 
 | Page                                                        | What it covers                                                                                                         |
