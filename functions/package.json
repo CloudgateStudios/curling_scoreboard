@@ -21,5 +21,8 @@
     "@types/node": "^24.19.2",
     "oxlint": "^1.91.0",
     "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "glob": "^14.0.2"
   }
 }

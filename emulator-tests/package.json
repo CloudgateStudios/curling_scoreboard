@@ -18,6 +18,8 @@
     "firebase-tools": "^15.34.2"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.14.5"
+    "@grpc/grpc-js": "^1.14.5",
+    "glob": "^14.0.2",
+    "uuid": "^11.1.1"
   }
 }
