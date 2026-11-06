@@ -1,6 +1,8 @@
 import { getFirestore, DocumentReference } from 'firebase-admin/firestore';
 import { getAuth, DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+// The default ceiling on instances, which these admin callables keep.
+import './limits';
 import { apiKeyRef, generateApiKey } from './apiKeys';
 import { isValidScoreboardPin, scoreboardPinRef } from './scoreboardPin';
 import { clearScoreboardClaims } from './pairing';

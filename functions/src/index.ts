@@ -1,3 +1,4 @@
+import { MAX_INSTANCES } from './limits';
 import { initializeApp } from 'firebase-admin/app';
 import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
@@ -37,4 +38,4 @@ app.use('/api/v1', clubsRouter);
 // cors: false keeps firebase-functions from adding its own CORS handling in
 // front of the app (the Functions emulator otherwise reflects every origin and
 // answers preflight requests itself), so the policy above applies everywhere.
-export const api = onRequest({ cors: false }, app);
+export const api = onRequest({ cors: false, maxInstances: MAX_INSTANCES.api }, app);

@@ -1,6 +1,7 @@
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { MAX_INSTANCES } from './limits';
 import { scoreboardPinRef } from './scoreboardPin';
 
 // Custom claims that tell the security rules which sheet a scoreboard says it
@@ -27,7 +28,7 @@ export async function clearScoreboardClaims(uid: string): Promise<void> {
 // Pairs the calling scoreboard with the sheet holding the given pairing code.
 // Done server side so clients never need to query or read pairing codes,
 // which would let them list every unpaired sheet and claim any of them.
-export const pairSheet = onCall(async (request) => {
+export const pairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before pairing.');
   }
@@ -98,7 +99,7 @@ export const pairSheet = onCall(async (request) => {
 // PIN has been entered on it. The PIN is checked here so it never has to be
 // sent to the scoreboards, and so the rules can stop a scoreboard letting go
 // of its sheet by itself.
-export const unpairSheet = onCall(async (request) => {
+export const unpairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before disconnecting.');
   }

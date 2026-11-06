@@ -66,10 +66,12 @@ const SITE = `https://${PROJECT}.web.app`;
 const apiUrl = (path) => EMULATOR
   ? `http://127.0.0.1:5001/${PROJECT}/us-central1/api/api/v1${path}`
   : `${SITE}/api/v1${path}`;
-// A query string the page ignores, so Hosting's CDN answers fresh.
+// The display function's own address rather than the site's, so Hosting's
+// CDN never answers with a copy from before the game. A query string would
+// not do: the scores JSON answers any query with a 404.
 const displayUrl = (path) => (EMULATOR
   ? `http://127.0.0.1:5001/${PROJECT}/us-central1/display/display${path}`
-  : `${SITE}/display${path}`) + `?fresh=${Date.now()}`;
+  : `https://us-central1-${PROJECT}.cloudfunctions.net/display/display${path}`);
 
 function required(name) {
   const value = process.env[name];

@@ -4,6 +4,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
+import { MAX_INSTANCES } from '../limits';
 import { currentProjectId, webConfig } from './firebaseConfig';
 import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
 import { DisplaySummary, FINAL_SHOWN_MS } from './state';
@@ -276,11 +277,23 @@ function scoresOff(res: Response) {
 // Runs [handler] for a club with the scores page on. Express adds an ETag to
 // each response and answers a matching If-None-Match with a 304, so a poll
 // that finds nothing new costs only headers.
-function scoresRoute(handler: (clubId: string, req: Request, res: Response) => Promise<void>) {
+//
+// The CDN keeps a copy for each full URL, query string included, so adding
+// anything to the URL would skip the cache and reach Firestore every time.
+// The page never adds one, except the logo's version, so any other query
+// is turned away before a read, with a 404 the CDN keeps too.
+function scoresRoute(
+  handler: (clubId: string, req: Request, res: Response) => Promise<void>,
+  allowedQuery: readonly string[] = [],
+) {
   return async (req: Request, res: Response) => {
     const { clubId } = req.params as Record<string, string>;
     if (!ID_PATTERN.test(clubId)) {
       notFound(res);
+      return;
+    }
+    if (Object.keys(req.query).some((key) => !allowedQuery.includes(key))) {
+      scoresOff(res);
       return;
     }
     try {
@@ -331,7 +344,7 @@ app.get('/display/:clubId/scores/logo', scoresRoute(async (clubId, req, res) => 
   const current = req.query['v'] === versionOf(branding?.logo);
   res.set('Cache-Control', current ? 'public, max-age=31536000, immutable' : RESULTS_CACHE)
     .type(logo.type).send(logo.bytes);
-}));
+}, ['v']));
 
 // A display link's own URL. The page reads the link's settings and opens the
 // page they name, which then follows any change an admin makes to them.
@@ -348,4 +361,4 @@ app.get('/display/:clubId', (req: Request, res: Response) => {
 app.use((_req: Request, res: Response) => notFound(res));
 
 // cors: false: these are pages, not an API, so no other site may read them.
-export const display = onRequest({ cors: false }, app);
+export const display = onRequest({ cors: false, maxInstances: MAX_INSTANCES.display }, app);

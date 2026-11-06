@@ -384,6 +384,9 @@ CDN caches, so only a cache miss reaches the function and Firestore
 | `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
 
 A club without the page turned on gets a 404 for each, cached for a minute.
+So does any request with a query string, other than the logo's `v`: the CDN
+keeps a copy per full URL, so `live.json?x=1` would otherwise skip the cache
+and reach Firestore every time. The page never adds one.
 Express gives each response an ETag and answers a matching `If-None-Match`
 with a 304, so a poll that finds nothing new costs only headers. A cache miss
 reads the switch and the summary; the branding, which holds the logo, is
