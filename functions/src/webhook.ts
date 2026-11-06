@@ -3,6 +3,7 @@ import { BlockList, isIP } from 'net';
 import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { MAX_INSTANCES } from './limits';
 import { buildGameResponse } from './routes/games';
 import { BonspielGameNames, gameMessage, validTimeZone } from './webhookMessage';
 
@@ -220,7 +221,7 @@ async function recordStatus(
 // game stops being live. A scoreboard that was offline delivers that write
 // when it reconnects, so the post can come well after the game.
 export const sendCompletedGameWebhook = onDocumentCreated(
-  'clubs/{clubId}/sheets/{sheetId}/games/{gameId}',
+  { document: 'clubs/{clubId}/sheets/{sheetId}/games/{gameId}', maxInstances: MAX_INSTANCES.trigger },
   async (event) => {
     const { clubId, sheetId, gameId } = event.params;
     const game = event.data?.data();
