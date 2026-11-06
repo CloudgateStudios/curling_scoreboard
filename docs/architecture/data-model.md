@@ -136,14 +136,14 @@ clubs/{clubId}/displayLinks/{linkId} // what a display screen signs in with
   secretHash: string         // SHA-256 of the token's secret, in hex, which sign-in checks
   token?: string             // the token itself, for the portal to show; absent on links made before it was kept
   settings: {                // what the link's screens show
-    page: 'bug' | 'warm-room' | 'bonspiel'
-    sheetId?: string         // the score bug's sheet
+    page: 'bug' | 'linescore' | 'warm-room' | 'bonspiel'
+    sheetId?: string         // the score bug's or linescore's sheet
     bonspielId?: string      // the bonspiel screen's bonspiel
     view?: 'totals' | 'full' | 'cycle'   // the warm room's; totals when absent
          | 'now' | 'schedule' | 'brackets' | 'cycle'   // the bonspiel screen's; now when absent
     every?: int              // seconds on each view when they take turns, 5 to 300; 20 when absent
-    scale?: number           // the score bug's size, 0.5 to 4; 1 when absent
-    label?: 'sheet' | 'league' | 'both' | 'none'  // the score bug's caption; sheet when absent
+    scale?: number           // the score bug's or linescore's size, 0.5 to 4; 1 when absent
+    label?: 'sheet' | 'league' | 'both' | 'none'  // the score bug's caption or the linescore's corner; sheet when absent
     end?: 'left' | 'right'   // the side of the score bug its end box is on; right when absent
     earlier?: bool           // the warm room's earlier results beside the sheets; not when absent
   }

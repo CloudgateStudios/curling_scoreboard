@@ -4,8 +4,8 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions, scoreboardSiteUrl } from '../../lib/firebase';
 import {
   DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayPreviewUrl, displayUrl,
-  settingsToSave,
-  type BonspielView, type BugEndSide, type BugLabel, type DisplaySettings, type DisplayView,
+  settingsToSave, showsSheet, withPage,
+  type BonspielView, type DisplayPage, type BugEndSide, type BugLabel, type DisplaySettings, type DisplayView,
 } from '../../lib/displayLinks';
 import { errorMessage, formatAgo } from '../../lib/format';
 import type { Bonspiel, DisplayLink, Sheet } from '../../types';
@@ -44,7 +44,7 @@ function describeUse(link: DisplayLink, now: Date): string {
   return `${created}, ${used}`;
 }
 
-/** Links for the club's score bug and warm room screens. Each screen has its
+/** Links for the club's score bug, linescore and warm room screens. Each screen has its
  *  own, so one can be changed or removed without affecting the others. */
 export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
   const [links, setLinks] = useState<DisplayLink[]>([]);
@@ -207,11 +207,19 @@ const SIZES = [
   { value: 2, label: 'Extra large' },
 ];
 
+// Kept short, so they read in full in a third of the dialog.
 const BUG_LABELS: { value: BugLabel; label: string }[] = [
-  { value: 'sheet', label: 'The sheet name' },
-  { value: 'league', label: 'The league name' },
-  { value: 'both', label: 'The league name, with the sheet name on the right' },
-  { value: 'none', label: 'None, for the smallest bug' },
+  { value: 'sheet', label: 'Sheet name' },
+  { value: 'league', label: 'League name' },
+  { value: 'both', label: 'League, sheet on the right' },
+  { value: 'none', label: 'None' },
+];
+
+const LINESCORE_LABELS: { value: BugLabel; label: string }[] = [
+  { value: 'sheet', label: 'Sheet name' },
+  { value: 'league', label: 'League name' },
+  { value: 'both', label: 'League, then sheet' },
+  { value: 'none', label: 'None' },
 ];
 
 const END_SIDES: { value: BugEndSide; label: string }[] = [
@@ -232,9 +240,12 @@ const BONSPIEL_VIEWS: { value: BonspielView; label: string }[] = [
   { value: 'cycle', label: 'All of them, in turn' },
 ];
 
-// What the Shows choice holds for a bonspiel, beside the warm room and the
-// sheets' IDs.
-const BONSPIEL_PREFIX = 'bonspiel:';
+const PAGES: { value: DisplayPage; label: string }[] = [
+  { value: 'warm-room', label: 'Warm room screen, every sheet' },
+  { value: 'bug', label: 'Score bug' },
+  { value: 'linescore', label: 'Linescore' },
+  { value: 'bonspiel', label: 'Bonspiel screen' },
+];
 
 interface DialogProps {
   clubId: string;
@@ -266,19 +277,27 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
     || JSON.stringify(toSave) !== JSON.stringify(settingsToSave(saved.settings));
   const url = token ? displayUrl(scoreboardSiteUrl, clubId, token) : null;
   const previewUrl = token ? displayPreviewUrl(scoreboardSiteUrl, clubId, token) : null;
-  // 'warmRoom', the ID of the sheet whose score bug to show, or a bonspiel.
-  const shows = toSave.page === 'bug' ? toSave.sheetId!
-    : toSave.page === 'bonspiel' ? `${BONSPIEL_PREFIX}${toSave.bonspielId}` : 'warmRoom';
+  // A link still on a sheet or bonspiel since removed shows it as such until
+  // another is chosen.
+  const sheetGone = showsSheet(toSave.page) && !sheets.some((sheet) => sheet.id === toSave.sheetId);
+  const bonspielGone = toSave.page === 'bonspiel' && !bonspiels.some((b) => b.id === toSave.bonspielId);
 
-  function choosePage(value: string) {
-    // Each page has views of its own, so the view starts afresh.
-    if (value === 'warmRoom') {
-      setSettings({ ...settings, page: 'warm-room', view: undefined });
-    } else if (value.startsWith(BONSPIEL_PREFIX)) {
-      setSettings({ ...settings, page: 'bonspiel', bonspielId: value.slice(BONSPIEL_PREFIX.length), view: undefined });
-    } else {
-      setSettings({ ...settings, page: 'bug', sheetId: value });
-    }
+  // Moving to a page that shows a sheet or bonspiel picks one, so the page
+  // is never left without.
+  function choosePage(page: DisplayPage) {
+    setSettings(withPage(
+      settings,
+      page,
+      sheets.map((sheet) => sheet.id),
+      bonspiels.map((bonspiel) => bonspiel.id),
+    ));
+  }
+
+  // Offered only with something to show.
+  function pageUnavailable(page: DisplayPage): string | null {
+    if (showsSheet(page) && sheets.length === 0) return 'add a sheet first';
+    if (page === 'bonspiel' && bonspiels.length === 0) return 'plan a bonspiel first';
+    return null;
   }
 
   async function handleSave() {
@@ -335,9 +354,10 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
               </div>
               <p className={styles.urlHint}>
                 Put it on the screen, or add it to OBS as a Browser source. It never needs to
-                change: the screen follows whatever this link is set to show below. A score bug
-                shows its sheet's name between games, at its full size, so you can place it at any
-                time. Preview shows a warm room's results column before the first game finishes.
+                change: the screen follows whatever this link is set to show below. A score bug or
+                linescore shows its sheet's name between games, at its full size, so you can place it
+                at any time; a linescore is 1600 by 360 pixels at the normal size. Preview shows a
+                warm room's results column before the first game finishes.
               </p>
             </div>
           ) : (
@@ -357,24 +377,51 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
             />
           </label>
 
-          <label className={styles.field}>
-            Shows
-            <select className={common.input} value={shows} onChange={(e) => choosePage(e.target.value)}>
-              <option value="warmRoom">Warm room screen, every sheet</option>
-              {sheets.map((sheet) => (
-                <option key={sheet.id} value={sheet.id}>Score bug for {sheet.name}</option>
-              ))}
-              {/* A bonspiel no longer listed still shows as chosen. */}
-              {toSave.page === 'bonspiel' && !bonspiels.some((b) => b.id === toSave.bonspielId) && (
-                <option value={shows}>A removed bonspiel</option>
-              )}
-              {bonspiels.map((bonspiel) => (
-                <option key={bonspiel.id} value={`${BONSPIEL_PREFIX}${bonspiel.id}`}>
-                  Bonspiel: {bonspiel.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className={styles.options}>
+            <label className={styles.field}>
+              Shows
+              <select
+                className={common.input}
+                value={toSave.page}
+                onChange={(e) => choosePage(e.target.value as DisplayPage)}
+              >
+                {PAGES.map((p) => {
+                  const unavailable = pageUnavailable(p.value);
+                  return (
+                    <option key={p.value} value={p.value} disabled={unavailable !== null}>
+                      {unavailable ? `${p.label} (${unavailable})` : p.label}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            {showsSheet(toSave.page) && (
+              <label className={styles.field}>
+                Sheet
+                <select
+                  className={common.input}
+                  value={toSave.sheetId}
+                  onChange={(e) => setSettings({ ...settings, sheetId: e.target.value })}
+                >
+                  {sheetGone && <option value={toSave.sheetId}>A removed sheet</option>}
+                  {sheets.map((sheet) => <option key={sheet.id} value={sheet.id}>{sheet.name}</option>)}
+                </select>
+              </label>
+            )}
+            {toSave.page === 'bonspiel' && (
+              <label className={styles.field}>
+                Bonspiel
+                <select
+                  className={common.input}
+                  value={toSave.bonspielId}
+                  onChange={(e) => setSettings({ ...settings, bonspielId: e.target.value })}
+                >
+                  {bonspielGone && <option value={toSave.bonspielId}>A removed bonspiel</option>}
+                  {bonspiels.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
 
           {toSave.page === 'bonspiel' ? (
             <div className={styles.options}>
@@ -436,6 +483,29 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
                 >
                   <option value="hidden">Not shown</option>
                   <option value="shown">Today's, beside the sheets</option>
+                </select>
+              </label>
+            </div>
+          ) : toSave.page === 'linescore' ? (
+            <div className={styles.options}>
+              <label className={styles.field}>
+                Size
+                <select
+                  className={common.input}
+                  value={settings.scale ?? 1}
+                  onChange={(e) => setSettings({ ...settings, scale: Number(e.target.value) })}
+                >
+                  {SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </label>
+              <label className={styles.field}>
+                Above the team names
+                <select
+                  className={common.input}
+                  value={settings.label ?? 'sheet'}
+                  onChange={(e) => setSettings({ ...settings, label: e.target.value as BugLabel })}
+                >
+                  {LINESCORE_LABELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </label>
             </div>

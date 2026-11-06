@@ -16,7 +16,7 @@ flowchart TB
     direction LR
     SB["Scoreboard app<br/>Flutter, one per sheet"]
     AD["Admin portal<br/>React"]
-    DP["Display screens<br/>score bug, warm room, bonspiel"]
+    DP["Display screens<br/>score bug, linescore, warm room, bonspiel"]
   end
 
   subgraph http["Plain HTTP, no sign-in"]
@@ -137,7 +137,7 @@ flowchart LR
   T5 --> BS
   T4 --> WH["Club's webhook<br/>Slack or Discord"]
 
-  DS --> SCR["Score bug, warm room,<br/>bonspiel screen"]
+  DS --> SCR["Score bug, linescore,<br/>warm room, bonspiel screen"]
   DS --> PUB["Public scores page<br/>via the display function"]
   BS --> SCR
   BS --> PORTAL["Admin portal,<br/>scoreboards"]
@@ -188,7 +188,7 @@ see "Adding a new callable Cloud Function" in the README.
 | [Scoreboard app](architecture/scoreboard.md)                | The app's structure, pairing, disconnecting, syncing scores, rock colors and status reports                           |
 | [Leagues and teams](architecture/leagues.md)                | League documents, the CSV import, and picking league teams on the scoreboard                                          |
 | [Bonspiels](architecture/bonspiels.md)                      | Bonspiel plans, how the state and brackets are worked out, pools, templates, and bonspiel games on the scoreboard     |
-| [Displays](architecture/displays.md)                        | The display summary, display links, the score bug, warm room and bonspiel screens, and the public scores page         |
+| [Displays](architecture/displays.md)                        | The display summary, display links, the score bug, linescore, warm room and bonspiel screens, and the public scores page |
 | [Admin portal](architecture/admin-portal.md)                | Routes by role, and what each tab and settings group does                                                             |
 | [REST API and webhook](architecture/api-and-webhook.md)     | The public read only API and the completed game webhook                                                               |
 | [Deploys and updates](architecture/deploys-and-updates.md)  | Environments, CI and the deploy pipeline, how scoreboards and display pages update themselves, and hosting headers    |

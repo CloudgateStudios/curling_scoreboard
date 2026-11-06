@@ -1,7 +1,7 @@
 // Run with `npm test`. Node strips the types from the .ts imports itself.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { describeSettings, displayPreviewUrl, displayUrl, settingsToSave } from './displayLinks.ts';
+import { describeSettings, displayPreviewUrl, displayUrl, settingsToSave, showsSheet, withPage } from './displayLinks.ts';
 
 const SITE = 'https://curlingscoreboard.app';
 const TOKEN = 'abc123.0123456789abcdef0123456789abcdef';
@@ -34,6 +34,18 @@ describe('settingsToSave', () => {
     );
   });
 
+  test('keeps a linescore\'s sheet, size and corner, without the bug\'s end side', () => {
+    assert.deepEqual(
+      settingsToSave({ page: 'linescore', sheetId: 's2', scale: 0.75, label: 'both', end: 'left', view: 'full' }),
+      { page: 'linescore', sheetId: 's2', scale: 0.75, label: 'both' },
+    );
+    assert.deepEqual(
+      settingsToSave({ page: 'linescore', sheetId: 's2', scale: 1, label: 'sheet' }),
+      { page: 'linescore', sheetId: 's2' },
+    );
+    assert.deepEqual(settingsToSave({ page: 'linescore' }), { page: 'warm-room' });
+  });
+
   test('a score bug with no sheet falls back to the warm room', () => {
     assert.deepEqual(settingsToSave({ page: 'bug' }), { page: 'warm-room' });
   });
@@ -58,6 +70,44 @@ describe('settingsToSave', () => {
   });
 });
 
+describe('withPage', () => {
+  const sheets = ['s1', 's2'];
+  const bonspiels = ['b1'];
+
+  test('gives a score bug or linescore the first sheet when it has none', () => {
+    assert.deepEqual(withPage({ page: 'warm-room' }, 'bug', sheets, bonspiels), { page: 'bug', sheetId: 's1' });
+    assert.deepEqual(withPage({ page: 'warm-room' }, 'linescore', sheets, bonspiels), { page: 'linescore', sheetId: 's1' });
+  });
+
+  test('keeps the sheet, size and caption moving between the score bug and the linescore', () => {
+    assert.deepEqual(
+      withPage({ page: 'bug', sheetId: 's2', scale: 1.5, label: 'both', end: 'left' }, 'linescore', sheets, bonspiels),
+      { page: 'linescore', sheetId: 's2', scale: 1.5, label: 'both', end: 'left' },
+    );
+  });
+
+  test('keeps a removed sheet until another is chosen', () => {
+    assert.deepEqual(withPage({ page: 'bug', sheetId: 'gone' }, 'linescore', sheets, bonspiels), { page: 'linescore', sheetId: 'gone' });
+  });
+
+  test('stays as it was with no sheet or bonspiel to show', () => {
+    assert.deepEqual(withPage({ page: 'warm-room' }, 'bug', [], bonspiels), { page: 'warm-room' });
+    assert.deepEqual(withPage({ page: 'warm-room' }, 'bonspiel', sheets, []), { page: 'warm-room' });
+  });
+
+  test('starts the view afresh between the warm room and the bonspiel screen', () => {
+    assert.deepEqual(withPage({ page: 'warm-room', view: 'full' }, 'bonspiel', sheets, bonspiels), { page: 'bonspiel', bonspielId: 'b1', view: undefined });
+    assert.deepEqual(withPage({ page: 'bonspiel', bonspielId: 'b1', view: 'brackets' }, 'warm-room', sheets, bonspiels), { page: 'warm-room', bonspielId: 'b1', view: undefined });
+  });
+
+  test('a page that shows a sheet needs one', () => {
+    assert.equal(showsSheet('bug'), true);
+    assert.equal(showsSheet('linescore'), true);
+    assert.equal(showsSheet('warm-room'), false);
+    assert.equal(showsSheet('bonspiel'), false);
+  });
+});
+
 describe('describeSettings', () => {
   const names = { s2: 'Sheet 2' };
   const sheetName = (id) => names[id];
@@ -73,6 +123,15 @@ describe('describeSettings', () => {
       'Score bug for Sheet 2, league and sheet names',
     );
     assert.equal(describeSettings({ page: 'bug', sheetId: 'gone' }, sheetName), 'Score bug for a removed sheet');
+  });
+
+  test('names the linescore\'s sheet and options', () => {
+    assert.equal(describeSettings({ page: 'linescore', sheetId: 's2' }, sheetName), 'Linescore for Sheet 2');
+    assert.equal(
+      describeSettings({ page: 'linescore', sheetId: 's2', scale: 1.5, label: 'league' }, sheetName),
+      'Linescore for Sheet 2, 1.5× size, league name',
+    );
+    assert.equal(describeSettings({ page: 'linescore', sheetId: 'gone' }, sheetName), 'Linescore for a removed sheet');
   });
 
   test('names the warm room\'s view', () => {

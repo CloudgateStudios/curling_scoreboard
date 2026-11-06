@@ -32,6 +32,7 @@ mindmap
       Results by scoreboard or by hand
     Screens
       Score bug for streams
+      Linescore for streams
       Warm room TV
       Bonspiel TV
     Members
@@ -50,7 +51,7 @@ mindmap
 | Players at the sheet       | The scoreboard app on a tablet or screen at each sheet | Nothing; a club admin pairs it once   |
 | Club admins                | The admin portal                                       | Email and password                    |
 | Bonspiel coordinators      | The admin portal's Bonspiels tab                       | Email and password, as bonspiel admin |
-| Streamers, bar and lobby   | Display screens: score bug, warm room, bonspiel screen | A display link from a club admin      |
+| Streamers, bar and lobby   | Display screens: score bug, linescore, warm room, bonspiel screen | A display link from a club admin      |
 | Members                    | The public scores page on their phones                 | Nothing, once the club turns it on    |
 | The club's website or chat | The REST API, the completed game webhook               | The club's API key; a webhook URL     |
 | Super admins               | The admin portal, across every club                    | Email and password                    |
@@ -153,6 +154,11 @@ screen.
   the league or bonspiel by a short name, and a long team name slides along
   now and then to show the rest. Between games it shows the sheet's name at
   the same size, so it can be placed at any time.
+- **Linescore** for live streams: one sheet's game end by end, as a banner
+  1600 by 360 pixels to show across the stream between ends. It has the
+  score bug's look, Final once the game is over, and the league, the sheet
+  or both above the names. A game that ended early has X in the ends it
+  never played. Each sheet has its own, so it keeps up with the score bugs.
 - **Warm room screen** for a TV: every sheet at once, filling the screen at
   any size or way round. It can show totals, every end, or both in turn, the
   day's finished games down the side, and the club's own title and logo.

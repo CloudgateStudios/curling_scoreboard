@@ -1,0 +1,239 @@
+/* The linescore. Everything is sized in rem, from --scale, so the scale
+   option grows the whole banner evenly. At scale 1 the page is 1600 by 360
+   pixels: a 98 by 20.5 rem banner inside 1 rem of room for its shadow.
+   The colors are the score bug's, so the two look alike on a stream. */
+
+:root {
+  --scale: 1;
+  font-size: calc(16px * var(--scale));
+  color-scheme: dark;
+  --line: rgba(255, 255, 255, 0.08);
+  --muted: rgba(255, 255, 255, 0.6);
+  --final: #ffd54f;
+}
+
+html,
+body {
+  margin: 0;
+  /* Transparent, so OBS shows the stream through everything but the banner. */
+  background: transparent;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  padding: 1rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* The banner itself, the same size whatever it shows. */
+.linescore {
+  display: flex;
+  box-sizing: border-box;
+  width: 98rem;
+  height: 20.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
+  animation: appear 300ms ease-out;
+}
+
+/* A column per end and the totals; the team names take what is left. Ends
+   narrow when a game has more than eight, so the names keep their room. */
+.line-score {
+  --cell: min(6.5rem, calc(52rem / var(--columns, 8)));
+  --total: 9rem;
+  flex: 1;
+  display: grid;
+  grid-template-rows: 4.5rem 1fr 1fr;
+  min-width: 0;
+}
+
+/* Above the team names: the caption and where the game is. */
+.corner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-width: 0;
+  padding: 0 1.5rem;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.caption {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.state {
+  flex-shrink: 0;
+  padding: 0.2rem 0.8rem;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 800;
+}
+
+.state.final {
+  color: var(--final);
+}
+
+.end-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The end being played. */
+.end-head.current {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.team-label {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+}
+
+.swatch {
+  align-self: stretch;
+}
+
+/* linescore.js shrinks a name that doesn't fit, down to 80% of this, before
+   it is cut short. */
+.name {
+  padding: 0 1.5rem;
+  font-size: 3.4rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marks the team with last stone in this end. */
+.hammer {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 1.5rem;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.hammer.off {
+  visibility: hidden;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  font-size: 3.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.cell.current {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* An end a game that finished early never played. */
+.cell.unplayed {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+}
+
+.cell.scored {
+  font-weight: 800;
+}
+
+.total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.25);
+  font-size: 5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.total.changed {
+  animation: scored 1.5s ease-out;
+}
+
+/* An idle sheet: its name in the banner's space. */
+.idle-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 3rem;
+}
+
+/* linescore.js shrinks a long name as it does a team's. */
+.idle-sheet {
+  font-size: 6rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idle-note {
+  margin-top: 0.4rem;
+  font-size: 2.2rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Shown only when the link is wrong, so it can be fixed while setting up. */
+.status {
+  display: inline-block;
+  max-width: 40rem;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 0.4rem;
+  background: rgba(17, 20, 26, 0.92);
+  color: #fff;
+  font-size: 1.4rem;
+  line-height: 1.4;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(-0.25rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes scored {
+  0% { filter: brightness(1.8); transform: scale(1.1); }
+  100% { filter: none; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linescore,
+  .total.changed {
+    animation: none;
+  }
+}

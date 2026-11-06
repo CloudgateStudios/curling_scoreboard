@@ -206,8 +206,8 @@ export interface DisplayStatus
     | 'appVersion' | 'buildId' | 'userAgent' | 'screen' | 'timezone' | 'utcOffsetMinutes' | 'lastSeenAt'
     | 'clientTime' | 'sessionStartedAt' | 'updateTargetBuildId' | 'lastReloadAttemptAt'
   > {
-  page?: 'bug' | 'warm-room' | 'bonspiel' | 'link';
-  /** The score bug's sheet. */
+  page?: 'bug' | 'linescore' | 'warm-room' | 'bonspiel' | 'link';
+  /** The score bug's or linescore's sheet. */
   sheetId?: string;
 }
 

@@ -18,6 +18,7 @@ import {
   STATUS_MESSAGES, config, connect, el, endLabel, followLink, followsLink, now, sheetView,
   textColorOn,
 } from './display.js';
+import { fitText } from './game-view.js';
 
 const params = new URLSearchParams(location.search);
 const scale = Math.min(Math.max(Number(params.get('scale')) || 1, 0.5), 4);
@@ -103,24 +104,8 @@ function showEnd(view) {
 // size in the stylesheet, before it is cut short.
 const MIN_NAME_SHRINK = 0.8;
 
-// Text width grows with its size, so a step or two finds the size that
-// fits; more than one, since system fonts draw small text a little wider.
-// The text is measured itself, since scrollWidth rounds to whole pixels and
-// an ellipsis shows for less. Needs the bug shown, to measure.
-const textRange = document.createRange();
 function fitName(name) {
-  name.style.fontSize = '';
-  const style = getComputedStyle(name);
-  const room = name.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-  const full = parseFloat(style.fontSize);
-  textRange.selectNodeContents(name);
-  let size = full;
-  for (let step = 0; step < 3; step++) {
-    const width = textRange.getBoundingClientRect().width;
-    if (width <= room || size <= full * MIN_NAME_SHRINK) return;
-    size = Math.max(size * (room / width) * 0.98, full * MIN_NAME_SHRINK);
-    name.style.fontSize = `${size}px`;
-  }
+  fitText(name, MIN_NAME_SHRINK);
 }
 
 function fitNames() {

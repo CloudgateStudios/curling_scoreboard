@@ -277,6 +277,11 @@ body {
   font-weight: 700;
 }
 
+/* An end a game that finished early never played. */
+.cell.unplayed {
+  color: var(--muted);
+}
+
 .earlier {
   display: flex;
   flex-direction: column;

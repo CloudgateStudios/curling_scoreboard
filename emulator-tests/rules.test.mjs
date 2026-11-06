@@ -512,6 +512,11 @@ await check('attack: club admin puts the score bug\'s end somewhere other than l
     settings: { page: 'bug', sheetId: 'sheet-paired', end: 'top' },
   }));
 
+await check('club admin: points a link at a sheet\'s linescore', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'linescore', sheetId: 'sheet-paired', scale: 0.75, label: 'both' },
+  }));
+
 await check('club admin: points a link at the warm room, cycling', 'allow', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
     settings: { page: 'warm-room', view: 'cycle', every: 30 },
@@ -559,6 +564,14 @@ await check('attack: display writes a bonspiel\'s state', 'deny', () =>
 
 await check('attack: club admin points a score bug at no sheet', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'bug' } }));
+
+await check('attack: club admin points a linescore at no sheet', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'linescore' } }));
+
+await check('attack: club admin points a linescore at a sheet ID that is not one', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), {
+    settings: { page: 'linescore', sheetId: '../warm-room' },
+  }));
 
 await check('attack: club admin sets a page that does not exist', 'deny', () =>
   updateDoc(doc(adminA, 'clubs/club-a/displayLinks/link-2'), { settings: { page: 'admin' } }));

@@ -15,6 +15,7 @@ interface Props {
 
 const PAGE_NAMES: Record<NonNullable<DisplayStatus['page']>, string> = {
   bug: 'Score bug',
+  linescore: 'Linescore',
   'warm-room': 'Warm room',
   bonspiel: 'Bonspiel',
   link: 'Opening the link',
@@ -79,8 +80,8 @@ export function DisplayDeviceStatus({ device, deployedBuildId, sheetName, now }:
           <span
             className={common.warningChip}
             title={
-              device.page === 'bug'
-                ? 'A newer version is deployed. The score bug loads it between games, or when it is next opened.'
+              device.page === 'bug' || device.page === 'linescore'
+                ? `A newer version is deployed. The ${device.page === 'bug' ? 'score bug' : 'linescore'} loads it between games, or when it is next opened.`
                 : 'A newer version is deployed. The screen loads it shortly, or when it is next opened.'
             }
           >

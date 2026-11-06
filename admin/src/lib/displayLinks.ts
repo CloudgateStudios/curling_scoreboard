@@ -3,7 +3,7 @@ export type DisplayView = 'totals' | 'full' | 'cycle';
 /** A bonspiel screen's views: the draw on now and the next, every draw, each
  *  event's bracket, or all of them in turn. */
 export type BonspielView = 'now' | 'schedule' | 'brackets' | 'cycle';
-/** What the score bug's caption names. */
+/** What the score bug's caption, or the linescore's corner, names. */
 export type BugLabel = 'sheet' | 'league' | 'both' | 'none';
 /** Which side of the score bug the end box sits on. */
 export type BugEndSide = 'left' | 'right';
@@ -13,8 +13,8 @@ export type BugEndSide = 'left' | 'right';
  * firestore.rules and linkPageUrl in functions/src/display/assets/display.js.
  */
 export interface DisplaySettings {
-  page: 'bug' | 'warm-room' | 'bonspiel';
-  /** The score bug's sheet. */
+  page: 'bug' | 'linescore' | 'warm-room' | 'bonspiel';
+  /** The score bug's or linescore's sheet. */
   sheetId?: string;
   /** The bonspiel screen's bonspiel. */
   bonspielId?: string;
@@ -23,9 +23,10 @@ export interface DisplaySettings {
   view?: DisplayView | BonspielView;
   /** Seconds on each view when there are several in turn; 20 when absent. */
   every?: number;
-  /** The score bug's size; 1 when absent. */
+  /** The score bug's or linescore's size; 1 when absent. */
   scale?: number;
-  /** The score bug's caption; the sheet name when absent. */
+  /** The score bug's caption or the linescore's corner; the sheet name when
+   *  absent. */
   label?: BugLabel;
   /** The side of the score bug the end box is on; the right when absent. */
   end?: BugEndSide;
@@ -35,6 +36,40 @@ export interface DisplaySettings {
 }
 
 export const DEFAULT_SETTINGS: DisplaySettings = { page: 'warm-room' };
+
+/** The kinds of screen a link can show, which the portal offers first. */
+export type DisplayPage = DisplaySettings['page'];
+
+/** The pages that show one sheet, and so need one chosen. */
+export function showsSheet(page: DisplayPage): page is 'bug' | 'linescore' {
+  return page === 'bug' || page === 'linescore';
+}
+
+/**
+ * The settings once a link is switched to [page]. A page that shows a sheet
+ * or a bonspiel keeps the one it had, else takes the first of [sheetIds] or
+ * [bonspielIds], so it is never left without one; without any, the settings
+ * stay as they were. The size and caption carry over between the score bug
+ * and the linescore. The warm room and the bonspiel screen have views of
+ * their own, so the view starts afresh when moving between them.
+ */
+export function withPage(
+  settings: DisplaySettings,
+  page: DisplayPage,
+  sheetIds: string[],
+  bonspielIds: string[],
+): DisplaySettings {
+  if (page === settings.page) return settings;
+  if (showsSheet(page)) {
+    const sheetId = settings.sheetId ?? sheetIds[0];
+    return sheetId ? { ...settings, page, sheetId } : settings;
+  }
+  if (page === 'bonspiel') {
+    const bonspielId = settings.bonspielId ?? bonspielIds[0];
+    return bonspielId ? { ...settings, page, bonspielId, view: undefined } : settings;
+  }
+  return { ...settings, page, view: undefined };
+}
 export const DEFAULT_EVERY = 20;
 export const MIN_EVERY = 5;
 export const MAX_EVERY = 300;
@@ -79,6 +114,14 @@ export function settingsToSave(settings: DisplaySettings): DisplaySettings {
       ...(settings.scale !== undefined && settings.scale !== 1 && { scale: settings.scale }),
       ...(settings.label !== undefined && settings.label !== 'sheet' && { label: settings.label }),
       ...(settings.end === 'left' && { end: 'left' as const }),
+    };
+  }
+  if (settings.page === 'linescore' && settings.sheetId) {
+    return {
+      page: 'linescore',
+      sheetId: settings.sheetId,
+      ...(settings.scale !== undefined && settings.scale !== 1 && { scale: settings.scale }),
+      ...(settings.label !== undefined && settings.label !== 'sheet' && { label: settings.label }),
     };
   }
   const view = WARM_ROOM_VIEWS.includes(settings.view as DisplayView) ? settings.view as DisplayView : 'totals';
@@ -127,6 +170,14 @@ export function describeSettings(
     if (s.label === 'both') parts.push('league and sheet names');
     if (s.label === 'none') parts.push('no name');
     if (s.end === 'left') parts.push('end on the left');
+    return parts.join(', ');
+  }
+  if (s.page === 'linescore') {
+    const parts = [`Linescore for ${(s.sheetId && sheetName(s.sheetId)) ?? 'a removed sheet'}`];
+    if (s.scale !== undefined && s.scale !== 1) parts.push(`${s.scale}× size`);
+    if (s.label === 'league') parts.push('league name');
+    if (s.label === 'both') parts.push('league and sheet names');
+    if (s.label === 'none') parts.push('no name');
     return parts.join(', ');
   }
   const view = (s.view ?? 'totals') as DisplayView;

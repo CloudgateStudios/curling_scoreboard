@@ -7,7 +7,7 @@
 //
 // Tap a game to see it end by end.
 
-import { el, endLabel, isPlayedOut, textColorOn } from './game-view.js';
+import { el, endLabel, firstUnplayedEnd, isPlayedOut, textColorOn } from './game-view.js';
 import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
 import { asSummaryResults, isIdle, pollDelay, timeUntilDue } from './scores-model.js';
 
@@ -127,13 +127,15 @@ function teamRow(team, kind, changed) {
 }
 
 // The game end by end, as on the warm room screen: the scoring team's
-// points on its rock color and 0 for the other team, then the totals.
+// points on its rock color and 0 for the other team, then the totals. The
+// ends of a game that finished early are marked X.
 function lineScore(game, kind) {
   const ends = game.ends ?? [];
   const playing = kind === 'live' && !isPlayedOut(game);
   const played = Math.max(0, ...ends.map((end) => end.endNumber));
   const columns = Math.max(game.numberOfEnds ?? DEFAULT_ENDS, played, playing ? game.currentEnd : 0);
   const byNumber = new Map(ends.map((end) => [end.endNumber, end]));
+  const unplayedFrom = firstUnplayedEnd(game, kind) ?? Infinity;
 
   const table = el('div', 'line-score');
   table.style.gridTemplateColumns = `minmax(0, 1fr) repeat(${columns}, var(--cell)) var(--total)`;
@@ -152,7 +154,10 @@ function lineScore(game, kind) {
     for (let n = 1; n <= columns; n++) {
       const end = byNumber.get(n);
       const cell = el('span', playing && n === game.currentEnd ? 'cell current' : 'cell');
-      if (end) {
+      if (n >= unplayedFrom) {
+        cell.classList.add('unplayed');
+        cell.textContent = 'X';
+      } else if (end) {
         const scored = end.scoringTeamSlot === slot && end.score > 0;
         cell.textContent = scored ? String(end.score) : '0';
         if (scored) {
