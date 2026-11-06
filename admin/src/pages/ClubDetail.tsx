@@ -12,6 +12,8 @@ import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
 import { ScoreboardPinSection } from '../components/club/ScoreboardPinSection';
+import { StreamsSection } from '../components/club/StreamsSection';
+import { TimeZoneSection } from '../components/club/TimeZoneSection';
 import { WebhookSection } from '../components/club/WebhookSection';
 import { DisplaysSection } from '../components/club/DisplaysSection';
 import { DisplayBrandingSection } from '../components/club/DisplayBrandingSection';
@@ -210,7 +212,7 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
       {!isBonspielAdmin && (
         <>
           <div role="tabpanel" hidden={tab !== 'leagues'}>
-            <LeaguesSection clubId={resolvedClubId} leagues={leagues} onOpenLeague={handleOpenLeague} />
+            <LeaguesSection clubId={resolvedClubId} leagues={leagues} sheets={sheets} onOpenLeague={handleOpenLeague} />
           </div>
 
           <div role="tabpanel" hidden={tab !== 'displays'} className={styles.columns}>
@@ -252,8 +254,10 @@ export function ClubDetail({ club: clubProp, role = 'superadmin' }: Props) {
                 <ScoreboardPinSection clubId={resolvedClubId} />
               </div>
               <div hidden={settingsGroup !== 'integrations'}>
+                <TimeZoneSection clubId={resolvedClubId} />
                 <ApiKeySection clubId={resolvedClubId} canRegenerate={isSuperAdmin} />
                 <WebhookSection clubId={resolvedClubId} />
+                <StreamsSection clubId={resolvedClubId} />
               </div>
               {isSuperAdmin && (
                 <div hidden={settingsGroup !== 'admins'}>

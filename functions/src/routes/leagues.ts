@@ -19,6 +19,10 @@ export function buildLeagueResponse(id: string, data: FirebaseFirestore.Document
       day: draw['day'] as number,
       start: draw['start'] as string,
       end: draw['end'] as string,
+      // Null when the draw has the whole ice.
+      sheetIds: Array.isArray(draw['sheetIds']) && draw['sheetIds'].length > 0
+        ? (draw['sheetIds'] as unknown[]).filter((id): id is string => typeof id === 'string')
+        : null,
     })),
     teams: teams.map((team) => ({
       id: team['id'] as string,

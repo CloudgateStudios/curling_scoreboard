@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   compareLeagues, drawConflicts, formatConflict, formatDraws, leagueData, leagueFrom, scheduledDraws,
-  sortTeams, suggestShortName,
+  sortTeams, suggestShortName, toggleDrawSheet,
 } from './leagues.ts';
 
 function league(name, draws = [], extra = {}) {
@@ -69,6 +69,20 @@ describe('drawConflicts', () => {
     ]);
     assert.equal(conflicts.length, 1);
     assert.equal(formatConflict(conflicts[0]), 'Early and Late overlap on Mon 19:00–20:00');
+  });
+
+  test('allows draws at the same time on different sheets', () => {
+    const on = (sheetIds) => ({ ...draw(1, '18:00', '20:00'), sheetIds });
+    assert.deepEqual(
+      drawConflicts([league('Early', [on(['s1', 's2'])]), league('Late', [on(['s3'])])]),
+      [],
+    );
+    assert.equal(
+      drawConflicts([league('Early', [on(['s1', 's2'])]), league('Late', [on(['s2', 's3'])])]).length,
+      1,
+    );
+    // A draw with no sheets has the whole ice.
+    assert.equal(drawConflicts([league('Early', [on(['s1'])]), league('Late', [draw(1, '19:00', '21:00')])]).length, 1);
   });
 
   test('allows draws that meet end to start', () => {
@@ -168,5 +182,39 @@ describe('suggestShortName', () => {
     assert.equal(suggestShortName('Monday Night'), null);
     assert.equal(suggestShortName('Monday Night League'), null);
     assert.equal(suggestShortName('Monday The Very Long Name of a Competitive Open League'), null);
+  });
+});
+
+describe('toggleDrawSheet', () => {
+  const all = ['s1', 's2', 's3'];
+
+  test('starts from the whole ice', () => {
+    assert.deepEqual(toggleDrawSheet(undefined, 's2', all), ['s2']);
+  });
+
+  test('keeps the club order', () => {
+    assert.deepEqual(toggleDrawSheet(['s3'], 's1', all), ['s1', 's3']);
+  });
+
+  test('stores every sheet, or none, as the whole ice', () => {
+    assert.deepEqual(toggleDrawSheet(['s1', 's2'], 's3', all), []);
+    assert.deepEqual(toggleDrawSheet(['s1'], 's1', all), []);
+  });
+
+  test('drops sheets the club no longer has', () => {
+    assert.deepEqual(toggleDrawSheet(['gone', 's1'], 's2', all), ['s1', 's2']);
+  });
+});
+
+describe('leagueData', () => {
+  test('keeps a draw\'s sheets only when it has some', () => {
+    const data = leagueData({
+      name: 'Split', active: true, teams: [],
+      draws: [{ ...draw(1, '18:00', '20:00'), sheetIds: ['s1'] }, { ...draw(2, '18:00', '20:00'), sheetIds: [] }],
+    });
+    assert.deepEqual(data.draws, [
+      { day: 1, start: '18:00', end: '20:00', sheetIds: ['s1'] },
+      { day: 2, start: '18:00', end: '20:00' },
+    ]);
   });
 });

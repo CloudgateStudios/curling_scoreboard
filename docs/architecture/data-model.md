@@ -25,7 +25,7 @@ flowchart LR
   PRIV --> PUB["publicScores"]
 
   CLUB --> LINKS["displayLinks/{linkId}"]
-  CLUB --> CFG["config/scoreboard"]
+  CLUB --> CFG["config/scoreboard<br/>config/club<br/>config/stream"]
   CLUB --> LEAGUES["leagues/{leagueId}"]
   CLUB --> BON["bonspiels/{bonspielId}"]
   BON --> BST["state/current"]
@@ -172,6 +172,17 @@ clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
     team2: { name: string, hex: string }
   }
 
+clubs/{clubId}/config/club          // club settings the functions need
+  timeZone?: string          // IANA zone the club's league and bonspiel times are in;
+                             // absent until a club admin sets it
+
+clubs/{clubId}/config/stream         // the club's stream titles; absent for the defaults
+  templates?: {              // for each kind of answer from the API's /now, only
+    league?: { title?: string, description?: string }     // what differs from the
+    bonspiel?: { title?: string, description?: string }   // default; title up to 300
+    none?: { title?: string, description?: string }       // characters, description 5000
+  }
+
 clubs/{clubId}/leagues/{leagueId}
   name: string
   shortName?: string         // what the score bug calls it, such as 'Mixed 4s'; up to 30 characters
@@ -182,6 +193,7 @@ clubs/{clubId}/leagues/{leagueId}
     day: int                 // 1 (Monday) to 7 (Sunday)
     start: string            // 'HH:mm', 24 hour
     end: string
+    sheetIds?: string[]      // the sheets it plays on; absent means every sheet
   }]
   teams: [{
     id: string               // stable across renames and imports

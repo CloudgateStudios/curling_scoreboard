@@ -30,6 +30,12 @@ import {
   RETRY_RELOAD_AFTER_MS, canReload, targetBuild, timeUntilNextDailyCheck,
 } from '../functions/lib/display/assets/update-model.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
+import { formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../functions/lib/now.js';
+import {
+  DEFAULT_STREAM_TEMPLATES, renderStreamTemplate, streamText,
+} from '../functions/lib/streamMessage.js';
+// The portal's copy of the defaults, which must match the functions'.
+import { DEFAULT_STREAM_TEMPLATES as PORTAL_STREAM_TEMPLATES } from '../admin/src/lib/streamMessage.ts';
 import {
   IDLE_PAUSE_MS, LIVE_POLL_MS, QUIET_POLL_MS, asSummaryResults, isIdle, pollDelay, timeUntilDue,
 } from '../functions/lib/display/assets/scores-model.js';
@@ -466,7 +472,7 @@ describe('REST API leagues', () => {
       active: true,
       seasonStart: '2026-10-05',
       seasonEnd: null,
-      draws: [{ day: 1, start: '18:30', end: '20:30' }],
+      draws: [{ day: 1, start: '18:30', end: '20:30', sheetIds: null }],
       teams: [
         { id: 't1', name: 'Team Smith', externalId: '1042' },
         { id: 't2', name: 'Team Jones', externalId: null },
@@ -608,6 +614,240 @@ describe('REST API bonspiels', () => {
     assert.equal((await fetch(`${API_URL}/clubs/club-spiels/bonspiels`)).status, 401);
     const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels`, { headers: { 'x-api-key': 'key-a' } });
     assert.equal(res.status, 403);
+  });
+});
+
+describe('what is on a sheet now', () => {
+  const at = (value) => parseLocalTime(value);
+  // Tuesday 3 November 2026.
+  const tuesday = (time) => at(`2026-11-03T${time}`);
+  const league = (id, draws, extra = {}) => ({
+    id, data: { name: id, active: true, draws, teams: [], ...extra },
+  });
+  const ask = (input) => whatIsOn({ sheetId: 's2', liveGame: null, leagues: [], bonspiels: [], ...input });
+
+  test('reads and writes local times, and the club\'s clock in its zone', () => {
+    assert.equal(formatLocalTime(at('2026-11-03T18:30')), '2026-11-03T18:30');
+    assert.equal(at('2026-02-30T18:30'), null);
+    assert.equal(at('2026-11-03 18:30'), null);
+    assert.equal(formatLocalTime(localTimeIn('America/Chicago', new Date('2026-11-04T00:30:00Z'))), '2026-11-03T18:30');
+    assert.equal(localTimeIn('Not/AZone', new Date()), null);
+  });
+
+  test('matches a draw that starts a little early or late', () => {
+    const tues = league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }]);
+    for (const [time, confidence] of [['16:00', 'low'], ['17:15', 'medium'], ['18:15', 'high'], ['18:40', 'high'], ['20:30', 'high'], ['21:00', 'low']]) {
+      const { match } = ask({ at: tuesday(time), leagues: [tues] });
+      assert.equal(match?.confidence, confidence, time);
+      assert.equal(match.league.id, 'Tuesday');
+    }
+    assert.equal(ask({ at: tuesday('14:00'), leagues: [tues] }).match, null);
+    assert.equal(ask({ at: tuesday('22:00'), leagues: [tues] }).match, null);
+    assert.equal(ask({ at: at('2026-11-04T18:30'), leagues: [tues] }).match, null);
+  });
+
+  test('says how far from the draw\'s start it is', () => {
+    const { match } = ask({ at: tuesday('18:15'), leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    assert.equal(match.minutesFromStart, -15);
+    assert.deepEqual(match.draw, { date: '2026-11-03', start: '18:30', end: '20:30', label: null });
+  });
+
+  test('keeps the evening of a late draw after midnight', () => {
+    const { match } = ask({ at: at('2026-11-04T00:15'), leagues: [league('Late', [{ day: 2, start: '21:30', end: '23:45' }])] });
+    assert.equal(match.confidence, 'low');
+    assert.equal(match.draw.date, '2026-11-03');
+  });
+
+  test('leaves out leagues that are inactive or out of season', () => {
+    const draws = [{ day: 2, start: '18:30', end: '20:30' }];
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Off', draws, { active: false })] }).match, null);
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Later', draws, { seasonStart: '2026-11-10' })] }).match, null);
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Over', draws, { seasonEnd: '2026-11-02' })] }).match, null);
+  });
+
+  test('goes by the sheet on a split night', () => {
+    const leagues = [
+      league('Early', [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s1', 's2'] }]),
+      league('Other', [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s3', 's4'] }]),
+    ];
+    const { match, candidates } = ask({ at: tuesday('18:30'), leagues });
+    assert.equal(match.league.id, 'Early');
+    assert.equal(match.confidence, 'high');
+    assert.equal(candidates.length, 1);
+  });
+
+  test('marks a guess when two leagues are both on the sheet', () => {
+    const draws = [{ day: 2, start: '18:30', end: '20:30' }];
+    const { match, candidates } = ask({ at: tuesday('18:30'), leagues: [league('One', draws), league('Two', draws)] });
+    assert.equal(match.confidence, 'medium');
+    assert.equal(candidates.length, 2);
+  });
+
+  test('puts the sheet\'s live game first, with its teams', () => {
+    const leagues = [
+      league('One', [{ day: 2, start: '18:30', end: '20:30' }]),
+      league('Two', [{ day: 2, start: '18:30', end: '20:30' }]),
+    ];
+    const liveGame = {
+      league: { id: 'Two', name: 'Two' },
+      team1: { name: 'Team Smith', teamId: 't1' },
+      team2: { name: 'Team Jones', teamId: 't2' },
+    };
+    const { match, candidates } = ask({ at: tuesday('18:50'), leagues, liveGame });
+    assert.equal(match.source, 'liveGame');
+    assert.equal(match.confidence, 'high');
+    assert.equal(match.league.id, 'Two');
+    assert.equal(match.draw.start, '18:30');
+    assert.deepEqual([match.team1.name, match.team2.name], ['Team Smith', 'Team Jones']);
+    // The live game's league is not offered again from the schedule.
+    assert.deepEqual(candidates.map((c) => c.league.id), ['Two', 'One']);
+  });
+
+  test('takes nothing from an open live game', () => {
+    const liveGame = { team1: { name: 'Red' }, team2: { name: 'Yellow' } };
+    assert.equal(ask({ at: tuesday('18:30'), liveGame }).match, null);
+  });
+
+  const spiel = {
+    id: 'fall',
+    results: {},
+    data: {
+      name: 'Fall Spiel', shortName: 'Fall', active: true, startDate: '2026-11-03', endDate: '2026-11-04',
+      numberOfEnds: 8,
+      events: [{ id: 'a', name: 'A Event' }],
+      teams: [{ id: 't1', name: 'Team Smith' }, { id: 't2', name: 'Team Jones' }],
+      draws: [
+        { id: 'd1', label: 'Draw 1', start: '2026-11-03T18:00' },
+        { id: 'd2', label: 'Draw 2', start: '2026-11-03T20:30' },
+      ],
+      games: [
+        { id: 'g1', label: 'A1', drawId: 'd1', sheetId: 's2', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+        { id: 'g2', label: 'A2', drawId: 'd2', sheetId: 's2', eventId: 'a', team1: { from: 'g1', result: 'winner' }, team2: null },
+      ],
+    },
+  };
+
+  test('finds the sheet\'s game in the bonspiel draw on now', () => {
+    const { match } = ask({ at: tuesday('17:45'), bonspiels: [spiel], leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    assert.equal(match.kind, 'bonspiel');
+    assert.equal(match.confidence, 'high');
+    assert.deepEqual(match.game, { id: 'g1', label: 'A1', event: 'A Event' });
+    assert.deepEqual(match.draw, { date: '2026-11-03', start: '18:00', end: null, label: 'Draw 1' });
+    assert.deepEqual([match.team1.name, match.team2.name], ['Team Smith', 'Team Jones']);
+
+    // From half an hour before the next draw, it is that draw's game, with
+    // its teams still to come.
+    const next = ask({ at: tuesday('20:00'), bonspiels: [spiel] }).match;
+    assert.equal(next.game.label, 'A2');
+    assert.equal(next.team2, null);
+  });
+
+  test('leaves the bonspiel out on other sheets and other days', () => {
+    assert.equal(whatIsOn({ at: tuesday('18:00'), sheetId: 's9', liveGame: null, leagues: [], bonspiels: [spiel] }).match, null);
+    assert.equal(ask({ at: at('2026-11-06T18:00'), bonspiels: [spiel] }).match, null);
+  });
+
+  test('writes the title and description from the templates', () => {
+    const { match } = ask({ at: tuesday('18:15'), leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    const context = { clubName: 'Windy City', sheetName: 'Sheet 2', match, today: '2026-11-03', scoresUrl: null };
+    assert.deepEqual(streamText(undefined, context), {
+      title: 'Tuesday · Sheet 2 · November 3, 2026',
+      description: 'Tuesday on Sheet 2 at Windy City, Tuesday, November 3, 2026.',
+    });
+    const own = { league: { title: '{leagueShort} {drawTime}[ {matchup}]' } };
+    assert.equal(streamText(own, context).title, 'Tuesday 6:30 PM');
+    const none = streamText(undefined, { ...context, match: null, scoresUrl: 'https://example.com/s' });
+    assert.equal(none.title, 'Windy City · Sheet 2 · November 3, 2026');
+    assert.equal(none.description, 'Curling on Sheet 2 at Windy City.\nLive scores: https://example.com/s');
+  });
+
+  test('renders optional parts, and keeps titles to what YouTube takes', () => {
+    assert.equal(renderStreamTemplate('{a}[ · {b}] [[x]]', { a: 'A', b: '' }), 'A [x]');
+    const long = streamText({ none: { title: `${'Curling '.repeat(20)}<live>` } }, {
+      clubName: 'C', sheetName: 'S', match: null, today: '2026-11-03', scoresUrl: null,
+    }).title;
+    assert.ok(long.length <= 100 && long.endsWith('…') && !long.includes('<'));
+  });
+
+  test('has the same defaults as the portal', () => {
+    assert.deepEqual(DEFAULT_STREAM_TEMPLATES, PORTAL_STREAM_TEMPLATES);
+  });
+});
+
+describe('REST API now', () => {
+  const headers = { 'x-api-key': 'key-now' };
+  const url = (sheetId, query = '') => `${API_URL}/clubs/club-now/sheets/${sheetId}/now${query}`;
+
+  before(async () => {
+    await db.doc('clubs/club-now').set({ name: 'Club Now' });
+    await db.doc('clubs/club-now/private/apiKey').set({ key: 'key-now' });
+    await db.doc('clubs/club-now/sheets/s1').set({ name: 'Sheet 1' });
+    await db.doc('clubs/club-now/sheets/s2').set({
+      name: 'Sheet 2',
+      liveGame: {
+        updatedAt: Timestamp.now(),
+        currentEnd: 2,
+        league: { id: 'late', name: 'Late Ice' },
+        team1: { name: 'Team Smith', teamId: 't1', score: 1 },
+        team2: { name: 'Team Jones', teamId: 't2', score: 0 },
+      },
+    });
+    await db.doc('clubs/club-now/leagues/early').set({
+      name: 'Early Ice', active: true, teams: [],
+      draws: [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s1'] }],
+    });
+    await db.doc('clubs/club-now/leagues/late').set({
+      name: 'Late Ice', shortName: 'Late', active: true, teams: [],
+      draws: [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s2'] }],
+    });
+  });
+
+  test('needs a time while the club has no time zone', async () => {
+    const res = await fetch(url('s1'), { headers });
+    assert.equal(res.status, 400);
+  });
+
+  test('names the league on the sheet at a given time', async () => {
+    const res = await fetch(url('s1', '?at=2026-11-03T18:20'), { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.at, '2026-11-03T18:20');
+    assert.equal(body.title, 'Early Ice · Sheet 1 · November 3, 2026');
+    assert.equal(body.match.league.id, 'early');
+    assert.equal(body.match.source, 'schedule');
+    assert.equal(body.candidates.length, 1);
+  });
+
+  test('names a live game\'s league and teams', async () => {
+    const body = await (await fetch(url('s2', '?at=2026-11-03T18:50'), { headers })).json();
+    assert.equal(body.match.source, 'liveGame');
+    assert.equal(body.title, 'Late Ice · Sheet 2 · November 3, 2026 · Team Smith v Team Jones');
+  });
+
+  test('uses the club\'s templates, time zone and scores page', async () => {
+    await db.doc('clubs/club-now/config/club').set({ timeZone: 'America/Chicago' });
+    await db.doc('clubs/club-now/config/stream').set({ templates: { none: { title: '{club} on {sheet}', description: '[{scoresUrl}]' } } });
+    await db.doc('clubs/club-now/private/publicScores').set({ enabled: true });
+    // A Wednesday, when nothing is scheduled.
+    const body = await (await fetch(url('s1', '?at=2026-11-04T18:20'), { headers })).json();
+    assert.equal(body.timeZone, 'America/Chicago');
+    assert.equal(body.match, null);
+    assert.equal(body.title, 'Club Now on Sheet 1');
+    assert.match(body.description, /^https:\/\/.+\/display\/club-now\/scores$/);
+    // Without a time, the club's clock now.
+    const now = await fetch(url('s1'), { headers });
+    assert.equal(now.status, 200);
+    assert.match((await now.json()).at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  });
+
+  test('rejects a time that is not one, and an unknown sheet', async () => {
+    assert.equal((await fetch(url('s1', '?at=6:30pm'), { headers })).status, 400);
+    assert.equal((await fetch(url('missing', '?at=2026-11-03T18:20'), { headers })).status, 404);
+  });
+
+  test('needs the club\'s own key', async () => {
+    assert.equal((await fetch(url('s1', '?at=2026-11-03T18:20'))).status, 401);
+    assert.equal((await fetch(url('s1', '?at=2026-11-03T18:20'), { headers: { 'x-api-key': 'key-a' } })).status, 403);
   });
 });
 

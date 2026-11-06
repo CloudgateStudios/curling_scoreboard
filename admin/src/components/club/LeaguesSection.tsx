@@ -3,7 +3,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
 import { formatDraws, leagueData, suggestShortName } from '../../lib/leagues';
-import type { League } from '../../types';
+import type { League, Sheet } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
 import { LeagueWeek } from './LeagueWeek';
 import common from '../../styles/common.module.css';
@@ -12,11 +12,13 @@ interface Props {
   clubId: string;
   /** In compareLeagues order: by first draw of the week, unscheduled leagues last. */
   leagues: League[];
+  /** For the import's sheets column. */
+  sheets: Sheet[];
   onOpenLeague: (leagueId: string) => void;
 }
 
 /** The club's leagues, whose teams scoreboards offer for league games. */
-export function LeaguesSection({ clubId, leagues, onOpenLeague }: Props) {
+export function LeaguesSection({ clubId, leagues, sheets, onOpenLeague }: Props) {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [newName, setNewName] = useState('');
@@ -113,7 +115,7 @@ export function LeaguesSection({ clubId, leagues, onOpenLeague }: Props) {
       </div>
 
       {importing && (
-        <LeagueImportDialog clubId={clubId} leagues={leagues} onClose={() => setImporting(false)} />
+        <LeagueImportDialog clubId={clubId} leagues={leagues} sheets={sheets} onClose={() => setImporting(false)} />
       )}
     </div>
   );

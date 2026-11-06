@@ -10,6 +10,42 @@
   flex: 1;
 }
 
+.draw {
+  margin-bottom: 0.9rem;
+}
+
+.draw > .leagueFieldRow {
+  margin-bottom: 0.4rem;
+}
+
+.drawSheets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.sheetChip,
+.sheetChipSelected {
+  border: 1px solid #c9d1dc;
+  border-radius: 999px;
+  background: #fff;
+  color: #444;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.65rem;
+  cursor: pointer;
+}
+
+.sheetChip:hover {
+  background: #f4f6f9;
+}
+
+.sheetChipSelected {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+
 .externalIdInput {
   max-width: 14rem;
 }

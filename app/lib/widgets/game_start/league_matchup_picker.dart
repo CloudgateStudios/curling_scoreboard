@@ -26,6 +26,7 @@ Future<League?> showLeagueChooser(
   BuildContext context, {
   required List<League> leagues,
   required DateTime now,
+  String? sheetId,
   String? bonspielName,
   VoidCallback? onBonspiel,
 }) {
@@ -34,6 +35,7 @@ Future<League?> showLeagueChooser(
     builder: (_) => _LeagueChooser(
       leagues: leagues,
       now: now,
+      sheetId: sheetId,
       bonspielName: bonspielName,
       onBonspiel: onBonspiel,
     ),
@@ -47,12 +49,17 @@ class _LeagueChooser extends StatelessWidget {
   const _LeagueChooser({
     required this.leagues,
     required this.now,
+    this.sheetId,
     this.bonspielName,
     this.onBonspiel,
   });
 
   final List<League> leagues;
   final DateTime now;
+
+  /// The scoreboard's sheet, so a league playing on other sheets tonight is
+  /// not marked as playing here.
+  final String? sheetId;
   final String? bonspielName;
   final VoidCallback? onBonspiel;
 
@@ -67,7 +74,7 @@ class _LeagueChooser extends StatelessWidget {
     final ordered = [
       for (final playing in [true, false])
         for (final league in leagues)
-          if (league.isPlayingAt(now) == playing) league,
+          if (league.isPlayingAt(now, sheetId: sheetId) == playing) league,
     ];
     final columns = ordered.length > 3 ? 2 : 1;
     final rows = [
@@ -109,7 +116,10 @@ class _LeagueChooser extends StatelessWidget {
                             Expanded(
                               child: LeagueChooserOption(
                                 league: league,
-                                playing: league.isPlayingAt(now),
+                                playing: league.isPlayingAt(
+                                  now,
+                                  sheetId: sheetId,
+                                ),
                               ),
                             ),
                           // Keeps an odd league out the same width as the

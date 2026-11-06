@@ -71,11 +71,16 @@ Every change to `firestore.rules` or to a function's behavior needs a case in
   `sheetView` and `lastGameOf` in `functions/src/display/state.ts` and
   `assets/display.js`; webhook message variables in
   `functions/src/webhookMessage.ts` and `admin/src/lib/webhookMessage.ts`;
+  stream title variables, defaults and the bracketed parts, in
+  `functions/src/streamMessage.ts` and `admin/src/lib/streamMessage.ts`;
   the live game timeout in `functions/src/liveGame.ts` and
   `admin/src/lib/liveGame.ts`; when a page reloads onto a new build, in
   `assets/update-model.js` and the app's `UpdateService`; and the draw on
   now and where each side comes from, in `assets/bonspiel-model.js`,
-  `admin/src/lib/bonspiels.ts` and `app/lib/models/bonspiel.dart`.
+  `admin/src/lib/bonspiels.ts` and `app/lib/models/bonspiel.dart`; and the
+  league playing now, with its lead time and sheets, in
+  `app/lib/models/league.dart` and `functions/src/now.ts`, which also has
+  the bonspiel draw on now.
 
 ## Keep the docs current
 

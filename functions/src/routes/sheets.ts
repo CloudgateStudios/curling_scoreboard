@@ -46,13 +46,21 @@ function isStale(liveGame: FirebaseFirestore.DocumentData, now: number): boolean
   return now - updatedAt.toMillis() > LIVE_GAME_TIMEOUT_MS;
 }
 
+/** The sheet's live game, or null when it has none or it has gone stale. */
+export function liveGameOf(
+  data: FirebaseFirestore.DocumentData,
+  now: number = Date.now(),
+): FirebaseFirestore.DocumentData | null {
+  const stored = (data['liveGame'] as FirebaseFirestore.DocumentData | undefined) ?? null;
+  return stored && !isStale(stored, now) ? stored : null;
+}
+
 export function buildSheetResponse(
   id: string,
   data: FirebaseFirestore.DocumentData,
   now: number = Date.now(),
 ): object {
-  const stored = (data['liveGame'] as FirebaseFirestore.DocumentData | undefined) ?? null;
-  const liveGame = stored && !isStale(stored, now) ? stored : null;
+  const liveGame = liveGameOf(data, now);
   return {
     id,
     name: data['name'] as string,

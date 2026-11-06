@@ -120,6 +120,9 @@ export interface LeagueDraw {
   /** 24 hour `HH:mm`. */
   start: string;
   end: string;
+  /** The sheets it plays on, when the league shares the ice. Absent or
+   *  empty means every sheet. */
+  sheetIds?: string[];
 }
 
 export interface LeagueTeam {

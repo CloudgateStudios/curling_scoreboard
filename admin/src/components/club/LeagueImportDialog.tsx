@@ -7,7 +7,7 @@ import {
   type ImportMode, type ParsedCsv,
 } from '../../lib/leagueCsv';
 import { formatDraws, leagueData, newTeamId } from '../../lib/leagues';
-import type { League } from '../../types';
+import type { League, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './LeagueImportDialog.module.css';
 
@@ -16,12 +16,14 @@ const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(`${CSV
 interface Props {
   clubId: string;
   leagues: League[];
+  /** For a `sheets` column, matched by name. */
+  sheets: Sheet[];
   onClose: () => void;
 }
 
 /** Imports leagues and teams from a CSV file, showing what will change
  *  before anything is written. */
-export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
+export function LeagueImportDialog({ clubId, leagues, sheets, onClose }: Props) {
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mode, setMode] = useState<ImportMode>('merge');
@@ -39,7 +41,7 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
     if (!file) return;
     setError('');
     setFileName(file.name);
-    setParsed(parseLeagueCsv(await file.text()));
+    setParsed(parseLeagueCsv(await file.text(), sheets));
   }
 
   async function handleImport() {
@@ -69,7 +71,9 @@ export function LeagueImportDialog({ clubId, leagues, onClose }: Props) {
 
         <p className={common.blurb}>
           One row per team. Only <code>league</code> and <code>team</code> are required; leave the
-          schedule columns out to keep a league's current schedule.
+          schedule columns out to keep a league's current schedule. A league that shares the ice can
+          add a <code>sheets</code> column naming its draw's sheets, such as{' '}
+          <code>Sheet 1;Sheet 2</code>.
         </p>
         <pre className={styles.csvExample}>{CSV_EXAMPLE}</pre>
         <p className={common.blurb}>

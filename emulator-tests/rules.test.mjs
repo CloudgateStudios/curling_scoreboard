@@ -247,6 +247,55 @@ await check('attack: club admin stores other settings in the scoreboard config',
 await check('attack: club admin writes another config document', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/config/other'), { rockColors: blueGreen }));
 
+// --- the club's time zone ---
+await check('club admin: set their club time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('scoreboard: read its club time zone', 'allow', () =>
+  getDoc(doc(claimedBoard, 'clubs/club-a/config/club')));
+
+await check('club admin: remove their club time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: deleteField() }, { merge: true }));
+
+await check('attack: club admin sets another club time zone', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('attack: scoreboard sets its club time zone', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago' }));
+
+await check('attack: time zone that is not a zone name', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: '<script>' }));
+
+await check('attack: club admin stores other settings with the time zone', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago', extra: true }));
+
+// --- the club's stream templates ---
+await check('club admin: set their stream templates', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/stream'), {
+    templates: {
+      league: { title: '{league} · {sheet}', description: 'Live from {club}' },
+      none: { title: '{club}' },
+    },
+  }));
+
+await check('club admin: go back to the default stream templates', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/stream'), { templates: deleteField() }, { merge: true }));
+
+await check('attack: club admin sets another club stream templates', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-b/config/stream'), { templates: { none: { title: '{club}' } } }));
+
+await check('attack: stream template for a kind that does not exist', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/stream'), { templates: { open: { title: '{club}' } } }));
+
+await check('attack: stream title template over 300 characters', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/stream'), { templates: { none: { title: 'x'.repeat(301) } } }));
+
+await check('attack: stream template with other fields', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/stream'), { templates: { none: { title: '{club}', privacy: 'public' } } }));
+
+await check('attack: scoreboard sets its club stream templates', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/config/stream'), { templates: {} }));
+
 // --- leagues ---
 const league = {
   name: 'Monday Night',

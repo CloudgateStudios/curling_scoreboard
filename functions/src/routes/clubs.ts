@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { validateApiKey } from '../middleware/apiKey';
 import { bonspielsRouter } from './bonspiels';
 import { leaguesRouter } from './leagues';
+import { nowRouter } from './now';
 import { buildSheetResponse, sheetsRouter } from './sheets';
 
 export const clubsRouter = Router();
@@ -12,6 +13,7 @@ export const clubsRouter = Router();
 const clubRouter = Router({ mergeParams: true });
 clubRouter.use(validateApiKey);
 clubRouter.use(sheetsRouter);
+clubRouter.use('/sheets/:sheetId', nowRouter);
 clubRouter.use(leaguesRouter);
 clubRouter.use(bonspielsRouter);
 

@@ -1,7 +1,8 @@
 # REST API and webhook
 
 The two ways a club's own systems get its games: asking the read only REST
-API, or being sent each completed game. Part of the
+API, or being sent each completed game. The API also says what is on a
+sheet now, so a stream of it can be named. Part of the
 [architecture docs](../ARCHITECTURE.md).
 
 ## Public REST API
@@ -35,6 +36,7 @@ under `/api/**` through a Hosting rewrite. It is read only:
 - `GET /api/v1/clubs/{clubId}`
 - `GET /api/v1/clubs/{clubId}/sheets/{sheetId}`
 - `GET /api/v1/clubs/{clubId}/sheets/{sheetId}/games?limit=`
+- `GET /api/v1/clubs/{clubId}/sheets/{sheetId}/now?at=`, below
 - `GET /api/v1/clubs/{clubId}/leagues`
 - `GET /api/v1/clubs/{clubId}/leagues/{leagueId}`
 - `GET /api/v1/clubs/{clubId}/bonspiels`
@@ -59,6 +61,80 @@ with the `X-API-Key` header, never with credentials, and lets browsers cache
 the preflight for a day. A key used in browser code is visible to anyone who
 views the page; an integration that needs to keep its key private should call
 the API from a server.
+
+## What is on a sheet now
+
+```mermaid
+flowchart TD
+  A["GET /sheets/{sheetId}/now"] --> T{"at given?"}
+  T -- "yes" --> AT["Use it, as the club's local time"]
+  T -- "no" --> TZ{"config/club has<br/>a time zone?"}
+  TZ -- "no" --> E400["400"]
+  TZ -- "yes" --> CLOCK["The club's clock now"]
+  AT --> LIVE{"The sheet has a live<br/>league or bonspiel game?"}
+  CLOCK --> LIVE
+  LIVE -- "yes" --> M1["That game and its teams,<br/>confidence high"]
+  LIVE -- "no" --> BON{"A bonspiel on its dates with<br/>a game on this sheet in the draw on now?"}
+  BON -- "yes" --> M2["That game"]
+  BON -- "no" --> LG{"League draws on this sheet<br/>near the time?"}
+  LG -- "yes" --> M3["The nearest, with<br/>high, medium or low"]
+  LG -- "no" --> NONE["No match"]
+  M1 --> TXT["Title and description from<br/>config/stream, or the defaults"]
+  M2 --> TXT
+  M3 --> TXT
+  NONE --> TXT
+```
+
+A club that streams each sheet needs a name for each stream without anyone
+typing one. `GET /sheets/{sheetId}/now` answers with what is on the sheet,
+and a `title` and `description` ready to post. It is worked out in
+`functions/src/now.ts`, which imports nothing from Firebase so the tests can
+run it.
+
+- **Time.** League and bonspiel times are the club's local time with no
+  zone, so the function needs the club's: `timeZone` in `config/club`, which
+  a club admin sets under Settings, Integrations. `at`, a local time such as
+  `2026-11-03T18:22`, overrides it. A club with no time zone gets a 400
+  without `at`, rather than a guess made in UTC that names the wrong draw.
+- **A live game first.** A league or bonspiel game already started on the
+  sheet's scoreboard is the answer, with its teams. An open game says
+  nothing about the schedule, so it is passed over.
+- **Then a bonspiel.** On a bonspiel's dates, the sheet's game in the draw on
+  now, by the scoreboard's rule: from 30 minutes before a draw starts until
+  the same time before the next, and for three hours after the day's last.
+- **Then the leagues.** Each active league in its season with a draw on the
+  sheet that day. Within 30 minutes of the start, the scoreboard's lead
+  time, until the end is high; up to 90 minutes before is medium; up to three
+  hours before, or an hour after the end, is low. A 6:30 draw started at
+  6:15 or 6:40 is high either way. A draw's day is kept after midnight, so a
+  late draw keeps its evening.
+- **When it is a guess.** Two leagues both high on the same sheet, which a
+  right schedule never gives, mark the match medium. Every candidate is
+  returned, best first, so a tool can let a person choose when the match is
+  not high.
+
+The tool should ask again a few minutes into the stream: once the game has
+started on the scoreboard, the answer names its teams, and YouTube lets a
+live broadcast's title change.
+
+### Titles and descriptions
+
+Each kind of answer, a league draw, a bonspiel game or nothing, has a title
+and a description the club can write under Settings, Integrations, Stream
+Titles. They are kept in `config/stream`, only where they differ from the
+defaults, and filled in by `functions/src/streamMessage.ts`. The portal has
+the same variables and defaults, for its preview, in
+`admin/src/lib/streamMessage.ts`; a test checks the defaults match.
+
+Variables are in braces, as in the webhook message. A part in square
+brackets that holds a variable is left out when any variable in it is
+empty, so `{league} · {sheet}[ · {matchup}]` drops the matchup until both
+teams are known. Brackets around no variable, and doubled brackets, are
+written as they are, so a title can still say "[Live]". The webhook message
+does not use the brackets, so existing messages are unchanged.
+
+The title is made one line with no angle brackets and cut at a word to 100
+characters, and the description to 5,000, as YouTube takes them.
 
 ## Completed game webhook
 

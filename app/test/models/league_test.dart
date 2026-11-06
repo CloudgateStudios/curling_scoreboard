@@ -143,6 +143,41 @@ void main() {
       expect(league.isPlayingAt(DateTime(2027, 4, 5, 19)), isFalse);
     });
 
+    test('is only playing on the sheets of its draw, when it has them', () {
+      final league = League.tryParse('early', {
+        'name': 'Early Ice',
+        'draws': [
+          {
+            'day': 1,
+            'start': '18:30',
+            'end': '20:30',
+            'sheetIds': ['s1', 's2'],
+          },
+        ],
+      })!;
+      expect(league.draws.single.sheetIds, ['s1', 's2']);
+      expect(league.isPlayingAt(monday(19), sheetId: 's1'), isTrue);
+      expect(league.isPlayingAt(monday(19), sheetId: 's3'), isFalse);
+      // An unpaired scoreboard does not know its sheet.
+      expect(league.isPlayingAt(monday(19)), isTrue);
+      expect(mondayNight().isPlayingAt(monday(19), sheetId: 's3'), isTrue);
+    });
+
+    test('suggests the league playing on this sheet on a split night', () {
+      League split(String id, List<String> sheetIds) => League.tryParse(id, {
+        'name': id,
+        'draws': [
+          {'day': 1, 'start': '18:30', 'end': '20:30', 'sheetIds': sheetIds},
+        ],
+      })!;
+      final leagues = [
+        split('Early', ['s1', 's2']),
+        split('Late', ['s3', 's4']),
+      ];
+      expect(League.suggested(leagues, monday(19), sheetId: 's3')?.id, 'Late');
+      expect(League.suggested(leagues, monday(19)), isNull);
+    });
+
     test('is never playing when inactive or without a schedule', () {
       expect(mondayNight(active: false).isPlayingAt(monday(19)), isFalse);
       final unscheduled = League.tryParse('l', {'name': 'Any Time'})!;
