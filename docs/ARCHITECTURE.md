@@ -201,3 +201,4 @@ none is left without one.
 | [Admin portal](architecture/admin-portal.md)                | Routes by role, and what each tab and settings group does                                                             |
 | [REST API and webhook](architecture/api-and-webhook.md)     | The public read only API and the completed game webhook                                                               |
 | [Deploys and updates](architecture/deploys-and-updates.md)  | Environments, CI and the deploy pipeline, how scoreboards and display pages update themselves, and hosting headers    |
+| [Monitoring and alerts](architecture/monitoring.md)        | The usage dashboard, the alerts, the free allowances they guard, and what to do when one fires                        |

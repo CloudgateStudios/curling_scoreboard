@@ -27,9 +27,29 @@ emulators.
 | `backfill-scoreboard-pins.js`   | Gives every club without a scoreboard PIN a random one, and prints it | Once a project, after the deploy that added PINs      | Yes                     |
 | `backfill-display-state.js`     | Rewrites every club's display summary from its sheets and games       | Once a project, after the display functions were first deployed; again to repair a summary | Yes |
 | `smoke-test.mjs`                | Plays a short game as a scoreboard and checks it reaches every function that shows it | After an upgrade reaches dev; see the [upgrade smoke test](../docs/upgrade-smoke-test.md) | Leaves a test game each run |
+| `setup-monitoring.mjs <email>`  | Puts the usage dashboard in Cloud Monitoring, and on prod the alerts that email `<email>` | A new project, or after changing `monitoring.mjs` | Yes |
 
-The four before it went with past deploys. Each section below says why, for a new
+The migration and three backfills went with past deploys. Each section below says why, for a new
 project or for anyone wondering what they did.
+
+## Monitoring
+
+`setup-monitoring.mjs` puts the usage dashboard and the alerts described in
+[Monitoring and alerts](../docs/architecture/monitoring.md) in a project.
+What they watch is in `monitoring.mjs`. It uses your own gcloud sign in
+(`gcloud auth login`) rather than application default credentials, and
+needs the Monitoring Editor role.
+
+```bash
+cd scripts
+node setup-monitoring.mjs you@example.com --dry-run                                        # print it, change nothing
+node setup-monitoring.mjs you@example.com                                                  # dev: the dashboard only
+FIREBASE_PROJECT_ID=curling-scoreboard-prod node setup-monitoring.mjs you@example.com      # prod: dashboard and alerts
+```
+
+Each alert condition costs about $0.10 a month, so dev gets the alerts only
+with `--alerts`. Running it again updates everything in place, found by
+name.
 
 ## Seeding dev data
 
