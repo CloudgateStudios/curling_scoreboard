@@ -1162,6 +1162,28 @@ describe('REST API now', () => {
   });
 });
 
+// Hosting's CDN keys its copies by URL alone, so an answer it kept would go
+// to the next caller whatever key they sent, or none.
+describe('REST API caching', () => {
+  test('lets no answer be kept, whatever it is', async () => {
+    const key = { 'x-api-key': 'key-a' };
+    const answers = [
+      [`${API_URL}/clubs/club-a`, key, 200],
+      [`${API_URL}/clubs/club-a`, {}, 401],
+      [`${API_URL}/clubs/club-a`, { 'x-api-key': 'wrong' }, 403],
+      [`${API_URL}/clubs/nowhere`, key, 404],
+      [`${API_URL}/clubs/club-a/nothing-here`, key, 404],
+      [`${API_URL}/nothing-here`, {}, 404],
+    ];
+    for (const [url, headers, status] of answers) {
+      const res = await fetch(url, { headers });
+      assert.equal(res.status, status, url);
+      assert.equal(res.headers.get('cache-control'), 'private, no-store', url);
+      assert.match(res.headers.get('vary') ?? '', /x-api-key/i, url);
+    }
+  });
+});
+
 describe('REST API CORS', () => {
   const origin = 'https://club.example';
 

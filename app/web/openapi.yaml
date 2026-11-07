@@ -9,7 +9,7 @@ info:
     contact your club administrator to obtain one.
 
     Answers may be up to 15 seconds old, so polling more often than that gains
-    nothing. Each club may make 60 requests a minute and 5,000 a day; past
+    nothing. No answer may be cached (`Cache-Control: private, no-store`). Each club may make 60 requests a minute and 5,000 a day; past
     that, requests get a 429 with a `Retry-After` header. A key replaced in the admin portal takes up to a minute to start
     working, and the old key works until then.
 
