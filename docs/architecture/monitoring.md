@@ -84,7 +84,7 @@ which is why the alerts watch usage rather than spend.
    | A function is failing | Read the error in the logs; a bad deploy is undone by deploying the previous release tag |
    | One address making too many requests, or guessing at keys | A super admin adds it under Blocked addresses, below the list of clubs. It is turned away within half a minute |
    | A limit is too tight for a real club, or too loose | A super admin sets `limits.<name>` in `adminConfig/switches`, in the Firestore console, to a whole number; the names are in `RATE_LIMITS` in `functions/src/limits.ts`. Removing it puts the default back. It takes effect within half a minute |
-   | Many clubs at once, or no single caller to blame | A super admin turns off the part being flooded under Service Switches, below the list of clubs: the REST API, the public scores pages, display sign-ins or scoreboard pairing. Each takes effect within half a minute, and answers before reading anything |
+   | Many clubs at once, or no single caller to blame | A super admin turns off the part being flooded under Service Controls, below the list of clubs: the REST API, the public scores pages, display sign-ins or scoreboard pairing. Each takes effect within half a minute, and answers before reading anything |
 
 4. **If nothing else works**, or the switches cannot be reached, take a
    function off the internet. This stops it answering anyone, the displays

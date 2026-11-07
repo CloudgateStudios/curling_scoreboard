@@ -3,6 +3,7 @@ import { arrayRemove, arrayUnion, doc, onSnapshot, setDoc } from 'firebase/fires
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
 import common from '../styles/common.module.css';
+import styles from './ServiceSwitchesSection.module.css';
 
 /** The switches in adminConfig/switches, which the functions read; see
  *  functions/src/switches.ts. Each is on unless set to false. */
@@ -86,63 +87,104 @@ export function ServiceSwitchesSection() {
     if (await changeBlocked(arrayUnion(ip), 'Could not block the address.')) setAddress('');
   }
 
-  return (
-    <div className={common.section}>
-      <h2 className={common.sectionTitle}>Service Switches</h2>
-      <p className={common.blurb}>
-        For when something is being flooded or misused. Each turns a part of the service off for
-        every club within half a minute. Scoring on the sheets always carries on.
-      </p>
-      {SWITCHES.map(({ name, label, detail }) => {
-        const on = values?.[name] !== false;
-        return (
-          <div key={name}>
-            <label className={common.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={values !== null && on}
-                disabled={values === null || busy}
-                onChange={(e) => handleToggle(name, label, e.target.checked)}
-              />
-              {label}
-            </label>
-            <p className={common.blurb}>{on ? `When off: ${detail}` : `Off now. ${detail}`}</p>
-          </div>
-        );
-      })}
+  const offCount = values === null ? 0 : SWITCHES.filter(({ name }) => values[name] === false).length;
 
-      <h3>Blocked addresses</h3>
-      <p className={common.blurb}>
-        For a single caller found in the logs. An address here is turned away from the REST API,
-        display sign-ins and scoreboard pairing within half a minute. The logs can show two
-        addresses for a request: block the caller's, not a Google server's. The runbook in
-        docs/architecture/monitoring.md says how to tell them apart.
-      </p>
-      {blocked.map((ip) => (
-        <div key={ip} className={common.row}>
-          <code>{ip}</code>
-          <button
-            className={common.ghostButton}
-            disabled={busy}
-            onClick={() => changeBlocked(arrayRemove(ip), 'Could not unblock the address.')}
-          >
-            Unblock
-          </button>
+  return (
+    <section className={styles.area} aria-labelledby="service-heading">
+      <div className={styles.areaHeader}>
+        <h2 id="service-heading" className={styles.areaTitle}>Service Controls</h2>
+        <p className={styles.areaSubtitle}>
+          For when something is being flooded or misused. Changes reach every club within half a
+          minute. Scoring on the sheets always carries on.
+        </p>
+      </div>
+
+      <div className={styles.grid}>
+        <div className={`${common.section} ${styles.card}`}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Service switches</h3>
+            {values !== null && (
+              <span className={offCount ? common.errorChip : common.onlineChip}>
+                {offCount ? `${offCount} off` : 'All on'}
+              </span>
+            )}
+          </div>
+          <ul className={styles.switchList}>
+            {SWITCHES.map(({ name, label, detail }) => {
+              const on = values?.[name] !== false;
+              const id = `switch-${name}`;
+              return (
+                <li key={name} className={`${styles.switchRow} ${on ? '' : styles.switchRowOff}`}>
+                  <div className={styles.switchText}>
+                    <label htmlFor={id} className={styles.switchLabel}>
+                      {label}
+                    </label>
+                    <span className={styles.switchDetail}>
+                      {on ? <>When off: {detail}</> : <><strong>Off now.</strong> {detail}</>}
+                    </span>
+                  </div>
+                  <input
+                    id={id}
+                    type="checkbox"
+                    role="switch"
+                    className={styles.toggle}
+                    checked={values !== null && on}
+                    disabled={values === null || busy}
+                    onChange={(e) => handleToggle(name, label, e.target.checked)}
+                  />
+                </li>
+              );
+            })}
+          </ul>
         </div>
-      ))}
-      <form onSubmit={handleBlock} className={common.inlineForm}>
-        <input
-          className={common.input}
-          placeholder="IP address, such as 203.0.113.7"
-          aria-label="IP address to block"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-        <button className={common.ghostButton} type="submit" disabled={busy || values === null || !address.trim()}>
-          Block
-        </button>
-      </form>
+
+        <div className={`${common.section} ${styles.card}`}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Blocked addresses</h3>
+            {blocked.length > 0 && <span className={common.errorChip}>{blocked.length} blocked</span>}
+          </div>
+          <p className={styles.cardBlurb}>
+            For a single caller found in the logs. A blocked address is turned away from the REST
+            API, display sign-ins and scoreboard pairing.
+          </p>
+          <form onSubmit={handleBlock} className={styles.blockForm}>
+            <input
+              className={common.input}
+              placeholder="IP address, such as 203.0.113.7"
+              aria-label="IP address to block"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+            <button className={common.ghostButton} type="submit" disabled={busy || values === null || !address.trim()}>
+              Block
+            </button>
+          </form>
+          <p className={styles.hint}>
+            The logs can show two addresses for a request. Block the caller's, not a Google
+            server's; the runbook in <code>docs/architecture/monitoring.md</code> says how to tell
+            them apart.
+          </p>
+          {blocked.length === 0 ? (
+            <p className={styles.emptyList}>No addresses are blocked.</p>
+          ) : (
+            <ul className={styles.blockedList}>
+              {blocked.map((ip) => (
+                <li key={ip} className={styles.blockedRow}>
+                  <code className={styles.ip}>{ip}</code>
+                  <button
+                    className={common.linkButton}
+                    disabled={busy}
+                    onClick={() => changeBlocked(arrayRemove(ip), 'Could not unblock the address.')}
+                  >
+                    Unblock
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
       {error && <p className={common.error}>{error}</p>}
-    </div>
+    </section>
   );
 }
