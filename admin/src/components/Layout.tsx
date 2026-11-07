@@ -24,7 +24,11 @@ export function Layout({ user, children }: Props) {
     <div className={styles.shell}>
       <nav className={styles.nav}>
         <span className={styles.brand}>
-          Curling Scoreboard<span className={styles.brandSuffix}> Admin</span>
+          <span className={styles.brandName}>
+            Curling Scoreboard<span className={styles.brandSuffix}> Admin</span>
+          </span>
+          {/* On phones the role moves here, under the name, to free the right side. */}
+          {user && <span className={styles.brandRole}>{ROLE_BADGES[user.role ?? "clubadmin"]}</span>}
         </span>
         <div className={styles.navRight}>
           {/* Help opens in a new tab, so a half-made change is not lost. */}

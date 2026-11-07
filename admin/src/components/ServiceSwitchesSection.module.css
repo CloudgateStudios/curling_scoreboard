@@ -1,0 +1,210 @@
+/* The service-wide controls under the club list, set apart from it so they
+   read as their own area of the page. */
+.area {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e8e8e8;
+}
+
+.areaHeader {
+  margin-bottom: 1.25rem;
+}
+
+.areaTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.areaSubtitle {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.25rem;
+  max-width: 48rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.card {
+  margin-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.cardBlurb {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 0.75rem;
+}
+
+.switchList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.75rem;
+  margin: 0 -0.75rem;
+  border-radius: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.switchRow:first-child {
+  border-top: none;
+}
+
+.switchRowOff {
+  background: #fce8e6;
+  border-top-color: transparent;
+}
+
+.switchRowOff + .switchRow {
+  border-top-color: transparent;
+}
+
+.switchText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.switchLabel {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a2e;
+  cursor: pointer;
+}
+
+.switchDetail {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.switchRowOff .switchDetail {
+  color: #a50e0e;
+}
+
+/* A checkbox drawn as an on/off switch. */
+.toggle {
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: #c4c7cc;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin: 0;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.toggle:checked {
+  background: #1e8e3e;
+}
+
+.toggle:checked::after {
+  transform: translateX(1.25rem);
+}
+
+.switchRowOff .toggle {
+  background: #d93025;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.blockForm {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.blockForm input {
+  min-width: 0;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #777;
+  margin-top: 0.5rem;
+}
+
+.hint code {
+  font-size: 0.78rem;
+  background: #f4f6f9;
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.emptyList {
+  font-size: 0.85rem;
+  color: #999;
+  margin-top: 1rem;
+}
+
+.blockedList {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  border: 1px solid #efefef;
+  border-radius: 8px;
+}
+
+.blockedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid #efefef;
+}
+
+.blockedRow:first-child {
+  border-top: none;
+}
+
+.ip {
+  font-size: 0.9rem;
+}

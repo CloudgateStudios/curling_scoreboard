@@ -19,15 +19,36 @@
 }
 
 .brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: -0.02em;
+}
+
+.brandName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Shown only on phones; see the media query below. */
+.brandRole {
+  display: none;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8ab4f8;
+  line-height: 1.2;
 }
 
 .navRight {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-shrink: 0;
 }
 
 .userInfo {
@@ -93,18 +114,30 @@
     padding: 0 1rem;
   }
 
+  .nav {
+    gap: 0.75rem;
+  }
+
   .brand {
     font-size: 1rem;
-    white-space: nowrap;
+  }
+
+  .brandRole {
+    display: block;
   }
 
   .brandSuffix,
-  .email {
+  .userInfo {
     display: none;
   }
 
   .navRight {
-    gap: 0.6rem;
+    gap: 0.85rem;
+  }
+
+  .signOut {
+    white-space: nowrap;
+    padding: 0.35rem 0.65rem;
   }
 
   .main {
