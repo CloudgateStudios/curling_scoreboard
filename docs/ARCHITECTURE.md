@@ -188,6 +188,12 @@ runs, and a trigger's event is delivered again later. A new function gets
 the default of 2 unless it sets its own, and the emulator tests check that
 none is left without one.
 
+The same file says how long each instance keeps what it reads in memory:
+a club and its API key for a minute, each API answer for 15 seconds, and
+whether a club's scores page is on for 30 seconds. A burst of the same
+requests then reads Firestore once, and a change made in the portal reaches
+the function after at most that long. `functions/src/kept.ts` holds them.
+
 ## Where to read more
 
 | Page                                                        | What it covers                                                                                                         |

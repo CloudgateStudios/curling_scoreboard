@@ -389,8 +389,10 @@ keeps a copy per full URL, so `live.json?x=1` would otherwise skip the cache
 and reach Firestore every time. The page never adds one.
 Express gives each response an ETag and answers a matching `If-None-Match`
 with a 304, so a poll that finds nothing new costs only headers. A cache miss
-reads the switch and the summary; the branding, which holds the logo, is
-kept in each function instance for five minutes.
+reads the summary. Each function instance keeps the switch for 30 seconds
+and the branding, which holds the logo, for five minutes, so a request that
+skips the CDN, or one for a club without the page, does not read them each
+time.
 
 ```mermaid
 flowchart TD

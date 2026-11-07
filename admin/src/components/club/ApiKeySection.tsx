@@ -25,7 +25,10 @@ export function ApiKeySection({ clubId, canRegenerate }: Props) {
   }, [clubId]);
 
   async function handleRegenerate() {
-    if (!confirm('Regenerate API key? Existing integrations using the current key will break.')) return;
+    if (!confirm(
+      'Regenerate API key? Existing integrations using the current key will break. '
+      + 'The new key starts working, and the old one stops, within a minute.',
+    )) return;
     try {
       await setDoc(doc(db, 'clubs', clubId, 'private', 'apiKey'), { key: generateApiKey() });
     } catch (err) {

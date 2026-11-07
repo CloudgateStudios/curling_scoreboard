@@ -16,10 +16,10 @@ sequenceDiagram
 
   C->>H: GET /api/v1/clubs/{clubId}/... with X-API-Key
   H->>A: Rewritten to the api function
-  A->>FS: Read private/apiKey
+  A->>FS: Read the club and private/apiKey, kept for a minute
   A->>A: Compare in constant time
   alt the key matches
-    A->>FS: Read the club, sheets, games, leagues or bonspiels
+    A->>FS: Read the sheets, games, leagues or bonspiels, kept for 15 seconds
     A-->>C: 200 JSON, built field by field
   else no key
     A-->>C: 401
@@ -54,6 +54,19 @@ for a game from a scoreboard build that predates them.
 Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is
 `app/web/openapi.yaml`, rendered at `/api-docs/` on the same site.
+
+Each instance of the function keeps what it reads in memory, so that an
+integration polling fast, or someone guessing at keys or club IDs, costs
+few Firestore reads:
+
+- The club and its key are kept for a minute, unknown clubs too. A key
+  replaced in the portal starts working within that minute, and the old key
+  stops working within it.
+- Each answer is kept for 15 seconds, by its full path and query, after the
+  key is checked. An answer can be that much older than Firestore. Errors
+  on our side (5xx) are not kept.
+
+At most 1,000 of each are kept per instance, the oldest let go first.
 
 Club websites and display pages are expected to call the API from the
 browser, so it allows any origin (`Access-Control-Allow-Origin: *`) for `GET`

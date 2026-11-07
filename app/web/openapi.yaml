@@ -8,6 +8,10 @@ info:
     All endpoints require a valid `X-API-Key` header. API keys are scoped per club —
     contact your club administrator to obtain one.
 
+    Answers may be up to 15 seconds old, so polling more often than that gains
+    nothing. A key replaced in the admin portal takes up to a minute to start
+    working, and the old key works until then.
+
     The API can be called from any origin (CORS), so a web page can fetch it
     directly from the browser. A key used in browser code is visible to anyone who
     views the page; integrations that need to keep their key private should call
