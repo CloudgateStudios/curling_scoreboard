@@ -73,3 +73,12 @@ export const RATE_LIMITS = {
 } as const;
 
 export type RateLimitName = keyof typeof RATE_LIMITS;
+
+// Wrong admin PINs typed on a scoreboard to disconnect it. After this many
+// in a row on one sheet, that sheet cannot be disconnected for a while,
+// even with the right PIN. Counted in Firestore, in private/pinTries, so it
+// holds across instances. A four digit PIN then takes years to guess.
+export const PIN_LOCKOUT = {
+  tries: 5,
+  lockedMs: 15 * MINUTE,
+} as const;

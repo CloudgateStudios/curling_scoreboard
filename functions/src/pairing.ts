@@ -2,7 +2,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { MAX_INSTANCES } from './limits';
-import { scoreboardPinRef } from './scoreboardPin';
+import { clearWrongPins, countWrongPin, requireNotLockedOut, scoreboardPinRef } from './scoreboardPin';
 import { callerOf, requireNotBlocked, requireWithinLimit } from './rateLimit';
 import { requireSwitchOn } from './switches';
 
@@ -135,13 +135,18 @@ export const unpairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }
     return { unpaired: false };
   }
 
+  // After too many wrong PINs the sheet is locked for a while, even to the
+  // right one, so that guessing takes too long to be worth it.
+  await requireNotLockedOut(clubId, sheetId);
+
   const expected = (await scoreboardPinRef(clubId).get()).get('pin') as string | undefined;
   if (!expected) {
     throw new HttpsError('failed-precondition', 'This club has no admin PIN set.');
   }
   if (pin !== expected) {
-    throw new HttpsError('permission-denied', 'Incorrect admin PIN.');
+    throw await countWrongPin(clubId, sheetId);
   }
+  await clearWrongPins(clubId, sheetId);
 
   // The sheet may have been paired with another device since it was read.
   const unpaired = await db.runTransaction(async (tx) => {

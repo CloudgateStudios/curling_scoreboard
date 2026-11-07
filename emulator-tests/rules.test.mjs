@@ -116,6 +116,16 @@ await check('club admin: read own club', 'allow', () =>
 await check('club admin: read own API key', 'allow', () =>
   getDoc(doc(adminA, 'clubs/club-a/private/apiKey')));
 
+// --- wrong PINs typed on scoreboards, counted by unpairSheet ---
+await check('club admin: read the wrong PIN counts', 'allow', () =>
+  getDoc(doc(adminA, 'clubs/club-a/private/pinTries')));
+
+await check('attack: club admin clears a lockout', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/pinTries'), {}));
+
+await check('attack: scoreboard clears its own lockout', 'deny', () =>
+  setDoc(doc(claimedBoard, 'clubs/club-a/private/pinTries'), {}));
+
 // --- turning a club's API off, beside its key ---
 await check('club admin: turn own API off', 'allow', () =>
   updateDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { enabled: false }));

@@ -32,7 +32,7 @@ import {
 } from '../functions/lib/display/assets/update-model.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
 import { Kept } from '../functions/lib/kept.js';
-import { KEPT_MS, RATE_LIMITS } from '../functions/lib/limits.js';
+import { KEPT_MS, PIN_LOCKOUT, RATE_LIMITS } from '../functions/lib/limits.js';
 import { Buckets, callerAddresses } from '../functions/lib/rateLimit.js';
 import { limitsWith } from '../functions/lib/switches.js';
 import { formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../functions/lib/now.js';
@@ -279,6 +279,56 @@ describe('unpairSheet', () => {
     const sheet = await db.doc('clubs/club-pin/sheets/pin-right').get();
     assert.equal(sheet.get('scoreboardUid'), undefined);
     assert.equal((await adminAuth.getUser(client.auth.currentUser.uid)).customClaims?.role, undefined);
+  });
+
+  // An error from a callable, with its details, for tests that look at both.
+  async function errorOf(promise) {
+    try {
+      await promise;
+    } catch (err) {
+      return { code: err.code, details: err.details };
+    }
+    assert.fail('expected the call to fail');
+  }
+
+  test('locks the sheet for a while after too many wrong PINs, even to the right one', async () => {
+    const client = await pairedScoreboard('pin-locked');
+    const unpair = (pin) => client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-locked', pin });
+    for (let left = PIN_LOCKOUT.tries - 1; left > 0; left--) {
+      assert.deepEqual(await errorOf(unpair('1111')), { code: 'functions/permission-denied', details: { triesLeft: left } });
+    }
+    const locked = await errorOf(unpair('1111'));
+    assert.equal(locked.code, 'functions/resource-exhausted');
+    assert.equal(locked.details.retryAfter, PIN_LOCKOUT.lockedMs / 1000);
+    assert.equal((await errorOf(unpair('4821'))).code, 'functions/resource-exhausted');
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-locked').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+
+    // Once the lockout has run out the count starts again, and the next wrong
+    // PIN can still lead to another lockout.
+    const tries = db.doc('clubs/club-pin/private/pinTries');
+    await tries.update({ 'pin-locked.lockedUntil': Timestamp.fromMillis(Date.now() - 1000) });
+    assert.deepEqual(await errorOf(unpair('1111')), {
+      code: 'functions/permission-denied', details: { triesLeft: PIN_LOCKOUT.tries - 1 },
+    });
+    assert.equal((await tries.get()).get('pin-locked.lockedUntil'), undefined);
+    const result = await unpair('4821');
+    assert.deepEqual(result.data, { unpaired: true });
+    assert.equal((await tries.get()).get('pin-locked'), undefined, 'forgets the wrong PINs');
+  });
+
+  test('counts wrong PINs on each sheet apart, and forgets them after the right one', async () => {
+    const one = await pairedScoreboard('pin-count-1');
+    const two = await pairedScoreboard('pin-count-2');
+    await rejectsWith(one.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-1', pin: '1111' }), 'functions/permission-denied');
+    assert.deepEqual(
+      await errorOf(two.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-2', pin: '1111' })),
+      { code: 'functions/permission-denied', details: { triesLeft: PIN_LOCKOUT.tries - 1 } },
+    );
+    await one.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-1', pin: '4821' });
+    const tries = await db.doc('clubs/club-pin/private/pinTries').get();
+    assert.equal(tries.get('pin-count-1'), undefined);
+    assert.equal(tries.get('pin-count-2.wrong'), 1);
   });
 
   test('will not unpair at a club that has no PIN set', async () => {

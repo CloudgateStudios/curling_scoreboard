@@ -17,6 +17,15 @@ class AdminPinNotSetException implements Exception {
   const AdminPinNotSetException();
 }
 
+/// Too many wrong admin PINs were entered on this sheet, so it cannot be
+/// disconnected for a while, even with the right one.
+class AdminPinLockedException implements Exception {
+  const AdminPinLockedException({required this.minutes});
+
+  /// How many minutes, rounded up, until the PIN may be tried again.
+  final int minutes;
+}
+
 class RegistrationService {
   RegistrationService(this._prefs);
 
@@ -84,8 +93,9 @@ class RegistrationService {
   /// sheet, because the security rules do not let the scoreboard do either.
   /// It asks for no PIN when the sheet is no longer this scoreboard's, so a
   /// scoreboard whose pairing was lost can always be cleared. Throws
-  /// [IncorrectAdminPinException] or [AdminPinNotSetException] and stays
-  /// connected when the PIN is not accepted.
+  /// [IncorrectAdminPinException], [AdminPinNotSetException] or, after too
+  /// many wrong PINs, [AdminPinLockedException], and stays connected when the
+  /// PIN is not accepted.
   Future<void> disconnect({required String pin}) async {
     final cId = clubId;
     final sId = sheetId;
@@ -108,6 +118,13 @@ class RegistrationService {
         }
         if (e.code == 'failed-precondition') {
           throw const AdminPinNotSetException();
+        }
+        if (e.code == 'resource-exhausted') {
+          final details = e.details;
+          final seconds = details is Map ? details['retryAfter'] : null;
+          throw AdminPinLockedException(
+            minutes: seconds is num ? (seconds / 60).ceil() : 15,
+          );
         }
         rethrow;
       }

@@ -156,13 +156,16 @@ sequenceDiagram
   SB-->>U: The connection, with Disconnect
   U->>SB: The club's admin PIN
   SB->>F: unpairSheet(clubId, sheetId, pin)
-  F->>FS: Read private/scoreboardPin
-  alt the PIN matches
+  F->>FS: Read private/pinTries and private/scoreboardPin
+  alt the sheet is locked after too many wrong PINs
+    F-->>SB: Refused, saying for how long
+  else the PIN matches
     F->>FS: Remove the sheet's scoreboardUid
     F->>F: Clear the scoreboard's claims
     F-->>SB: Done
     SB->>SB: Sign out, clear the saved values
   else it does not, or the club has no PIN
+    F->>FS: Count the wrong PIN
     F-->>SB: Refused, and the dialog says why
   end
 ```
@@ -183,6 +186,16 @@ claims. The rules do not let a scoreboard remove its own `scoreboardUid`, so
 the PIN cannot be skipped. A club with no PIN set, which only clubs created
 before PINs can be, cannot disconnect its scoreboards until an admin sets one
 or `scripts/backfill-scoreboard-pins.js` gives it one.
+
+After 5 wrong PINs in a row on one sheet, that sheet cannot be disconnected
+from the scoreboard for 15 minutes, even with the right PIN, and the dialog
+says how long is left. That makes guessing a four digit PIN take years.
+`unpairSheet` counts them by sheet in `clubs/{clubId}/private/pinTries`,
+which only the functions write, in a transaction so the count holds across
+instances; the right PIN clears the sheet's count. The numbers are
+`PIN_LOCKOUT` in `functions/src/limits.ts`. Counting by sheet, not club,
+means one scoreboard cannot lock the club's others. Unpairing from the
+portal is not affected.
 
 `unpairSheet` asks for no PIN when the sheet is not the caller's, which is
 the case for a scoreboard whose pairing was lost: there is nothing left to

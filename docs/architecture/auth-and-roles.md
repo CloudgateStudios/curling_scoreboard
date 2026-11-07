@@ -62,6 +62,7 @@ document. The rest, path by path, under `clubs/{clubId}`:
 | the club document           | read                                    | read                | —                                         | —                               |
 | `private/apiKey`            | read, and write `enabled` only          | —                   | —                                         | —                               |
 | `private/scoreboardPin`     | read, write (4 to 8 digits)             | —                   | —                                         | —                               |
+| `private/pinTries`          | read                                    | —                   | —                                         | —                               |
 | `private/webhook`           | read, write, delete                     | —                   | —                                         | —                               |
 | `private/webhookStatus`     | read                                    | —                   | —                                         | —                               |
 | `private/displayState`      | read                                    | —                   | —                                         | read                            |

@@ -304,7 +304,7 @@ Each step is its own PR.
    `functions/src/switches.ts`; `limits` and `blockedIps` moved to step 4.
 4. **Rate limit middleware** for the API and the callables, with the
    `limits` overrides and `blockedIps`. Done, in `functions/src/rateLimit.ts`.
-5. **The unpair PIN lockout.**
+5. **The unpair PIN lockout.** Done, in `functions/src/scoreboardPin.ts`.
 6. **App Check** in monitoring mode, then enforced where it is safe.
 
 ## Open questions
