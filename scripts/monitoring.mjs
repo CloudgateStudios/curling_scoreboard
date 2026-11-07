@@ -17,9 +17,9 @@ const FREE_WRITES_A_DAY = 20_000;
 const DAY = '86400s';
 const HOUR = '3600s';
 
-const READS = 'metric.type="firestore.googleapis.com/document/read_count"';
-const WRITES = 'metric.type="firestore.googleapis.com/document/write_count"';
-const DELETES = 'metric.type="firestore.googleapis.com/document/delete_count"';
+const READS = 'metric.type="firestore.googleapis.com/document/read_count" AND resource.type="firestore_instance"';
+const WRITES = 'metric.type="firestore.googleapis.com/document/write_count" AND resource.type="firestore_instance"';
+const DELETES = 'metric.type="firestore.googleapis.com/document/delete_count" AND resource.type="firestore_instance"';
 const REQUESTS = 'metric.type="run.googleapis.com/request_count" AND resource.type="cloud_run_revision"';
 const TURNED_AWAY_OR_FAILED =
   `${REQUESTS} AND (metric.label.response_code="429" OR metric.label.response_code_class="5xx")`;
