@@ -116,6 +116,40 @@ await check('club admin: read own club', 'allow', () =>
 await check('club admin: read own API key', 'allow', () =>
   getDoc(doc(adminA, 'clubs/club-a/private/apiKey')));
 
+// --- turning a club's API off, beside its key ---
+await check('club admin: turn own API off', 'allow', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { enabled: false }));
+
+await check('club admin: turn own API back on', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { enabled: true }, { merge: true }));
+
+await check('attack: club admin changes the key along with the switch', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { enabled: true, key: 'chosen' }));
+
+await check('attack: club admin sets the switch to something odd', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-a/private/apiKey'), { enabled: 'no' }));
+
+await check('attack: club admin turns another club API off', 'deny', () =>
+  updateDoc(doc(adminA, 'clubs/club-b/private/apiKey'), { enabled: false }));
+
+await check('attack: bonspiel admin turns own club API off', 'deny', () =>
+  updateDoc(doc(bonspielA, 'clubs/club-a/private/apiKey'), { enabled: false }));
+
+// --- the service switches, for super admins only ---
+const superAdmin = env.authenticatedContext('super', { role: 'superadmin', clubId: null }).firestore();
+
+await check('super admin: turn a service switch off', 'allow', () =>
+  setDoc(doc(superAdmin, 'adminConfig/switches'), { api: false }, { merge: true }));
+
+await check('attack: read the service switches', 'deny', () =>
+  getDoc(doc(anon, 'adminConfig/switches')));
+
+await check('attack: club admin reads the service switches', 'deny', () =>
+  getDoc(doc(adminA, 'adminConfig/switches')));
+
+await check('attack: club admin turns a service back on', 'deny', () =>
+  setDoc(doc(adminA, 'adminConfig/switches'), { api: true }, { merge: true }));
+
 // --- the admin PIN a scoreboard asks for before it disconnects ---
 await check('club admin: set the scoreboard PIN', 'allow', () =>
   setDoc(doc(adminA, 'clubs/club-a/private/scoreboardPin'), { pin: '4821' }));

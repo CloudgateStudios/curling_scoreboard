@@ -4,6 +4,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
 import cors from 'cors';
 import { clubsRouter } from './routes/clubs';
+import { apiSwitch } from './middleware/apiSwitch';
 export {
   provisionClub, setSuperAdminClaim, addClubAdmin, updateClubAdmin, removeClubAdmin, deleteSheet,
 } from './admin';
@@ -33,7 +34,7 @@ app.use(
     maxAge: 24 * 60 * 60,
   }),
 );
-app.use('/api/v1', clubsRouter);
+app.use('/api/v1', apiSwitch, clubsRouter);
 
 // cors: false keeps firebase-functions from adding its own CORS handling in
 // front of the app (the Functions emulator otherwise reflects every origin and

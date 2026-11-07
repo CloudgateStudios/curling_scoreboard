@@ -24,6 +24,11 @@ and a sheet's ID is in the address of its games in the portal. The answer names
 the league or bonspiel game on the sheet, and its teams once the game has
 started on the scoreboard, so the tool should ask again a few minutes in.
 
+If the tool misbehaves, for example asking over and over, clear **Turn on
+the API** below the key. Every tool using the key then gets an error until
+you tick it again, and the key stays the same. Either change takes up to a
+minute.
+
 ## 3. Word the titles, if you like
 
 Under **Stream Titles**, pick **League**, **Bonspiel** or **Nothing

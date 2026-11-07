@@ -437,6 +437,80 @@ describe('REST API kept reads', () => {
   });
 });
 
+describe('a club\'s API switch', () => {
+  const headers = { 'x-api-key': 'key-off' };
+
+  before(async () => {
+    await db.doc('clubs/club-off').set({ name: 'Club Off' });
+    await db.doc('clubs/club-off/private/apiKey').set({ key: 'key-off', enabled: false });
+  });
+
+  test('answers 503 to the right key while the club has its API off', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-off`, { headers });
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get('retry-after'), '300');
+    assert.deepEqual(await res.json(), { error: 'The API is turned off for this club' });
+  });
+
+  test('still turns away a wrong key or none first', async () => {
+    assert.equal((await fetch(`${API_URL}/clubs/club-off`, { headers: { 'x-api-key': 'wrong' } })).status, 403);
+    assert.equal((await fetch(`${API_URL}/clubs/club-off`)).status, 401);
+  });
+});
+
+// The emulator tests read the switches afresh each time; see
+// functions/.env.demo-functions.
+describe('service switches', () => {
+  const switches = db.doc('adminConfig/switches');
+  const turnedOff = async (name, check) => {
+    await switches.set({ [name]: false });
+    try {
+      await check();
+    } finally {
+      await switches.delete();
+    }
+  };
+
+  test('turn the API off for every club', () => turnedOff('api', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 503);
+    assert.deepEqual(await res.json(), { error: 'The API is turned off for now' });
+    // Before the key is checked.
+    assert.equal((await fetch(`${API_URL}/clubs/club-a`)).status, 503);
+  }));
+
+  test('turn the scores pages off, for the CDN to keep', () => turnedOff('scoresPage', async () => {
+    const res = await fetch(`http://127.0.0.1:5001/${PROJECT_ID}/us-central1/display/display/club-a/scores/live.json`);
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60');
+  }));
+
+  test('turn display sign-ins off', () => turnedOff('displaySessions', async () => {
+    const client = await clientFor();
+    await rejectsWith(client.call('startDisplaySession', { clubId: 'club-a', token: 'x' }), 'functions/unavailable');
+  }));
+
+  test('turn pairing and disconnecting off', () => turnedOff('pairing', async () => {
+    const client = await anonymous();
+    await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE' }), 'functions/unavailable');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-a', sheetId: 'sheet-1', pin: '0000' }),
+      'functions/unavailable',
+    );
+  }));
+
+  test('leave everything on without the document, or set to true', async () => {
+    await switches.set({ api: true });
+    try {
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, { headers: { 'x-api-key': 'key-a' } })).status, 200);
+    } finally {
+      await switches.delete();
+    }
+    const client = await anonymous();
+    await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE' }), 'functions/not-found');
+  });
+});
+
 describe('REST API live games', () => {
   const teams = {
     team1: { name: 'Red', score: 0, hasHammer: false },

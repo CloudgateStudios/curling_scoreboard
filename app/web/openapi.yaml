@@ -52,6 +52,23 @@ components:
       description: Per-club API key. Include in every request as the `X-API-Key` header.
 
   responses:
+    TurnedOff:
+      description: >-
+        The API is turned off, for this club by its admins or for every club
+        while something is being fixed. Sent only to a request with the
+        club's key, or to every request while it is off for every club. Try
+        again after the number of seconds in the `Retry-After` header.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 300
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The API is turned off for this club
     InternalError:
       description: Unexpected server error.
       content:
@@ -898,6 +915,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/leagues:
     get:
@@ -948,6 +967,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/leagues/{leagueId}:
     get:
@@ -997,6 +1018,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/bonspiels:
     get:
@@ -1045,6 +1068,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/bonspiels/{bonspielId}:
     get:
@@ -1097,6 +1122,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/sheets/{sheetId}:
     get:
@@ -1148,6 +1175,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/sheets/{sheetId}/now:
     get:
@@ -1227,6 +1256,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/sheets/{sheetId}/games:
     get:
@@ -1298,3 +1329,5 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/TurnedOff'

@@ -14,6 +14,8 @@ alerts are set well below them and fire long before a bill.
 | The usage dashboard | Cloud Monitoring, Dashboards, "Curling scoreboard usage" | `scripts/setup-monitoring.mjs` |
 | Five alerts, emailed | Cloud Monitoring, Alerting, each named "Curling scoreboard: ..." | `scripts/setup-monitoring.mjs` |
 | A ceiling on each function's instances, so a flood is turned away | `functions/src/limits.ts` | The functions deploy |
+| Service switches, to turn the API, the scores pages, display sign-ins or pairing off for every club | The portal's list of clubs, for super admins; kept in `adminConfig/switches` | A super admin, when needed |
+| A switch for each club's API | The club's Settings, Integrations, beside the key | The club's admins, when needed |
 
 The dashboard goes on both projects. The alerts go on prod only, since each
 alert condition costs about $0.10 a month. Dev can have them with
@@ -63,13 +65,16 @@ which is why the alerts watch usage rather than spend.
 
    | What is wrong | What to do |
    | --- | --- |
-   | A club's API key is being misused, or its integration loops | A super admin generates a new key in the portal, under Settings, Integrations. The old key stops working within a minute |
+   | A club's integration loops, but its key is safe | Clear "Turn on the API" for the club, under Settings, Integrations. The key stays the same, so the integration works again once it is fixed and the box is ticked |
+   | A club's API key is being misused | A super admin generates a new key in the portal, under Settings, Integrations. The old key stops working within a minute |
    | The scores page is being hammered | Turn it off in the portal, under Displays |
    | A display link got out | Reset or remove it in the portal, under Displays |
    | A scoreboard is writing in a loop | Disconnect it with the club's PIN, or a super admin deletes the sheet in the portal |
    | A function is failing | Read the error in the logs; a bad deploy is undone by deploying the previous release tag |
+   | Many clubs at once, or no single caller to blame | A super admin turns off the part being flooded under Service Switches, below the list of clubs: the REST API, the public scores pages, display sign-ins or scoreboard pairing. Each takes effect within half a minute, and answers before reading anything |
 
-4. **If nothing else works**, take a function off the internet. This stops
+4. **If nothing else works**, or the switches cannot be reached, take a
+   function off the internet. This stops
    it answering anyone, the displays and the portal included, until it is
    turned back on. Scoring on the sheets carries on, as it does offline.
 

@@ -231,8 +231,9 @@ the portal's sheet controls are the way to cut it off.
 
 #### Kill switches
 
-One document, `appConfig/limits`, which only super admins can read and
-write, and which functions read through the same 30 second memory cache:
+One document, `adminConfig/switches`, which only super admins can read and
+write, and which functions read through the same 30 second memory cache.
+(Not under `appConfig`, which anyone can read.)
 
 ```json
 {
@@ -248,8 +249,11 @@ write, and which functions read through the same 30 second memory cache:
 - Turning a feature off makes its function answer straight away, before
   any read: 503 for the API and the scores JSON, `unavailable` for the
   callables. Scoring on the sheets carries on, as it always does offline.
-- `limits` overrides the defaults above without a deploy.
-- `blockedIps` is for a single caller we can see in the logs.
+- `limits` overrides the defaults above without a deploy. It comes with
+  the rate limits in step 4.
+- `blockedIps` is for a single caller we can see in the logs. It comes with
+  step 4 too, which works out how to read a caller's IP address reliably
+  behind Hosting.
 - A super admin page in the portal shows the switches.
 
 Per club, we already have most of what we need: rotate the API key, turn
@@ -282,7 +286,7 @@ requests would fail, and enforce only where the numbers are clean.
   integrators know to expect 429s and `Retry-After`.
 - Emulator tests in `functions.test.mjs` for each limit, each switch, the
   PIN lockout and the scores query string, and in `rules.test.mjs` for
-  `appConfig/limits`.
+  `adminConfig/switches`.
 
 ## Suggested order
 
@@ -293,9 +297,11 @@ Each step is its own PR.
    budgets, the usage alerts and the Artifact Registry cleanup policy.
 2. **Memory caches** for the API key check, API answers and the scores
    page. Done, in `functions/src/kept.ts`.
-3. **Kill switches**: `appConfig/limits` and the per club API switch, with
-   their portal controls and the runbook.
-4. **Rate limit middleware** for the API and the callables.
+3. **Kill switches**: `adminConfig/switches` and the per club API switch,
+   with their portal controls and the runbook. Done, in
+   `functions/src/switches.ts`; `limits` and `blockedIps` moved to step 4.
+4. **Rate limit middleware** for the API and the callables, with the
+   `limits` overrides and `blockedIps`.
 5. **The unpair PIN lockout.**
 6. **App Check** in monitoring mode, then enforced where it is safe.
 

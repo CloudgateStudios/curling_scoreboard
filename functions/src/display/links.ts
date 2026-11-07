@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { CollectionReference, FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { MAX_INSTANCES } from '../limits';
+import { requireSwitchOn } from '../switches';
 
 // Display links let a club's score bug and warm room screen sign in without
 // an account. A club admin creates one per screen in the admin portal and
@@ -176,6 +177,7 @@ export const resetDisplayLink = onCall(async (request) => {
 // Called by a display page, which is not signed in, with the token from its
 // URL. Returns a custom token for signInWithCustomToken.
 export const startDisplaySession = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
+  await requireSwitchOn('displaySessions', 'Signing in a display');
   const data = (request.data ?? {}) as { clubId?: unknown; token?: unknown };
   const clubId = requireClubId(data.clubId);
   const match = typeof data.token === 'string' ? TOKEN_PATTERN.exec(data.token) : null;

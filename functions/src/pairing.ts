@@ -3,6 +3,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { MAX_INSTANCES } from './limits';
 import { scoreboardPinRef } from './scoreboardPin';
+import { requireSwitchOn } from './switches';
 
 // Custom claims that tell the security rules which sheet a scoreboard says it
 // is paired with. The rules still check the sheet's scoreboardUid, so a claim
@@ -32,6 +33,7 @@ export const pairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, 
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before pairing.');
   }
+  await requireSwitchOn('pairing', 'Pairing');
   const uid = request.auth.uid;
 
   // Pairing replaces the caller's custom claims, which would strip an admin
@@ -103,6 +105,7 @@ export const unpairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before disconnecting.');
   }
+  await requireSwitchOn('pairing', 'Disconnecting');
   const uid = request.auth.uid;
 
   const data = request.data as { clubId?: unknown; sheetId?: unknown; pin?: unknown } | undefined;
