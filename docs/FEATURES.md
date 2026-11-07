@@ -112,8 +112,9 @@ Club admins run their club from the admin portal in a browser.
   and the admin PIN that scoreboards ask for before they disconnect.
 - **Displays.** Links for the club's screens, the warm room screen's title
   and logo, and the switch for the public scores page.
-- **Integrations.** The club's time zone and API key, where to post finished
-  games, and what streams on each sheet are called.
+- **Integrations.** The club's time zone and API key, a switch to turn the
+  club's API off without changing the key, where to post finished games, and
+  what streams on each sheet are called.
 
 - **Help.** The [guides for club admins](guides/README.md), in the portal
   under Help, with a link on each tab to its guide. They need no sign-in.
@@ -197,5 +198,8 @@ How it works: [REST API and webhook](architecture/api-and-webhook.md).
 
 Super admins look after every club: they create clubs and their users (club
 admins and bonspiel admins), add and remove sheets, and rotate API keys.
+When something is flooded or misused, they can turn off the REST API, the
+public scores pages, display sign-ins or scoreboard pairing for every club
+at once, from the list of clubs. Scoring on the sheets carries on.
 
 How it works: [Auth and roles](architecture/auth-and-roles.md).

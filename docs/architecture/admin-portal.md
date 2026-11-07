@@ -25,7 +25,8 @@ flowchart LR
   BA --> BAB["/bonspiels/:bonspielId"]
 ```
 
-- Super admin: `/` lists every club and creates new ones; `/clubs/:clubId`
+- Super admin: `/` lists every club and creates new ones, with the service
+  switches below the list; `/clubs/:clubId`
   shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
   `/clubs/:clubId/leagues/:leagueId` a league;
   `/clubs/:clubId/bonspiels/:bonspielId` a bonspiel.
@@ -94,8 +95,8 @@ and Bonspiels; the other tabs are not mounted for them at all.
 - **Settings**, one group at a time, also kept in the URL (`?section=`), with
   a list of groups beside it, or a dropdown on a narrow window:
   - Scoreboards: the rock colors and the scoreboard admin PIN.
-  - Integrations: the API key and the completed game webhook, which once
-    saved is shown in short until it is edited.
+  - Integrations: the API key with the club's API switch, and the completed
+    game webhook, which once saved is shown in short until it is edited.
   - Users: super admins only. Adds, edits and removes the club's club and
     bonspiel admins.
 

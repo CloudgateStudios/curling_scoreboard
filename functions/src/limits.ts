@@ -36,4 +36,8 @@ export const KEPT_MS = {
   apiAnswer: 15_000,
   /** Whether a club's scores page is turned on. */
   scoresSwitch: 30_000,
+  /** The switches in adminConfig/switches. The emulator tests set
+   *  SWITCHES_KEPT_MS to 0, in functions/.env.demo-functions, so that a
+   *  switch they turn off is seen straight away. */
+  switches: Number(process.env['SWITCHES_KEPT_MS'] ?? 30_000),
 } as const;

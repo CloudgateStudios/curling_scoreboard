@@ -68,6 +68,16 @@ few Firestore reads:
 
 At most 1,000 of each are kept per instance, the oldest let go first.
 
+The API can be turned off, answering 503 with `Retry-After: 300`:
+
+- **For one club**, by its admins in the portal, as `enabled: false` beside
+  the key. The key check reads it with the key, so only a request with the
+  right key is told. The key stays the same, so the club's integrations
+  work again once it is turned back on, within the minute the key is kept.
+- **For every club**, by a super admin, as `api: false` in
+  `adminConfig/switches`. That is checked before the key, so a flood reads
+  nothing more. See [Monitoring](monitoring.md).
+
 Club websites and display pages are expected to call the API from the
 browser, so it allows any origin (`Access-Control-Allow-Origin: *`) for `GET`
 with the `X-API-Key` header, never with credentials, and lets browsers cache

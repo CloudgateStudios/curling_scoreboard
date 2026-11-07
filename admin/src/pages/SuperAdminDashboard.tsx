@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
+import { ServiceSwitchesSection } from '../components/ServiceSwitchesSection';
 import { db, functions } from '../lib/firebase';
 import type { Club } from '../types';
 import styles from './SuperAdminDashboard.module.css';
@@ -215,6 +216,8 @@ export function SuperAdminDashboard() {
           <p className={styles.empty}>No clubs match “{search.trim()}”.</p>
         )}
       </div>
+
+      <ServiceSwitchesSection />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
 import { Kept } from '../kept';
 import { KEPT_MS, MAX_INSTANCES } from '../limits';
+import { switches } from '../switches';
 import { currentProjectId, webConfig } from './firebaseConfig';
 import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
 import { DisplaySummary, FINAL_SHOWN_MS } from './state';
@@ -301,6 +302,12 @@ function scoresRoute(
       return;
     }
     try {
+      // A super admin has turned every club's page off. The page shows
+      // itself offline and keeps trying, and the CDN keeps this answer.
+      if (!(await switches()).scoresPage) {
+        res.set('Cache-Control', OFF_CACHE).status(503).type('text/plain').send('Turned off for now');
+        return;
+      }
       if (!(await scoresOn(clubId))) {
         scoresOff(res);
         return;

@@ -165,6 +165,15 @@ service cloud.firestore {
         allow read: if isClubAdmin(clubId);
       }
 
+      // Club admins can turn their club's API off and on again, as
+      // enabled beside the key, without changing the key itself. The key
+      // check in the api function reads it.
+      match /private/apiKey {
+        allow update: if isClubAdmin(clubId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enabled'])
+            && request.resource.data.enabled is bool;
+      }
+
       // The PIN that has to be entered on a scoreboard to disconnect it.
       // Club admins choose it. Scoreboards never read it: the unpairSheet
       // function checks what was typed.

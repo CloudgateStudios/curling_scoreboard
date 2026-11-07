@@ -384,6 +384,9 @@ CDN caches, so only a cache miss reaches the function and Firestore
 | `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
 
 A club without the page turned on gets a 404 for each, cached for a minute.
+While a super admin has the scores pages switched off for every club (see
+[Monitoring](monitoring.md)), each gets a 503, cached for a minute too, and
+the page shows itself offline and keeps trying.
 So does any request with a query string, other than the logo's `v`: the CDN
 keeps a copy per full URL, so `live.json?x=1` would otherwise skip the cache
 and reach Firestore every time. The page never adds one.

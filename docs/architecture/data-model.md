@@ -13,6 +13,7 @@ Functions and admin scripts.
 flowchart LR
   FS(("Firestore"))
   FS --> APP_CONFIG["appConfig/scoreboard<br/>appConfig/displays"]
+  FS --> SWITCHES["adminConfig/switches"]
   FS --> CLUB["clubs/{clubId}"]
 
   CLUB --> PRIV["private/"]
@@ -36,17 +37,18 @@ flowchart LR
   classDef client fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
   classDef fn fill:#fde68a,stroke:#b45309,color:#78350f
   classDef both fill:#dcfce7,stroke:#15803d,color:#14532d
-  class WH,BR,PUB,CFG,LEAGUES,BON client
-  class APP_CONFIG,CLUB,KEY,WHS,DS,BST,ADM fn
-  class PIN,LINKS,SH,GAMES both
+  class WH,BR,PUB,CFG,LEAGUES,BON,SWITCHES client
+  class APP_CONFIG,CLUB,WHS,DS,BST,ADM fn
+  class KEY,PIN,LINKS,SH,GAMES both
 ```
 
 - **Blue**, written by clients: club admins and bonspiel admins in the
   portal, within what the rules allow.
 - **Yellow**, written only by the functions, the deploy workflows
   (`appConfig`) or the admin scripts.
-- **Green**, written by both. `provisionClub` sets a club's first scoreboard
-  PIN and its admins change it. A display link is created by
+- **Green**, written by both. `provisionClub` sets a club's API key and
+  first scoreboard PIN; its admins switch the API off and on, and change
+  the PIN. A display link is created by
   `createDisplayLink`, its label and settings changed in the portal, and its
   `device` written by its screen. A sheet is named and given pairing codes
   in the portal, has its `scoreboardUid` set by `pairSheet`, and has its
@@ -54,7 +56,8 @@ flowchart LR
   scoreboard, and its `webhook` field set by `sendCompletedGameWebhook`.
 
 Super admins can read and write everything, which the portal uses to rename
-clubs, add sheets and rotate API keys. Those writes are left out above.
+clubs, add sheets and rotate API keys. Those writes are left out above,
+except `adminConfig/switches`, which only super admins write.
 
 ## Fields
 
@@ -67,11 +70,18 @@ appConfig/displays
   buildId: string            // commit SHA of the deployed functions, and so
   deployedAt: timestamp      // of the display pages
 
+adminConfig/switches         // super admins only; absent means all on
+  api?: boolean              // false: the REST API answers 503
+  scoresPage?: boolean       // false: the scores pages' JSON answers 503
+  displaySessions?: boolean  // false: startDisplaySession is unavailable
+  pairing?: boolean          // false: pairSheet and unpairSheet are unavailable
+
 clubs/{clubId}
   name: string
 
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
+  enabled?: boolean          // false: the club's API answers 503; set by its admins
 
 clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
   pin: string                // 4 to 8 digits
