@@ -3,6 +3,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { MAX_INSTANCES } from './limits';
 import { scoreboardPinRef } from './scoreboardPin';
+import { callerOf, requireNotBlocked, requireWithinLimit } from './rateLimit';
 import { requireSwitchOn } from './switches';
 
 // Custom claims that tell the security rules which sheet a scoreboard says it
@@ -35,6 +36,11 @@ export const pairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, 
   }
   await requireSwitchOn('pairing', 'Pairing');
   const uid = request.auth.uid;
+  const caller = callerOf(request.rawRequest);
+  await requireNotBlocked(caller);
+  // A real scoreboard pairs once, so this only stops guessing at codes.
+  await requireWithinLimit('pairingPerUser', [uid], caller.forwardedFor);
+  await requireWithinLimit('pairingPerIp', caller.addresses, caller.forwardedFor);
 
   // Pairing replaces the caller's custom claims, which would strip an admin
   // of their access. Scoreboards sign in anonymously and have no role.
@@ -106,6 +112,7 @@ export const unpairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }
     throw new HttpsError('unauthenticated', 'Sign in before disconnecting.');
   }
   await requireSwitchOn('pairing', 'Disconnecting');
+  await requireNotBlocked(callerOf(request.rawRequest));
   const uid = request.auth.uid;
 
   const data = request.data as { clubId?: unknown; sheetId?: unknown; pin?: unknown } | undefined;

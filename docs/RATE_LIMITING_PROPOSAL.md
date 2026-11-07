@@ -220,9 +220,11 @@ A limited request gets a 429 with a `Retry-After` header, or
 `resource-exhausted` from a callable, and one structured log line naming
 the limit and the key, so it shows in Logs Explorer and can drive an alert.
 
-The IP address comes from the `X-Forwarded-For` header that Hosting adds,
-with Express's `trust proxy` set to match. We should confirm in dev which
-entry is the client before relying on it.
+The IP address comes from `X-Forwarded-For`. On dev, a request straight to
+the function had the caller as the entry Cloud Run adds last, and one
+through Hosting a Google edge server there, with the caller just before
+it. A request counts against both of the last two entries, so one is
+always the caller, and a made up entry further left buys nothing.
 
 Scoreboard writes stay unlimited in the rules, since the scoreboard must
 never be blocked from scoring. `maxInstances` on `syncDisplaySheet` and the
@@ -301,7 +303,7 @@ Each step is its own PR.
    with their portal controls and the runbook. Done, in
    `functions/src/switches.ts`; `limits` and `blockedIps` moved to step 4.
 4. **Rate limit middleware** for the API and the callables, with the
-   `limits` overrides and `blockedIps`.
+   `limits` overrides and `blockedIps`. Done, in `functions/src/rateLimit.ts`.
 5. **The unpair PIN lockout.**
 6. **App Check** in monitoring mode, then enforced where it is safe.
 

@@ -200,6 +200,7 @@ Super admins look after every club: they create clubs and their users (club
 admins and bonspiel admins), add and remove sheets, and rotate API keys.
 When something is flooded or misused, they can turn off the REST API, the
 public scores pages, display sign-ins or scoreboard pairing for every club
-at once, from the list of clubs. Scoring on the sheets carries on.
+at once, from the list of clubs. Scoring on the sheets carries on. They can
+also block a single address that is misbehaving.
 
 How it works: [Auth and roles](architecture/auth-and-roles.md).

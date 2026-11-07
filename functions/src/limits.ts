@@ -41,3 +41,35 @@ export const KEPT_MS = {
    *  switch they turn off is seen straight away. */
   switches: Number(process.env['SWITCHES_KEPT_MS'] ?? 30_000),
 } as const;
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+// How many requests each caller may make, counted in memory by each
+// instance; see ./rateLimit.ts. With the instance ceilings above, the most
+// a caller gets is the limit times the function's ceiling. A super admin
+// can change any of them, without a deploy, under limits in
+// adminConfig/switches. See docs/RATE_LIMITING_PROPOSAL.md for how these
+// were chosen.
+export const RATE_LIMITS = {
+  /** REST API requests from one IP address, before the key is checked. A
+   *  whole club behind one router shares an address. */
+  apiPerIp: { limit: 60, per: MINUTE },
+  /** Wrong keys and unknown clubs from one IP address. */
+  apiFailuresPerIp: { limit: 10, per: MINUTE },
+  /** REST API requests for one club, with its key. A stream tool asking for
+   *  each of 6 sheets every 30 seconds through a 4 hour draw makes under
+   *  3,000 in a day. */
+  apiPerClubPerMinute: { limit: 60, per: MINUTE },
+  apiPerClubPerDay: { limit: 5000, per: DAY },
+  /** startDisplaySession from one IP address. Generous, since every screen
+   *  at a club shares one and they all start at once after a power cut. */
+  displaySessionsPerIp: { limit: 30, per: MINUTE },
+  /** pairSheet for one signed in scoreboard, and from one IP address. A
+   *  real scoreboard pairs once. */
+  pairingPerUser: { limit: 10, per: HOUR },
+  pairingPerIp: { limit: 30, per: HOUR },
+} as const;
+
+export type RateLimitName = keyof typeof RATE_LIMITS;

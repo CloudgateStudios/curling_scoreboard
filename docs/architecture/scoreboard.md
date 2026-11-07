@@ -132,7 +132,11 @@ sequenceDiagram
    four values in shared preferences. From then on it is paired.
 
 `pairSheet` refuses callers who already have an admin role, because setting
-the scoreboard claims would replace it.
+the scoreboard claims would replace it. It takes 10 tries an hour from each
+scoreboard and 30 from each address, which a real scoreboard, pairing once,
+never reaches; past that it answers `resource-exhausted`, which the dialog
+shows as its usual error. It refuses an address a super admin has blocked,
+as `unpairSheet` does.
 
 Clients cannot query or read pairing codes or club documents themselves. The
 rules used to allow that, which let any signed in client list every unpaired

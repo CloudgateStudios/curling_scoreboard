@@ -3,7 +3,8 @@ import { DocumentData, getFirestore } from 'firebase-admin/firestore';
 import { apiKeyRef, apiKeysMatch } from '../apiKeys';
 import { Kept } from '../kept';
 import { KEPT_MS } from '../limits';
-import { OFF_RETRY_AFTER } from './apiSwitch';
+import { overLimit, withinLimit } from '../rateLimit';
+import { OFF_RETRY_AFTER, addressesOf, tooMany } from './apiSwitch';
 
 interface ClubAndKey {
   /** The club document, or null for a club that does not exist. */
@@ -45,14 +46,29 @@ export async function validateApiKey(
 
   try {
     const clubId = req.params['clubId'] as string;
+    const addresses = addressesOf(req);
+    const forwardedFor = req.headers['x-forwarded-for'];
+
+    // An address that has had too many wrong keys or unknown clubs is
+    // turned away before anything is read, until its bucket refills.
+    if (!(await withinLimit('apiFailuresPerIp', addresses))) {
+      const limited = await overLimit('apiFailuresPerIp', addresses, forwardedFor);
+      if (limited) {
+        tooMany(res, limited);
+        return;
+      }
+    }
+
     const { club, key, enabled } = await clubAndKeyOf(clubId);
 
     if (!club) {
+      await overLimit('apiFailuresPerIp', addresses, forwardedFor);
       res.status(404).json({ error: 'Club not found' });
       return;
     }
 
     if (!key || !apiKeysMatch(key, apiKey)) {
+      await overLimit('apiFailuresPerIp', addresses, forwardedFor);
       res.status(403).json({ error: 'Invalid API key' });
       return;
     }
@@ -60,6 +76,15 @@ export async function validateApiKey(
     // Checked after the key, so only the club's own integrations learn it.
     if (!enabled) {
       res.status(503).set('Retry-After', OFF_RETRY_AFTER).json({ error: 'The API is turned off for this club' });
+      return;
+    }
+
+    // So that one key that got out cannot use up a meaningful share of the
+    // month's free requests, however many addresses it is used from.
+    const limited = await overLimit('apiPerClubPerMinute', [clubId], forwardedFor)
+      ?? await overLimit('apiPerClubPerDay', [clubId], forwardedFor);
+    if (limited) {
+      tooMany(res, limited);
       return;
     }
 

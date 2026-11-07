@@ -75,6 +75,8 @@ adminConfig/switches         // super admins only; absent means all on
   scoresPage?: boolean       // false: the scores pages' JSON answers 503
   displaySessions?: boolean  // false: startDisplaySession is unavailable
   pairing?: boolean          // false: pairSheet and unpairSheet are unavailable
+  limits?: map               // a rate limit's name in RATE_LIMITS to a new limit
+  blockedIps?: string[]      // turned away from the API and the public callables
 
 clubs/{clubId}
   name: string

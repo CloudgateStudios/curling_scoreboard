@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { CollectionReference, FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { MAX_INSTANCES } from '../limits';
+import { callerOf, requireNotBlocked, requireWithinLimit } from '../rateLimit';
 import { requireSwitchOn } from '../switches';
 
 // Display links let a club's score bug and warm room screen sign in without
@@ -178,6 +179,9 @@ export const resetDisplayLink = onCall(async (request) => {
 // URL. Returns a custom token for signInWithCustomToken.
 export const startDisplaySession = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
   await requireSwitchOn('displaySessions', 'Signing in a display');
+  const caller = callerOf(request.rawRequest);
+  await requireNotBlocked(caller);
+  await requireWithinLimit('displaySessionsPerIp', caller.addresses, caller.forwardedFor);
   const data = (request.data ?? {}) as { clubId?: unknown; token?: unknown };
   const clubId = requireClubId(data.clubId);
   const match = typeof data.token === 'string' ? TOKEN_PATTERN.exec(data.token) : null;

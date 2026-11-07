@@ -1,7 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { Kept } from './kept';
-import { KEPT_MS } from './limits';
+import { KEPT_MS, RATE_LIMITS, RateLimitName } from './limits';
 
 /**
  * Switches a super admin can use in the portal to turn a public part of the
@@ -22,6 +22,25 @@ export interface Switches {
   /** pairSheet and unpairSheet. Off, no scoreboard can connect to or
    *  disconnect from a sheet. */
   pairing: boolean;
+  /** The rate limits, with any a super admin has changed under limits,
+   *  as { limit } for a name in RATE_LIMITS. */
+  limits: Record<RateLimitName, { limit: number; per: number }>;
+  /** Addresses turned away from the API and the public callables, for a
+   *  single caller found in the logs. */
+  blockedIps: Set<string>;
+}
+
+/** [RATE_LIMITS], with each limit in [overrides] that is a whole number of
+ *  at least 1 in place of the default. Anything else is ignored. */
+export function limitsWith(overrides: unknown): Switches['limits'] {
+  const given = (overrides && typeof overrides === 'object' ? overrides : {}) as Record<string, unknown>;
+  const limits = {} as Switches['limits'];
+  for (const name of Object.keys(RATE_LIMITS) as RateLimitName[]) {
+    const value = given[name];
+    const limit = Number.isInteger(value) && (value as number) >= 1 ? value as number : RATE_LIMITS[name].limit;
+    limits[name] = { limit, per: RATE_LIMITS[name].per };
+  }
+  return limits;
 }
 
 /** Super admins only, by the catch-all rule in firestore.rules. Not under
@@ -35,12 +54,15 @@ const kept = new Kept<Switches>(KEPT_MS.switches, 1);
 export function switches(): Promise<Switches> {
   return kept.get('switches', async () => {
     const snap = await getFirestore().doc(SWITCHES_PATH).get();
-    const on = (name: keyof Switches) => snap.get(name) !== false;
+    const on = (name: 'api' | 'scoresPage' | 'displaySessions' | 'pairing') => snap.get(name) !== false;
+    const blocked: unknown = snap.get('blockedIps');
     return {
       api: on('api'),
       scoresPage: on('scoresPage'),
       displaySessions: on('displaySessions'),
       pairing: on('pairing'),
+      limits: limitsWith(snap.get('limits')),
+      blockedIps: new Set(Array.isArray(blocked) ? blocked.filter((ip) => typeof ip === 'string') : []),
     };
   });
 }
