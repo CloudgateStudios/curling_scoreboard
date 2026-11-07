@@ -41,6 +41,8 @@ class _DisconnectDialogState extends State<DisconnectDialog> {
       error = l10n.disconnectDialogErrorIncorrectPin;
     } on AdminPinNotSetException {
       error = l10n.disconnectDialogErrorNoPin(clubName);
+    } on AdminPinLockedException catch (e) {
+      error = l10n.disconnectDialogErrorLocked(e.minutes);
     } on Exception catch (e) {
       debugPrint('Club disconnection error: $e');
       error = l10n.disconnectDialogErrorGeneric;

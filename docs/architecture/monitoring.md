@@ -79,6 +79,7 @@ which is why the alerts watch usage rather than spend.
    | A club's API key is being misused | A super admin generates a new key in the portal, under Settings, Integrations. The old key stops working within a minute |
    | The scores page is being hammered | Turn it off in the portal, under Displays |
    | A display link got out | Reset or remove it in the portal, under Displays |
+   | A sheet's scoreboard is locked after wrong PINs, and someone needs it off now | A club admin unpairs it from the portal, under Sheets & Games. The lockout ends by itself after 15 minutes |
    | A scoreboard is writing in a loop | Disconnect it with the club's PIN, or a super admin deletes the sheet in the portal |
    | A function is failing | Read the error in the logs; a bad deploy is undone by deploying the previous release tag |
    | One address making too many requests, or guessing at keys | A super admin adds it under Blocked addresses, below the list of clubs. It is turned away within half a minute |

@@ -230,6 +230,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String disconnectDialogErrorLocked(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutes',
+      one: '1 minute',
+    );
+    return 'Too many wrong PINs. Try again in $_temp0.';
+  }
+
+  @override
   String get disconnectDialogErrorGeneric =>
       'Could not disconnect. Check the internet connection and try again.';
 

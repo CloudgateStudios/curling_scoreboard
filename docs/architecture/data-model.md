@@ -19,6 +19,7 @@ flowchart LR
   CLUB --> PRIV["private/"]
   PRIV --> KEY["apiKey"]
   PRIV --> PIN["scoreboardPin"]
+  PRIV --> TRIES["pinTries"]
   PRIV --> WH["webhook"]
   PRIV --> WHS["webhookStatus"]
   PRIV --> DS["displayState"]
@@ -38,7 +39,7 @@ flowchart LR
   classDef fn fill:#fde68a,stroke:#b45309,color:#78350f
   classDef both fill:#dcfce7,stroke:#15803d,color:#14532d
   class WH,BR,PUB,CFG,LEAGUES,BON,SWITCHES client
-  class APP_CONFIG,CLUB,WHS,DS,BST,ADM fn
+  class APP_CONFIG,CLUB,TRIES,WHS,DS,BST,ADM fn
   class KEY,PIN,LINKS,SH,GAMES both
 ```
 
@@ -87,6 +88,11 @@ clubs/{clubId}/private/apiKey
 
 clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
   pin: string                // 4 to 8 digits
+
+clubs/{clubId}/private/pinTries        // written by unpairSheet; absent until a wrong PIN
+  {sheetId}: map             // one per sheet with wrong PINs since its last right one
+    wrong: number            // wrong PINs in a row
+    lockedUntil?: timestamp  // set after 5; no disconnecting from the scoreboard until then
 
 clubs/{clubId}/private/webhook       // absent means no webhook
   url: string                // https, where completed games are posted
