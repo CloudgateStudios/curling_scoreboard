@@ -173,7 +173,7 @@ Most of the cost of a flood is Firestore reads. These remove them.
   one cached response, whatever is added to the URL.
 
 - **Cache what the API key check reads**, in memory in each instance, for
-  60 seconds: whether the club exists and the hash of its key. A burst of
+  60 seconds: whether the club exists and its key. A burst of
   requests then costs 2 reads per instance per minute instead of 2 per
   request. Unknown clubs and wrong keys are cached too, so guessing costs
   nothing after the first try. A rotated key takes effect within the
@@ -292,7 +292,7 @@ Each step is its own PR.
    and caps the worst case straight away. At the same time, by hand: the $2
    budgets, the usage alerts and the Artifact Registry cleanup policy.
 2. **Memory caches** for the API key check, API answers and the scores
-   page.
+   page. Done, in `functions/src/kept.ts`.
 3. **Kill switches**: `appConfig/limits` and the per club API switch, with
    their portal controls and the runbook.
 4. **Rate limit middleware** for the API and the callables.

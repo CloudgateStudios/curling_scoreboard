@@ -1,6 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { validateApiKey } from '../middleware/apiKey';
+import { keptAnswers } from '../middleware/keptAnswers';
 import { bonspielsRouter } from './bonspiels';
 import { leaguesRouter } from './leagues';
 import { nowRouter } from './now';
@@ -10,8 +11,10 @@ export const clubsRouter = Router();
 
 // Per-club router so validateApiKey runs once for the club GET and all
 // nested sheet/game routes, with the fetched club doc shared via res.locals.
+// Each answer is then kept for a few seconds; see keptAnswers.
 const clubRouter = Router({ mergeParams: true });
 clubRouter.use(validateApiKey);
+clubRouter.use(keptAnswers);
 clubRouter.use(sheetsRouter);
 clubRouter.use('/sheets/:sheetId', nowRouter);
 clubRouter.use(leaguesRouter);

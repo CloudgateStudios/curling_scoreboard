@@ -63,7 +63,7 @@ which is why the alerts watch usage rather than spend.
 
    | What is wrong | What to do |
    | --- | --- |
-   | A club's API key is being misused, or its integration loops | A super admin generates a new key in the portal, under Settings, Integrations |
+   | A club's API key is being misused, or its integration loops | A super admin generates a new key in the portal, under Settings, Integrations. The old key stops working within a minute |
    | The scores page is being hammered | Turn it off in the portal, under Displays |
    | A display link got out | Reset or remove it in the portal, under Displays |
    | A scoreboard is writing in a loop | Disconnect it with the club's PIN, or a super admin deletes the sheet in the portal |

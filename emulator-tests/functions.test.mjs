@@ -31,6 +31,8 @@ import {
   RETRY_RELOAD_AFTER_MS, canReload, targetBuild, timeUntilNextDailyCheck,
 } from '../functions/lib/display/assets/update-model.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
+import { Kept } from '../functions/lib/kept.js';
+import { KEPT_MS } from '../functions/lib/limits.js';
 import { formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../functions/lib/now.js';
 import {
   DEFAULT_STREAM_TEMPLATES, renderStreamTemplate, streamText,
@@ -337,6 +339,101 @@ describe('REST API key check', () => {
   test('ignores a key left on the club document', async () => {
     const res = await fetch(`${API_URL}/clubs/legacy`, { headers: { 'x-api-key': 'legacy-key' } });
     assert.equal(res.status, 403);
+  });
+});
+
+describe('values kept in memory', () => {
+  const clock = () => {
+    let t = 0;
+    return { now: () => t, pass: (ms) => { t += ms; } };
+  };
+
+  test('reads once while kept, and again after', async () => {
+    const time = clock();
+    const kept = new Kept(1000, 10, time.now);
+    let reads = 0;
+    const read = async () => ++reads;
+    assert.equal(await kept.get('a', read), 1);
+    time.pass(999);
+    assert.equal(await kept.get('a', read), 1);
+    time.pass(1);
+    assert.equal(await kept.get('a', read), 2);
+  });
+
+  test('has requests that arrive during a read wait for it', async () => {
+    const kept = new Kept(1000);
+    let reads = 0;
+    let finish;
+    const read = () => { reads++; return new Promise((resolve) => { finish = resolve; }); };
+    const first = kept.get('a', read);
+    const second = kept.get('a', read);
+    finish('value');
+    assert.deepEqual(await Promise.all([first, second]), ['value', 'value']);
+    assert.equal(reads, 1);
+  });
+
+  test('does not keep a read that failed', async () => {
+    const kept = new Kept(1000);
+    await assert.rejects(kept.get('a', async () => { throw new Error('offline'); }));
+    assert.equal(await kept.get('a', async () => 'back'), 'back');
+  });
+
+  test('lets go of the oldest past its limit', async () => {
+    const kept = new Kept(1000, 2);
+    let reads = 0;
+    const read = async () => ++reads;
+    await kept.get('a', read);
+    await kept.get('b', read);
+    await kept.get('c', read);
+    assert.equal(kept.size, 2);
+    assert.equal(await kept.get('c', read), 3);
+    assert.equal(await kept.get('a', read), 4);
+  });
+});
+
+// Each instance keeps the club, its key and each answer for a while. The
+// emulator runs one instance, so a change made here shows only after that.
+describe('REST API kept reads', () => {
+  const headers = { 'x-api-key': 'key-kept' };
+
+  before(async () => {
+    await db.doc('clubs/club-kept').set({ name: 'Club Kept' });
+    await db.doc('clubs/club-kept/private/apiKey').set({ key: 'key-kept' });
+    await db.doc('clubs/club-kept/sheets/s1').set({ name: 'Sheet 1' });
+  });
+
+  test('are kept for under a minute', () => {
+    assert.ok(KEPT_MS.apiKey <= 60_000);
+    assert.ok(KEPT_MS.apiAnswer <= 15_000);
+    assert.ok(KEPT_MS.scoresSwitch <= 60_000);
+  });
+
+  test('keep an answer, so a quick second request reads nothing new', async () => {
+    const url = `${API_URL}/clubs/club-kept/sheets/s1`;
+    assert.equal((await (await fetch(url, { headers })).json()).name, 'Sheet 1');
+    await db.doc('clubs/club-kept/sheets/s1').update({ name: 'Renamed' });
+    const again = await fetch(url, { headers });
+    assert.equal(again.status, 200);
+    assert.equal((await again.json()).name, 'Sheet 1');
+    // Another path is its own answer.
+    const list = await (await fetch(`${API_URL}/clubs/club-kept`, { headers })).json();
+    assert.equal(list.sheets[0].name, 'Renamed');
+  });
+
+  test('keep the key, so a replaced key works for up to a minute', async () => {
+    await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers });
+    await db.doc('clubs/club-kept/private/apiKey').set({ key: 'key-new' });
+    assert.equal((await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers })).status, 200);
+    assert.equal(
+      (await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers: { 'x-api-key': 'key-new' } })).status,
+      403,
+    );
+  });
+
+  test('still check the key on a kept answer', async () => {
+    const url = `${API_URL}/clubs/club-kept/sheets/s1`;
+    assert.equal((await fetch(url, { headers: { 'x-api-key': 'wrong' } })).status, 403);
+    assert.equal((await fetch(url)).status, 401);
   });
 });
 
@@ -803,8 +900,10 @@ describe('REST API now', () => {
     });
   });
 
+  // On s2, since each answer is kept for a while and a later test asks s1
+  // the same once the club has a time zone.
   test('needs a time while the club has no time zone', async () => {
-    const res = await fetch(url('s1'), { headers });
+    const res = await fetch(url('s2'), { headers });
     assert.equal(res.status, 400);
   });
 
@@ -2328,6 +2427,17 @@ describe('the public scores page', () => {
       assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60', path);
     }
     assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/live.json`)).status, 200);
+  });
+
+  // So that requests which skip the CDN do not each read it.
+  test('keeps whether the page is on for a while', async () => {
+    assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/results.json`)).status, 200);
+    await db.doc(`${club}/private/publicScores`).set({ enabled: false });
+    try {
+      assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/results.json`)).status, 200);
+    } finally {
+      await db.doc(`${club}/private/publicScores`).set({ enabled: true });
+    }
   });
 });
 

@@ -24,3 +24,16 @@ export const MAX_INSTANCES = {
 // Every module that defines a function imports this file first, so the
 // default applies to each function that does not set its own.
 setGlobalOptions({ maxInstances: MAX_INSTANCES.admin });
+
+// How long each function instance keeps what it read for a request, so that
+// a burst of the same requests reads Firestore once. A change made in the
+// portal reaches the function after at most this long. See ./kept.ts.
+export const KEPT_MS = {
+  /** Whether a club exists and its API key. A new key takes this long to
+   *  work, and the old one stops working after it. */
+  apiKey: 60_000,
+  /** Each API answer, by club and full path. */
+  apiAnswer: 15_000,
+  /** Whether a club's scores page is turned on. */
+  scoresSwitch: 30_000,
+} as const;

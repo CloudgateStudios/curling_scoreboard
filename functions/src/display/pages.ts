@@ -4,7 +4,8 @@ import express, { NextFunction, Request, Response } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
-import { MAX_INSTANCES } from '../limits';
+import { Kept } from '../kept';
+import { KEPT_MS, MAX_INSTANCES } from '../limits';
 import { currentProjectId, webConfig } from './firebaseConfig';
 import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
 import { DisplaySummary, FINAL_SHOWN_MS } from './state';
@@ -245,21 +246,24 @@ const OFF_CACHE = 'public, max-age=60, s-maxage=60';
  *  logo, up to 250 KB, and only changes when an admin saves it. */
 const BRANDING_KEPT_MS = 5 * 60 * 1000;
 
-const brandingKept = new Map<string, { at: number; branding: ScoresBranding | null }>();
+const keptBranding = new Kept<ScoresBranding | null>(BRANDING_KEPT_MS);
+const keptSwitches = new Kept<boolean>(KEPT_MS.scoresSwitch);
 
-async function brandingOf(clubId: string): Promise<ScoresBranding | null> {
-  const kept = brandingKept.get(clubId);
-  if (kept && Date.now() - kept.at < BRANDING_KEPT_MS) return kept.branding;
-  const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
-  const branding = (snap.data() as ScoresBranding | undefined) ?? null;
-  brandingKept.set(clubId, { at: Date.now(), branding });
-  return branding;
+function brandingOf(clubId: string): Promise<ScoresBranding | null> {
+  return keptBranding.get(clubId, async () => {
+    const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
+    return (snap.data() as ScoresBranding | undefined) ?? null;
+  });
 }
 
-/** Whether a club admin has turned the scores page on, in the portal. */
-async function scoresOn(clubId: string): Promise<boolean> {
-  const snap = await getFirestore().doc(`clubs/${clubId}/private/publicScores`).get();
-  return snap.get('enabled') === true;
+/** Whether a club admin has turned the scores page on, in the portal. Kept
+ *  for a while by each instance, so that requests that skip the CDN, or
+ *  for clubs without the page, do not each read it. */
+function scoresOn(clubId: string): Promise<boolean> {
+  return keptSwitches.get(clubId, async () => {
+    const snap = await getFirestore().doc(`clubs/${clubId}/private/publicScores`).get();
+    return snap.get('enabled') === true;
+  });
 }
 
 async function summaryOf(clubId: string): Promise<DisplaySummary | null> {
