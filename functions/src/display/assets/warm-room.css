@@ -319,6 +319,11 @@ html.cursor-idle body {
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* An end a game that finished early never played. */
+.cell.unplayed {
+  color: rgba(240, 243, 246, 0.35);
+}
+
 .cell.scored {
   font-weight: 800;
 }

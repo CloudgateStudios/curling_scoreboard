@@ -1,3 +1,4 @@
 bonspiel
 bonspiels
+linescore
 lsfe

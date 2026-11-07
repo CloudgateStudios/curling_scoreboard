@@ -23,7 +23,7 @@ flowchart LR
     FS[("Firestore")]
     CF["Cloud Functions"]
   end
-  FB --> DP["Display screens<br/>score bug, warm room, bonspiel"]
+  FB --> DP["Display screens<br/>score bug, linescore, warm room, bonspiel"]
   FB --> PS["Public scores page"]
   FB --> INT["REST API and webhook<br/>for the club's own systems"]
 ```

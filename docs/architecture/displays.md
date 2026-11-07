@@ -1,8 +1,8 @@
 # Displays
 
 The screens that show a club's scores without a scoreboard: the score bug
-for live streams, the warm room screen, the bonspiel screen and the public
-scores page for members' phones. Part of the
+and linescore for live streams, the warm room screen, the bonspiel screen
+and the public scores page for members' phones. Part of the
 [architecture docs](../ARCHITECTURE.md).
 
 ## Two ways to watch
@@ -22,6 +22,7 @@ flowchart LR
 
   subgraph screens["Signed in with a link"]
     BUG["Score bug<br/>OBS browser source"]
+    LS["Linescore<br/>OBS browser source"]
     WR["Warm room screen"]
     BS["Bonspiel screen"]
   end
@@ -147,8 +148,9 @@ sequenceDiagram
 ```
 
 That URL never has to change, because a link also says what its screens
-show, in `settings`: the warm room with its view, or a sheet's score bug
-with its size, caption and end side. A new link shows the warm room's totals.
+show, in `settings`: the warm room with its view, a sheet's score bug
+with its size, caption and end side, or a sheet's linescore with its size
+and caption. A new link shows the warm room's totals.
 Club admins change the settings, and the link's name, in the portal, which
 writes them directly; the rules hold them to what the pages understand.
 The page at the link's URL reads its own link (the rules let a display read
@@ -200,6 +202,8 @@ The `display` function serves the display pages on the scoreboard's hosting
 site, under `/display/**` through a Hosting rewrite, like the API:
 
 - `/display/{clubId}/sheets/{sheetId}/bug`: the score bug
+- `/display/{clubId}/sheets/{sheetId}/linescore`: a sheet's game end by end,
+  for a stream between ends
 - `/display/{clubId}/warm-room`: every sheet, for a screen in the club
 - `/display/{clubId}/bonspiels/{bonspielId}`: a bonspiel's draws and brackets,
   for a screen in the club
@@ -265,6 +269,32 @@ names. The caption names a league or bonspiel by its short name when it has
 one. The games only carry the full name, so the functions read the short
 name from the league or bonspiel as they write the display summary.
 
+### Linescore
+
+The linescore, `linescore.js`, is one sheet's game end by end, as a banner
+to show across a stream between ends. It draws the same grid as the warm
+room's full view (`lineScore` in `game-view.js`) in the score bug's colors:
+a column per end, the scoring team's points on its rock color and 0 for the
+other, the end being played picked out, the hammer, and the totals. The
+column picked out shows which end is on, so there is no end label; Final
+shows above the team names once the game is over, beside the sheet's name, or
+with `?label=league` the league's or bonspiel's short name, `?label=both` the
+two, or `?label=none` neither.
+
+Each sheet has its own page, which listens to the summary as the score bug
+does, so a stream's linescore changes when its bug does, rather than waiting
+on a screen that shows every sheet.
+
+The page is transparent and the banner always the same size: 98 by 20.5 rem
+inside a rem of room for its shadow, 1600 by 360 pixels at scale 1, and
+`?scale=` (0.5 to 4) sizes it. A game with more than eight ends narrows its
+columns so the names keep their room; a name too long shrinks to 80% before
+it is cut short. While the sheet is idle the banner shows its name and "No
+game right now" in the same space, so it can be placed in OBS between games.
+A live game from a scoreboard that does not send its ends shows its totals
+with the ends blank. Like the bug, it reloads onto a new build only between
+games.
+
 ### Warm room screen
 
 The warm room screen shows every sheet in the summary, in name order with
@@ -294,7 +324,14 @@ carry a script is stored.
 baseball layout: a column per end, the scoring team's points on its rock
 color and 0 for the other team, the end being played picked out, and the
 totals. It has as many columns as the game's `numberOfEnds`, or more once
-extra ends are played. Its cards are wider and shorter, so the layout asks
+extra ends are played.
+
+A finished game that ended before its ends were up, because the teams shook
+hands, has X in the ends it never played, as on a paper scoreboard. This is
+`firstUnplayedEnd` in `game-view.js`, which the warm room, the linescore and
+the public page share. It marks only finished games with ends recorded: a
+live game has not ended, however far behind one team is, and a game from a
+scoreboard that does not send its ends has nothing to go on. Its cards are wider and shorter, so the layout asks
 for that shape. A live game from a scoreboard that does not send its ends
 yet is shown by its totals among them. `?view=cycle` shows the two in turn,
 `?every=` seconds each (20 by default).

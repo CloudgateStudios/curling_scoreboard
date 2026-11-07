@@ -64,10 +64,11 @@ directly.
 | File                                 | Page                                                                                     |
 | ------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `display.js`                         | Shared by the signed in pages: sign-in, listeners, retries, `sheetView`, status reports, reloading |
-| `game-view.js`                       | What every page, the public one included, shows about a game: the end, Final, text colors |
+| `game-view.js`                       | What every page, the public one included, shows about a game: the end, Final, text colors, the end by end grid |
 | `update-model.js`                    | When a page should reload onto a new build                                               |
 | `link.js`, `link.css`                | A display link's own URL, which moves on to the page its settings name                   |
 | `bug.js`, `bug.css`                  | The score bug                                                                            |
+| `linescore.js`, `linescore.css`      | A sheet's linescore, for streams between ends                                            |
 | `warm-room.js`, `warm-room.css`      | The warm room screen                                                                     |
 | `results-model.js`                   | Grouping the day's results by draw, for the warm room and the public page                |
 | `bonspiel.js`, `bonspiel.css`, `bonspiel-model.js` | The bonspiel screen, and the draw on now and brackets it works out         |

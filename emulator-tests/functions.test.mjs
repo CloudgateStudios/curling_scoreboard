@@ -30,6 +30,7 @@ import {
 import {
   RETRY_RELOAD_AFTER_MS, canReload, targetBuild, timeUntilNextDailyCheck,
 } from '../functions/lib/display/assets/update-model.js';
+import { firstUnplayedEnd } from '../functions/lib/display/assets/game-view.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
 import { Kept } from '../functions/lib/kept.js';
 import { KEPT_MS, PIN_LOCKOUT, RATE_LIMITS } from '../functions/lib/limits.js';
@@ -2153,6 +2154,29 @@ describe('what a display shows for a sheet', () => {
   });
 });
 
+describe('ends a game never played', () => {
+  const ends = (count) => Array.from({ length: count }, (_, i) => ({ endNumber: i + 1, scoringTeamSlot: 'team1', score: 1 }));
+
+  test('marks the ends after a game that finished early', () => {
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: ends(6) }, 'final'), 7);
+  });
+
+  test('marks none for a game that played its ends, or went past them', () => {
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: ends(8) }, 'final'), null);
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: ends(9) }, 'final'), null);
+  });
+
+  test('marks none while the game is live, however far behind a team is', () => {
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: ends(6) }, 'live'), null);
+  });
+
+  test('marks none for a game with no ends recorded, or no number of ends', () => {
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: [] }, 'final'), null);
+    assert.equal(firstUnplayedEnd({ numberOfEnds: 8, ends: null }, 'final'), null);
+    assert.equal(firstUnplayedEnd({ numberOfEnds: null, ends: ends(6) }, 'final'), null);
+  });
+});
+
 describe('the summary\'s results', () => {
   const now = Date.now();
   const result = (gameId, minutesAgo) => ({ gameId, finishedAt: Timestamp.fromMillis(now - minutesAgo * 60 * 1000) });
@@ -2445,6 +2469,21 @@ describe('display pages', () => {
     assert.equal(config.buildId, '', 'a local build has no build ID, so never updates');
   });
 
+  test('serves a sheet\'s linescore, locked down and never cached', async () => {
+    const res = await fetch(`${PAGES_URL}/club-a/sheets/sheet-1/linescore`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'no-store');
+    const csp = res.headers.get('content-security-policy');
+    assert.match(csp, /default-src 'none'/);
+    assert.match(csp, /frame-ancestors 'none'/);
+    const html = await res.text();
+    assert.match(html, /<script type="module" src="\.\.\/\.\.\/\.\.\/assets\/linescore\.js"><\/script>/);
+    const config = pageConfig(html);
+    assert.equal(config.page, 'linescore');
+    assert.equal(config.clubId, 'club-a');
+    assert.equal(config.sheetId, 'sheet-1');
+  });
+
   test('serves the warm room screen for a club', async () => {
     const res = await fetch(`${PAGES_URL}/club-a/warm-room`);
     assert.equal(res.status, 200);
@@ -2486,6 +2525,7 @@ describe('display pages', () => {
   test('serves the pages\' scripts and styles', async () => {
     for (const [file, type] of [
       ['display.js', /javascript/], ['bug.js', /javascript/], ['bug.css', /css/],
+      ['linescore.js', /javascript/], ['linescore.css', /css/],
       ['warm-room.js', /javascript/], ['warm-room.css', /css/],
       ['link.js', /javascript/], ['link.css', /css/],
       ['bonspiel.js', /javascript/], ['bonspiel-model.js', /javascript/], ['bonspiel.css', /css/],
@@ -2503,6 +2543,7 @@ describe('display pages', () => {
     for (const path of [
       '/club-a/sheets/sheet%3Cscript%3E/bug',
       '/club.a/sheets/sheet-1/bug',
+      '/club-a/sheets/sheet%3Cscript%3E/linescore',
       '/club-a/sheets/sheet-1',
       '/club%3Cb%3E/warm-room',
       '/club-a/bonspiels/fall%3Cscript%3E',

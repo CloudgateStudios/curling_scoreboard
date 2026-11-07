@@ -73,9 +73,9 @@ const DISPLAY_BASE = new URL('../', import.meta.url);
 
 /**
  * The page a display link's settings name, as a URL without the token:
- * a sheet's score bug, a bonspiel or the warm room, with options left out at
- * their defaults. Mirrors the options bug.js, bonspiel.js and warm-room.js
- * read.
+ * a sheet's score bug or linescore, a bonspiel or the warm room, with options
+ * left out at their defaults. Mirrors the options bug.js, linescore.js,
+ * bonspiel.js and warm-room.js read.
  */
 export function linkPageUrl(settings) {
   const club = encodeURIComponent(config.clubId);
@@ -94,6 +94,10 @@ export function linkPageUrl(settings) {
     if (settings.scale && settings.scale !== 1) query.set('scale', String(settings.scale));
     if (settings.label && settings.label !== 'sheet') query.set('label', settings.label);
     if (settings.end === 'left') query.set('end', 'left');
+  } else if (settings?.page === 'linescore' && typeof settings.sheetId === 'string') {
+    path = `${club}/sheets/${encodeURIComponent(settings.sheetId)}/linescore`;
+    if (settings.scale && settings.scale !== 1) query.set('scale', String(settings.scale));
+    if (settings.label && settings.label !== 'sheet') query.set('label', settings.label);
   } else {
     path = `${club}/warm-room`;
     if (settings?.view && settings.view !== 'totals') query.set('view', settings.view);

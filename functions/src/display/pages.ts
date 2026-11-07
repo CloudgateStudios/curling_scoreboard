@@ -15,6 +15,9 @@ import { DisplaySummary, FINAL_SHOWN_MS } from './state';
 // /display/** through a Hosting rewrite:
 //
 //   /display/{clubId}/sheets/{sheetId}/bug   the score bug for live streams
+//   /display/{clubId}/sheets/{sheetId}/linescore
+//                                            a sheet's game end by end, for
+//                                            live streams between ends
 //   /display/{clubId}/warm-room              every sheet, for a screen in the club
 //   /display/{clubId}/bonspiels/{bonspielId} a bonspiel's games, schedule and
 //                                            brackets, for a screen in the club
@@ -92,7 +95,7 @@ const BUILD = readBuild();
 
 /** What a page's script is told about where it is and what to show. */
 export interface PageConfig {
-  page: 'bug' | 'warm-room' | 'bonspiel' | 'link' | 'scores';
+  page: 'bug' | 'linescore' | 'warm-room' | 'bonspiel' | 'link' | 'scores';
   clubId: string;
   sheetId?: string;
   bonspielId?: string;
@@ -213,6 +216,16 @@ app.get('/display/:clubId/sheets/:sheetId/bug', (req: Request, res: Response) =>
   }
   // From /display/{club}/sheets/{sheet}/ back up to /display/.
   sendPage(res, 'Score Bug', '../../../assets/', pageConfig(req, 'bug', clubId, { sheetId }));
+});
+
+app.get('/display/:clubId/sheets/:sheetId/linescore', (req: Request, res: Response) => {
+  const { clubId, sheetId } = req.params as Record<string, string>;
+  if (!ID_PATTERN.test(clubId) || !ID_PATTERN.test(sheetId)) {
+    notFound(res);
+    return;
+  }
+  // From /display/{club}/sheets/{sheet}/ back up to /display/.
+  sendPage(res, 'Linescore', '../../../assets/', pageConfig(req, 'linescore', clubId, { sheetId }));
 });
 
 app.get('/display/:clubId/warm-room', (req: Request, res: Response) => {

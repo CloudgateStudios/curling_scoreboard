@@ -14,9 +14,9 @@
 //                      nothing, to see the room it will take
 
 import {
-  STATUS_MESSAGES, connect, el, endLabel, followLink, followsLink, isPlayedOut, now, sheetView,
-  textColorOn,
+  STATUS_MESSAGES, connect, el, endLabel, followLink, followsLink, now, sheetView, textColorOn,
 } from './display.js';
+import { lineScore } from './game-view.js';
 import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
 
 // Width over height of a sheet's card, which the layout keeps to as closely
@@ -32,9 +32,6 @@ const showEarlier = params.get('earlier') === 'today';
 const preview = params.has('preview') && params.get('preview') !== '0';
 // What is on screen now; only changes by itself with view=cycle.
 let currentView = viewOption === 'full' ? 'full' : 'totals';
-
-// Ends a game shows before it is played, when it does not say how many.
-const DEFAULT_ENDS = 8;
 
 const root = document.getElementById('display');
 const header = el('header', 'top');
@@ -77,63 +74,6 @@ function teamRow(team, view, changed) {
   score.style.color = textColorOn(hex);
   row.append(swatch, name, hammer, score);
   return row;
-}
-
-function endCell(end, slot, isCurrent) {
-  const cell = el('span', isCurrent ? 'cell current' : 'cell');
-  if (!end) return cell;
-  const scored = end.scoringTeamSlot === slot && end.score > 0;
-  cell.textContent = scored ? String(end.score) : '0';
-  if (scored) cell.classList.add('scored');
-  return cell;
-}
-
-// The game end by end: a column per end, the scoring team's points on its
-// rock color and 0 for the other team, as on the scoreboard itself, then the
-// totals. The end being played is picked out.
-function lineScore(game, view, changedSlots) {
-  const ends = game.ends ?? [];
-  // The end being played, if there is one: a game played out has none left.
-  const live = view.kind === 'live' && !isPlayedOut(game);
-  const played = Math.max(0, ...ends.map((end) => end.endNumber));
-  const columns = Math.max(game.numberOfEnds ?? DEFAULT_ENDS, played, live ? game.currentEnd : 0);
-  const byNumber = new Map(ends.map((end) => [end.endNumber, end]));
-
-  const table = el('div', 'line-score');
-  table.style.gridTemplateColumns = `minmax(0, 1fr) repeat(${columns}, var(--cell)) var(--total)`;
-  table.append(el('span', 'corner'));
-  for (let n = 1; n <= columns; n++) {
-    const head = el('span', 'end-head', String(n));
-    if (live && n === game.currentEnd) head.classList.add('current');
-    table.append(head);
-  }
-  table.append(el('span', 'end-head', 'T'));
-
-  for (const slot of ['team1', 'team2']) {
-    const team = game[slot];
-    const hex = team.color?.hex ?? '#666666';
-    const label = el('span', 'team-label');
-    const swatch = el('span', 'swatch');
-    swatch.style.background = hex;
-    const hammer = el('span', 'hammer');
-    hammer.title = 'Hammer';
-    hammer.classList.toggle('off', !live || team.hasHammer !== true);
-    label.append(swatch, el('span', 'name', team.name), hammer);
-    table.append(label);
-    for (let n = 1; n <= columns; n++) {
-      const cell = endCell(byNumber.get(n), slot, live && n === game.currentEnd);
-      if (cell.classList.contains('scored')) {
-        cell.style.background = hex;
-        cell.style.color = textColorOn(hex);
-      }
-      table.append(cell);
-    }
-    const total = el('span', changedSlots.has(slot) ? 'total changed' : 'total', String(team.score));
-    total.style.background = hex;
-    total.style.color = textColorOn(hex);
-    table.append(total);
-  }
-  return table;
 }
 
 function sheetCard(id, sheet, at) {

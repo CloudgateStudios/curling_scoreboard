@@ -41,14 +41,14 @@ service cloud.firestore {
           && request.auth.token.clubId == clubId;
     }
 
-    // What a display link shows: the warm room, a sheet's score bug or a
-    // bonspiel, with the options each page takes. Kept to what the pages
-    // understand.
+    // What a display link shows: the warm room, a sheet's score bug or
+    // linescore, or a bonspiel, with the options each page takes. Kept to
+    // what the pages understand.
     function isDisplaySettings(settings) {
       return settings is map
           && settings.keys().hasOnly(['page', 'sheetId', 'bonspielId', 'view', 'every', 'scale', 'label', 'end', 'earlier'])
-          && settings.get('page', '') in ['bug', 'warm-room', 'bonspiel']
-          && (settings.page != 'bug'
+          && settings.get('page', '') in ['bug', 'linescore', 'warm-room', 'bonspiel']
+          && (!(settings.page in ['bug', 'linescore'])
               || (settings.get('sheetId', null) is string
                   && settings.sheetId.matches('^[A-Za-z0-9_-]{1,128}$')))
           && (settings.page != 'bonspiel'
