@@ -55,6 +55,12 @@ Every request needs the club's key in the `X-API-Key` header, compared in
 constant time against `clubs/{clubId}/private/apiKey`. The full description is
 `app/web/openapi.yaml`, rendered at `/api-docs/` on the same site.
 
+Every answer says `Cache-Control: private, no-store` and `Vary: X-API-Key`,
+so neither Hosting's CDN nor a browser keeps it. Without that the CDN keeps
+some answers, 404s at least, for ten minutes, keyed by the URL alone, and
+would hand one caller's answer to the next whatever key they sent. An
+address the API does not know gets a JSON 404.
+
 Each instance of the function keeps what it reads in memory, so that an
 integration polling fast, or someone guessing at keys or club IDs, costs
 few Firestore reads:
