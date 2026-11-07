@@ -38,4 +38,4 @@ jobs:
           channelId: live
           target: admin
           entryPoint: .
-          firebaseToolsVersion: 15.34.0
+          firebaseToolsVersion: 15.34.2

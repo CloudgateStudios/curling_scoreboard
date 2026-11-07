@@ -4,6 +4,7 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { deleteApp as deleteAdminApp, initializeApp as initializeAdminApp } from 'firebase-admin/app';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -31,6 +32,16 @@ import {
 } from '../functions/lib/display/assets/update-model.js';
 import { firstUnplayedEnd } from '../functions/lib/display/assets/game-view.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
+import { Kept } from '../functions/lib/kept.js';
+import { KEPT_MS, PIN_LOCKOUT, RATE_LIMITS } from '../functions/lib/limits.js';
+import { Buckets, callerAddresses } from '../functions/lib/rateLimit.js';
+import { limitsWith } from '../functions/lib/switches.js';
+import { formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../functions/lib/now.js';
+import {
+  DEFAULT_STREAM_TEMPLATES, renderStreamTemplate, streamText,
+} from '../functions/lib/streamMessage.js';
+// The portal's copy of the defaults, which must match the functions'.
+import { DEFAULT_STREAM_TEMPLATES as PORTAL_STREAM_TEMPLATES } from '../admin/src/lib/streamMessage.ts';
 import {
   IDLE_PAUSE_MS, LIVE_POLL_MS, QUIET_POLL_MS, asSummaryResults, isIdle, pollDelay, timeUntilDue,
 } from '../functions/lib/display/assets/scores-model.js';
@@ -86,7 +97,15 @@ async function waitFor(what, check) {
   }
 }
 
+// Every request in these tests comes from this machine, so the real rate
+// limits would soon turn them away. They are raised for the whole file, and
+// the rate limit tests lower one at a time, sending their own addresses.
+const RAISED_LIMITS = Object.fromEntries(Object.keys(RATE_LIMITS).map((name) => [name, 100_000]));
+const switchesDoc = db.doc('adminConfig/switches');
+const raiseLimits = () => switchesDoc.set({ limits: RAISED_LIMITS });
+
 before(async () => {
+  await raiseLimits();
   await db.doc('clubs/club-a').set({ name: 'Club A' });
   await db.doc('clubs/club-a/private/apiKey').set({ key: 'key-a' });
   // Carries the status of a scoreboard that was paired here before.
@@ -263,6 +282,56 @@ describe('unpairSheet', () => {
     assert.equal((await adminAuth.getUser(client.auth.currentUser.uid)).customClaims?.role, undefined);
   });
 
+  // An error from a callable, with its details, for tests that look at both.
+  async function errorOf(promise) {
+    try {
+      await promise;
+    } catch (err) {
+      return { code: err.code, details: err.details };
+    }
+    assert.fail('expected the call to fail');
+  }
+
+  test('locks the sheet for a while after too many wrong PINs, even to the right one', async () => {
+    const client = await pairedScoreboard('pin-locked');
+    const unpair = (pin) => client.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-locked', pin });
+    for (let left = PIN_LOCKOUT.tries - 1; left > 0; left--) {
+      assert.deepEqual(await errorOf(unpair('1111')), { code: 'functions/permission-denied', details: { triesLeft: left } });
+    }
+    const locked = await errorOf(unpair('1111'));
+    assert.equal(locked.code, 'functions/resource-exhausted');
+    assert.equal(locked.details.retryAfter, PIN_LOCKOUT.lockedMs / 1000);
+    assert.equal((await errorOf(unpair('4821'))).code, 'functions/resource-exhausted');
+    const sheet = await db.doc('clubs/club-pin/sheets/pin-locked').get();
+    assert.equal(sheet.get('scoreboardUid'), client.auth.currentUser.uid);
+
+    // Once the lockout has run out the count starts again, and the next wrong
+    // PIN can still lead to another lockout.
+    const tries = db.doc('clubs/club-pin/private/pinTries');
+    await tries.update({ 'pin-locked.lockedUntil': Timestamp.fromMillis(Date.now() - 1000) });
+    assert.deepEqual(await errorOf(unpair('1111')), {
+      code: 'functions/permission-denied', details: { triesLeft: PIN_LOCKOUT.tries - 1 },
+    });
+    assert.equal((await tries.get()).get('pin-locked.lockedUntil'), undefined);
+    const result = await unpair('4821');
+    assert.deepEqual(result.data, { unpaired: true });
+    assert.equal((await tries.get()).get('pin-locked'), undefined, 'forgets the wrong PINs');
+  });
+
+  test('counts wrong PINs on each sheet apart, and forgets them after the right one', async () => {
+    const one = await pairedScoreboard('pin-count-1');
+    const two = await pairedScoreboard('pin-count-2');
+    await rejectsWith(one.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-1', pin: '1111' }), 'functions/permission-denied');
+    assert.deepEqual(
+      await errorOf(two.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-2', pin: '1111' })),
+      { code: 'functions/permission-denied', details: { triesLeft: PIN_LOCKOUT.tries - 1 } },
+    );
+    await one.call('unpairSheet', { clubId: 'club-pin', sheetId: 'pin-count-1', pin: '4821' });
+    const tries = await db.doc('clubs/club-pin/private/pinTries').get();
+    assert.equal(tries.get('pin-count-1'), undefined);
+    assert.equal(tries.get('pin-count-2.wrong'), 1);
+  });
+
   test('will not unpair at a club that has no PIN set', async () => {
     await db.doc('clubs/club-no-pin/sheets/no-pin').set({ name: 'No Pin', pairingCode: 'NPN234' });
     const client = await anonymous();
@@ -332,6 +401,302 @@ describe('REST API key check', () => {
     const res = await fetch(`${API_URL}/clubs/legacy`, { headers: { 'x-api-key': 'legacy-key' } });
     assert.equal(res.status, 403);
   });
+});
+
+describe('values kept in memory', () => {
+  const clock = () => {
+    let t = 0;
+    return { now: () => t, pass: (ms) => { t += ms; } };
+  };
+
+  test('reads once while kept, and again after', async () => {
+    const time = clock();
+    const kept = new Kept(1000, 10, time.now);
+    let reads = 0;
+    const read = async () => ++reads;
+    assert.equal(await kept.get('a', read), 1);
+    time.pass(999);
+    assert.equal(await kept.get('a', read), 1);
+    time.pass(1);
+    assert.equal(await kept.get('a', read), 2);
+  });
+
+  test('has requests that arrive during a read wait for it', async () => {
+    const kept = new Kept(1000);
+    let reads = 0;
+    let finish;
+    const read = () => { reads++; return new Promise((resolve) => { finish = resolve; }); };
+    const first = kept.get('a', read);
+    const second = kept.get('a', read);
+    finish('value');
+    assert.deepEqual(await Promise.all([first, second]), ['value', 'value']);
+    assert.equal(reads, 1);
+  });
+
+  test('does not keep a read that failed', async () => {
+    const kept = new Kept(1000);
+    await assert.rejects(kept.get('a', async () => { throw new Error('offline'); }));
+    assert.equal(await kept.get('a', async () => 'back'), 'back');
+  });
+
+  test('lets go of the oldest past its limit', async () => {
+    const kept = new Kept(1000, 2);
+    let reads = 0;
+    const read = async () => ++reads;
+    await kept.get('a', read);
+    await kept.get('b', read);
+    await kept.get('c', read);
+    assert.equal(kept.size, 2);
+    assert.equal(await kept.get('c', read), 3);
+    assert.equal(await kept.get('a', read), 4);
+  });
+});
+
+// Each instance keeps the club, its key and each answer for a while. The
+// emulator runs one instance, so a change made here shows only after that.
+describe('REST API kept reads', () => {
+  const headers = { 'x-api-key': 'key-kept' };
+
+  before(async () => {
+    await db.doc('clubs/club-kept').set({ name: 'Club Kept' });
+    await db.doc('clubs/club-kept/private/apiKey').set({ key: 'key-kept' });
+    await db.doc('clubs/club-kept/sheets/s1').set({ name: 'Sheet 1' });
+  });
+
+  test('are kept for under a minute', () => {
+    assert.ok(KEPT_MS.apiKey <= 60_000);
+    assert.ok(KEPT_MS.apiAnswer <= 15_000);
+    assert.ok(KEPT_MS.scoresSwitch <= 60_000);
+  });
+
+  test('keep an answer, so a quick second request reads nothing new', async () => {
+    const url = `${API_URL}/clubs/club-kept/sheets/s1`;
+    assert.equal((await (await fetch(url, { headers })).json()).name, 'Sheet 1');
+    await db.doc('clubs/club-kept/sheets/s1').update({ name: 'Renamed' });
+    const again = await fetch(url, { headers });
+    assert.equal(again.status, 200);
+    assert.equal((await again.json()).name, 'Sheet 1');
+    // Another path is its own answer.
+    const list = await (await fetch(`${API_URL}/clubs/club-kept`, { headers })).json();
+    assert.equal(list.sheets[0].name, 'Renamed');
+  });
+
+  test('keep the key, so a replaced key works for up to a minute', async () => {
+    await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers });
+    await db.doc('clubs/club-kept/private/apiKey').set({ key: 'key-new' });
+    assert.equal((await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers })).status, 200);
+    assert.equal(
+      (await fetch(`${API_URL}/clubs/club-kept/leagues`, { headers: { 'x-api-key': 'key-new' } })).status,
+      403,
+    );
+  });
+
+  test('still check the key on a kept answer', async () => {
+    const url = `${API_URL}/clubs/club-kept/sheets/s1`;
+    assert.equal((await fetch(url, { headers: { 'x-api-key': 'wrong' } })).status, 403);
+    assert.equal((await fetch(url)).status, 401);
+  });
+});
+
+describe('a club\'s API switch', () => {
+  const headers = { 'x-api-key': 'key-off' };
+
+  before(async () => {
+    await db.doc('clubs/club-off').set({ name: 'Club Off' });
+    await db.doc('clubs/club-off/private/apiKey').set({ key: 'key-off', enabled: false });
+  });
+
+  test('answers 503 to the right key while the club has its API off', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-off`, { headers });
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get('retry-after'), '300');
+    assert.deepEqual(await res.json(), { error: 'The API is turned off for this club' });
+  });
+
+  test('still turns away a wrong key or none first', async () => {
+    assert.equal((await fetch(`${API_URL}/clubs/club-off`, { headers: { 'x-api-key': 'wrong' } })).status, 403);
+    assert.equal((await fetch(`${API_URL}/clubs/club-off`)).status, 401);
+  });
+});
+
+// The emulator tests read the switches afresh each time; see
+// functions/.env.demo-functions.
+describe('service switches', () => {
+  const turnedOff = async (name, check) => {
+    await switchesDoc.set({ [name]: false }, { merge: true });
+    try {
+      await check();
+    } finally {
+      await raiseLimits();
+    }
+  };
+
+  test('turn the API off for every club', () => turnedOff('api', async () => {
+    const res = await fetch(`${API_URL}/clubs/club-a`, { headers: { 'x-api-key': 'key-a' } });
+    assert.equal(res.status, 503);
+    assert.deepEqual(await res.json(), { error: 'The API is turned off for now' });
+    // Before the key is checked.
+    assert.equal((await fetch(`${API_URL}/clubs/club-a`)).status, 503);
+  }));
+
+  test('turn the scores pages off, for the CDN to keep', () => turnedOff('scoresPage', async () => {
+    const res = await fetch(`http://127.0.0.1:5001/${PROJECT_ID}/us-central1/display/display/club-a/scores/live.json`);
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60');
+  }));
+
+  test('turn display sign-ins off', () => turnedOff('displaySessions', async () => {
+    const client = await clientFor();
+    await rejectsWith(client.call('startDisplaySession', { clubId: 'club-a', token: 'x' }), 'functions/unavailable');
+  }));
+
+  test('turn pairing and disconnecting off', () => turnedOff('pairing', async () => {
+    const client = await anonymous();
+    await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE' }), 'functions/unavailable');
+    await rejectsWith(
+      client.call('unpairSheet', { clubId: 'club-a', sheetId: 'sheet-1', pin: '0000' }),
+      'functions/unavailable',
+    );
+  }));
+
+  test('leave everything on unless set to false', async () => {
+    await switchesDoc.set({ api: true }, { merge: true });
+    try {
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, { headers: { 'x-api-key': 'key-a' } })).status, 200);
+    } finally {
+      await raiseLimits();
+    }
+    const client = await anonymous();
+    await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE' }), 'functions/not-found');
+  });
+});
+
+describe('rate limit buckets', () => {
+  test('allow a burst up to the limit, then refill evenly', () => {
+    let t = 0;
+    const buckets = new Buckets(100, () => t);
+    for (let i = 0; i < 3; i++) assert.equal(buckets.take('a', 3, 3000), 0);
+    assert.equal(buckets.take('a', 3, 3000), 1000);
+    t += 1000;
+    assert.equal(buckets.take('a', 3, 3000), 0);
+    assert.equal(buckets.take('a', 3, 3000), 1000);
+    // Another caller has its own.
+    assert.equal(buckets.take('b', 3, 3000), 0);
+  });
+
+  test('check without taking, and let go of the oldest past their limit', () => {
+    const buckets = new Buckets(2, () => 0);
+    buckets.take('a', 1, 1000);
+    assert.equal(buckets.has('a', 1, 1000), false);
+    buckets.take('b', 1, 1000);
+    buckets.take('c', 1, 1000);
+    assert.equal(buckets.has('a', 1, 1000), true);
+  });
+
+  test('count a request against both of the last two forwarded addresses', () => {
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '6.6.6.6, 1.1.1.1, 2.2.2.2' }), ['1.1.1.1', '2.2.2.2']);
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '1.1.1.1' }), ['1.1.1.1']);
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '1.1.1.1, 1.1.1.1' }), ['1.1.1.1']);
+    assert.deepEqual(callerAddresses({}, '127.0.0.1'), ['127.0.0.1']);
+  });
+
+  test('take a changed limit only when it is a whole number of at least 1', () => {
+    const limits = limitsWith({ apiPerIp: 0, apiPerClubPerDay: 7, pairingPerIp: 'x', unknown: 3 });
+    assert.equal(limits.apiPerIp.limit, RATE_LIMITS.apiPerIp.limit);
+    assert.equal(limits.apiPerClubPerDay.limit, 7);
+    assert.equal(limits.apiPerClubPerDay.per, RATE_LIMITS.apiPerClubPerDay.per);
+    assert.equal(limits.pairingPerIp.limit, RATE_LIMITS.pairingPerIp.limit);
+    assert.equal('unknown' in limits, false);
+    assert.deepEqual(limitsWith(undefined).apiPerIp, RATE_LIMITS.apiPerIp);
+  });
+});
+
+// Each test lowers one limit and uses addresses of its own, since buckets
+// last as long as the emulator's instance.
+describe('rate limits', () => {
+  const withLimits = async (limits, check, extra = {}) => {
+    await switchesDoc.set({ limits: { ...RAISED_LIMITS, ...limits }, ...extra });
+    try {
+      await check();
+    } finally {
+      await raiseLimits();
+    }
+  };
+  const from = (ip, headers = {}) => ({ headers: { 'x-forwarded-for': ip, ...headers } });
+  // A callable, called as the SDK does, so the test can say where from.
+  const callFrom = async (ip, name, data) => {
+    const res = await fetch(`http://127.0.0.1:5001/${PROJECT_ID}/us-central1/${name}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ data }),
+    });
+    return (await res.json()).error?.status ?? 'OK';
+  };
+
+  before(async () => {
+    await db.doc('clubs/club-limited').set({ name: 'Club Limited' });
+    await db.doc('clubs/club-limited/private/apiKey').set({ key: 'key-limited' });
+  });
+
+  test('turn away an address making too many API requests, whatever it adds in front', () =>
+    withLimits({ apiPerIp: 3 }, async () => {
+      for (let i = 0; i < 3; i++) {
+        assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.1'))).status, 401);
+      }
+      const res = await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.1'));
+      assert.equal(res.status, 429);
+      assert.ok(Number(res.headers.get('retry-after')) >= 1);
+      assert.deepEqual(await res.json(), { error: 'Too many requests' });
+      // A made up address in front gets no fresh bucket.
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('198.51.100.9, 203.0.113.1'))).status, 429);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.2'))).status, 401);
+    }));
+
+  test('turn away an address after too many wrong keys, even with the right one', () =>
+    withLimits({ apiFailuresPerIp: 2 }, async () => {
+      const wrong = from('203.0.113.3', { 'x-api-key': 'wrong' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, wrong)).status, 403);
+      assert.equal((await fetch(`${API_URL}/clubs/nowhere`, wrong)).status, 404);
+      const right = (ip) => from(ip, { 'x-api-key': 'key-limited' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, right('203.0.113.3'))).status, 429);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, right('203.0.113.4'))).status, 200);
+    }));
+
+  test('limit each club however many addresses its key is used from', () =>
+    withLimits({ apiPerClubPerMinute: 2 }, async () => {
+      const right = (ip) => from(ip, { 'x-api-key': 'key-limited' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.5'))).status, 200);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.6'))).status, 200);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.7'))).status, 429);
+      // Another club has its own.
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.7', { 'x-api-key': 'key-a' }))).status, 200);
+    }));
+
+  test('limit display sign-ins from an address', () =>
+    withLimits({ displaySessionsPerIp: 1 }, async () => {
+      assert.equal(await callFrom('203.0.113.8', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+      assert.equal(await callFrom('203.0.113.8', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'RESOURCE_EXHAUSTED');
+      assert.equal(await callFrom('203.0.113.9', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+    }));
+
+  test('limit how often a scoreboard tries to pair', () =>
+    withLimits({ pairingPerUser: 2 }, async () => {
+      const client = await anonymous();
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE01' }), 'functions/not-found');
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE02' }), 'functions/not-found');
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE03' }), 'functions/resource-exhausted');
+      const another = await anonymous();
+      await rejectsWith(another.call('pairSheet', { pairingCode: 'NOPE04' }), 'functions/not-found');
+    }));
+
+  test('turn away an address a super admin has blocked', () =>
+    withLimits({}, async () => {
+      const res = await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.66', { 'x-api-key': 'key-a' }));
+      assert.equal(res.status, 403);
+      assert.deepEqual(await res.json(), { error: 'This address is blocked' });
+      assert.equal(await callFrom('203.0.113.66', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.67', { 'x-api-key': 'key-a' }))).status, 200);
+    }, { blockedIps: ['203.0.113.66'] }));
 });
 
 describe('REST API live games', () => {
@@ -467,7 +832,7 @@ describe('REST API leagues', () => {
       active: true,
       seasonStart: '2026-10-05',
       seasonEnd: null,
-      draws: [{ day: 1, start: '18:30', end: '20:30' }],
+      draws: [{ day: 1, start: '18:30', end: '20:30', sheetIds: null }],
       teams: [
         { id: 't1', name: 'Team Smith', externalId: '1042' },
         { id: 't2', name: 'Team Jones', externalId: null },
@@ -609,6 +974,264 @@ describe('REST API bonspiels', () => {
     assert.equal((await fetch(`${API_URL}/clubs/club-spiels/bonspiels`)).status, 401);
     const res = await fetch(`${API_URL}/clubs/club-spiels/bonspiels`, { headers: { 'x-api-key': 'key-a' } });
     assert.equal(res.status, 403);
+  });
+});
+
+describe('what is on a sheet now', () => {
+  const at = (value) => parseLocalTime(value);
+  // Tuesday 3 November 2026.
+  const tuesday = (time) => at(`2026-11-03T${time}`);
+  const league = (id, draws, extra = {}) => ({
+    id, data: { name: id, active: true, draws, teams: [], ...extra },
+  });
+  const ask = (input) => whatIsOn({ sheetId: 's2', liveGame: null, leagues: [], bonspiels: [], ...input });
+
+  test('reads and writes local times, and the club\'s clock in its zone', () => {
+    assert.equal(formatLocalTime(at('2026-11-03T18:30')), '2026-11-03T18:30');
+    assert.equal(at('2026-02-30T18:30'), null);
+    assert.equal(at('2026-11-03 18:30'), null);
+    assert.equal(formatLocalTime(localTimeIn('America/Chicago', new Date('2026-11-04T00:30:00Z'))), '2026-11-03T18:30');
+    assert.equal(localTimeIn('Not/AZone', new Date()), null);
+  });
+
+  test('matches a draw that starts a little early or late', () => {
+    const tues = league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }]);
+    for (const [time, confidence] of [['16:00', 'low'], ['17:15', 'medium'], ['18:15', 'high'], ['18:40', 'high'], ['20:30', 'high'], ['21:00', 'low']]) {
+      const { match } = ask({ at: tuesday(time), leagues: [tues] });
+      assert.equal(match?.confidence, confidence, time);
+      assert.equal(match.league.id, 'Tuesday');
+    }
+    assert.equal(ask({ at: tuesday('14:00'), leagues: [tues] }).match, null);
+    assert.equal(ask({ at: tuesday('22:00'), leagues: [tues] }).match, null);
+    assert.equal(ask({ at: at('2026-11-04T18:30'), leagues: [tues] }).match, null);
+  });
+
+  test('says how far from the draw\'s start it is', () => {
+    const { match } = ask({ at: tuesday('18:15'), leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    assert.equal(match.minutesFromStart, -15);
+    assert.deepEqual(match.draw, { date: '2026-11-03', start: '18:30', end: '20:30', label: null });
+  });
+
+  test('keeps the evening of a late draw after midnight', () => {
+    const { match } = ask({ at: at('2026-11-04T00:15'), leagues: [league('Late', [{ day: 2, start: '21:30', end: '23:45' }])] });
+    assert.equal(match.confidence, 'low');
+    assert.equal(match.draw.date, '2026-11-03');
+  });
+
+  test('leaves out leagues that are inactive or out of season', () => {
+    const draws = [{ day: 2, start: '18:30', end: '20:30' }];
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Off', draws, { active: false })] }).match, null);
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Later', draws, { seasonStart: '2026-11-10' })] }).match, null);
+    assert.equal(ask({ at: tuesday('18:30'), leagues: [league('Over', draws, { seasonEnd: '2026-11-02' })] }).match, null);
+  });
+
+  test('goes by the sheet on a split night', () => {
+    const leagues = [
+      league('Early', [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s1', 's2'] }]),
+      league('Other', [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s3', 's4'] }]),
+    ];
+    const { match, candidates } = ask({ at: tuesday('18:30'), leagues });
+    assert.equal(match.league.id, 'Early');
+    assert.equal(match.confidence, 'high');
+    assert.equal(candidates.length, 1);
+  });
+
+  test('marks a guess when two leagues are both on the sheet', () => {
+    const draws = [{ day: 2, start: '18:30', end: '20:30' }];
+    const { match, candidates } = ask({ at: tuesday('18:30'), leagues: [league('One', draws), league('Two', draws)] });
+    assert.equal(match.confidence, 'medium');
+    assert.equal(candidates.length, 2);
+  });
+
+  test('puts the sheet\'s live game first, with its teams', () => {
+    const leagues = [
+      league('One', [{ day: 2, start: '18:30', end: '20:30' }]),
+      league('Two', [{ day: 2, start: '18:30', end: '20:30' }]),
+    ];
+    const liveGame = {
+      league: { id: 'Two', name: 'Two' },
+      team1: { name: 'Team Smith', teamId: 't1' },
+      team2: { name: 'Team Jones', teamId: 't2' },
+    };
+    const { match, candidates } = ask({ at: tuesday('18:50'), leagues, liveGame });
+    assert.equal(match.source, 'liveGame');
+    assert.equal(match.confidence, 'high');
+    assert.equal(match.league.id, 'Two');
+    assert.equal(match.draw.start, '18:30');
+    assert.deepEqual([match.team1.name, match.team2.name], ['Team Smith', 'Team Jones']);
+    // The live game's league is not offered again from the schedule.
+    assert.deepEqual(candidates.map((c) => c.league.id), ['Two', 'One']);
+  });
+
+  test('takes nothing from an open live game', () => {
+    const liveGame = { team1: { name: 'Red' }, team2: { name: 'Yellow' } };
+    assert.equal(ask({ at: tuesday('18:30'), liveGame }).match, null);
+  });
+
+  const spiel = {
+    id: 'fall',
+    results: {},
+    data: {
+      name: 'Fall Spiel', shortName: 'Fall', active: true, startDate: '2026-11-03', endDate: '2026-11-04',
+      numberOfEnds: 8,
+      events: [{ id: 'a', name: 'A Event' }],
+      teams: [{ id: 't1', name: 'Team Smith' }, { id: 't2', name: 'Team Jones' }],
+      draws: [
+        { id: 'd1', label: 'Draw 1', start: '2026-11-03T18:00' },
+        { id: 'd2', label: 'Draw 2', start: '2026-11-03T20:30' },
+      ],
+      games: [
+        { id: 'g1', label: 'A1', drawId: 'd1', sheetId: 's2', eventId: 'a', team1: { teamId: 't1' }, team2: { teamId: 't2' } },
+        { id: 'g2', label: 'A2', drawId: 'd2', sheetId: 's2', eventId: 'a', team1: { from: 'g1', result: 'winner' }, team2: null },
+      ],
+    },
+  };
+
+  test('finds the sheet\'s game in the bonspiel draw on now', () => {
+    const { match } = ask({ at: tuesday('17:45'), bonspiels: [spiel], leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    assert.equal(match.kind, 'bonspiel');
+    assert.equal(match.confidence, 'high');
+    assert.deepEqual(match.game, { id: 'g1', label: 'A1', event: 'A Event' });
+    assert.deepEqual(match.draw, { date: '2026-11-03', start: '18:00', end: null, label: 'Draw 1' });
+    assert.deepEqual([match.team1.name, match.team2.name], ['Team Smith', 'Team Jones']);
+
+    // From half an hour before the next draw, it is that draw's game, with
+    // its teams still to come.
+    const next = ask({ at: tuesday('20:00'), bonspiels: [spiel] }).match;
+    assert.equal(next.game.label, 'A2');
+    assert.equal(next.team2, null);
+  });
+
+  test('leaves the bonspiel out on other sheets and other days', () => {
+    assert.equal(whatIsOn({ at: tuesday('18:00'), sheetId: 's9', liveGame: null, leagues: [], bonspiels: [spiel] }).match, null);
+    assert.equal(ask({ at: at('2026-11-06T18:00'), bonspiels: [spiel] }).match, null);
+  });
+
+  test('writes the title and description from the templates', () => {
+    const { match } = ask({ at: tuesday('18:15'), leagues: [league('Tuesday', [{ day: 2, start: '18:30', end: '20:30' }])] });
+    const context = { clubName: 'Windy City', sheetName: 'Sheet 2', match, today: '2026-11-03', scoresUrl: null };
+    assert.deepEqual(streamText(undefined, context), {
+      title: 'Tuesday · Sheet 2 · November 3, 2026',
+      description: 'Tuesday on Sheet 2 at Windy City, Tuesday, November 3, 2026.',
+    });
+    const own = { league: { title: '{leagueShort} {drawTime}[ {matchup}]' } };
+    assert.equal(streamText(own, context).title, 'Tuesday 6:30 PM');
+    const none = streamText(undefined, { ...context, match: null, scoresUrl: 'https://example.com/s' });
+    assert.equal(none.title, 'Windy City · Sheet 2 · November 3, 2026');
+    assert.equal(none.description, 'Curling on Sheet 2 at Windy City.\nLive scores: https://example.com/s');
+  });
+
+  test('renders optional parts, and keeps titles to what YouTube takes', () => {
+    assert.equal(renderStreamTemplate('{a}[ · {b}] [[x]]', { a: 'A', b: '' }), 'A [x]');
+    const long = streamText({ none: { title: `${'Curling '.repeat(20)}<live>` } }, {
+      clubName: 'C', sheetName: 'S', match: null, today: '2026-11-03', scoresUrl: null,
+    }).title;
+    assert.ok(long.length <= 100 && long.endsWith('…') && !long.includes('<'));
+  });
+
+  test('has the same defaults as the portal', () => {
+    assert.deepEqual(DEFAULT_STREAM_TEMPLATES, PORTAL_STREAM_TEMPLATES);
+  });
+});
+
+describe('REST API now', () => {
+  const headers = { 'x-api-key': 'key-now' };
+  const url = (sheetId, query = '') => `${API_URL}/clubs/club-now/sheets/${sheetId}/now${query}`;
+
+  before(async () => {
+    await db.doc('clubs/club-now').set({ name: 'Club Now' });
+    await db.doc('clubs/club-now/private/apiKey').set({ key: 'key-now' });
+    await db.doc('clubs/club-now/sheets/s1').set({ name: 'Sheet 1' });
+    await db.doc('clubs/club-now/sheets/s2').set({
+      name: 'Sheet 2',
+      liveGame: {
+        updatedAt: Timestamp.now(),
+        currentEnd: 2,
+        league: { id: 'late', name: 'Late Ice' },
+        team1: { name: 'Team Smith', teamId: 't1', score: 1 },
+        team2: { name: 'Team Jones', teamId: 't2', score: 0 },
+      },
+    });
+    await db.doc('clubs/club-now/leagues/early').set({
+      name: 'Early Ice', active: true, teams: [],
+      draws: [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s1'] }],
+    });
+    await db.doc('clubs/club-now/leagues/late').set({
+      name: 'Late Ice', shortName: 'Late', active: true, teams: [],
+      draws: [{ day: 2, start: '18:30', end: '20:30', sheetIds: ['s2'] }],
+    });
+  });
+
+  // On s2, since each answer is kept for a while and a later test asks s1
+  // the same once the club has a time zone.
+  test('needs a time while the club has no time zone', async () => {
+    const res = await fetch(url('s2'), { headers });
+    assert.equal(res.status, 400);
+  });
+
+  test('names the league on the sheet at a given time', async () => {
+    const res = await fetch(url('s1', '?at=2026-11-03T18:20'), { headers });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.at, '2026-11-03T18:20');
+    assert.equal(body.title, 'Early Ice · Sheet 1 · November 3, 2026');
+    assert.equal(body.match.league.id, 'early');
+    assert.equal(body.match.source, 'schedule');
+    assert.equal(body.candidates.length, 1);
+  });
+
+  test('names a live game\'s league and teams', async () => {
+    const body = await (await fetch(url('s2', '?at=2026-11-03T18:50'), { headers })).json();
+    assert.equal(body.match.source, 'liveGame');
+    assert.equal(body.title, 'Late Ice · Sheet 2 · November 3, 2026 · Team Smith v Team Jones');
+  });
+
+  test('uses the club\'s templates, time zone and scores page', async () => {
+    await db.doc('clubs/club-now/config/club').set({ timeZone: 'America/Chicago' });
+    await db.doc('clubs/club-now/config/stream').set({ templates: { none: { title: '{club} on {sheet}', description: '[{scoresUrl}]' } } });
+    await db.doc('clubs/club-now/private/publicScores').set({ enabled: true });
+    // A Wednesday, when nothing is scheduled.
+    const body = await (await fetch(url('s1', '?at=2026-11-04T18:20'), { headers })).json();
+    assert.equal(body.timeZone, 'America/Chicago');
+    assert.equal(body.match, null);
+    assert.equal(body.title, 'Club Now on Sheet 1');
+    assert.match(body.description, /^https:\/\/.+\/display\/club-now\/scores$/);
+    // Without a time, the club's clock now.
+    const now = await fetch(url('s1'), { headers });
+    assert.equal(now.status, 200);
+    assert.match((await now.json()).at, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  });
+
+  test('rejects a time that is not one, and an unknown sheet', async () => {
+    assert.equal((await fetch(url('s1', '?at=6:30pm'), { headers })).status, 400);
+    assert.equal((await fetch(url('missing', '?at=2026-11-03T18:20'), { headers })).status, 404);
+  });
+
+  test('needs the club\'s own key', async () => {
+    assert.equal((await fetch(url('s1', '?at=2026-11-03T18:20'))).status, 401);
+    assert.equal((await fetch(url('s1', '?at=2026-11-03T18:20'), { headers: { 'x-api-key': 'key-a' } })).status, 403);
+  });
+});
+
+// Hosting's CDN keys its copies by URL alone, so an answer it kept would go
+// to the next caller whatever key they sent, or none.
+describe('REST API caching', () => {
+  test('lets no answer be kept, whatever it is', async () => {
+    const key = { 'x-api-key': 'key-a' };
+    const answers = [
+      [`${API_URL}/clubs/club-a`, key, 200],
+      [`${API_URL}/clubs/club-a`, {}, 401],
+      [`${API_URL}/clubs/club-a`, { 'x-api-key': 'wrong' }, 403],
+      [`${API_URL}/clubs/nowhere`, key, 404],
+      [`${API_URL}/clubs/club-a/nothing-here`, key, 404],
+      [`${API_URL}/nothing-here`, {}, 404],
+    ];
+    for (const [url, headers, status] of answers) {
+      const res = await fetch(url, { headers });
+      assert.equal(res.status, status, url);
+      assert.equal(res.headers.get('cache-control'), 'private, no-store', url);
+      assert.match(res.headers.get('vary') ?? '', /x-api-key/i, url);
+    }
   });
 });
 
@@ -2117,6 +2740,54 @@ describe('the public scores page', () => {
       }
     }
     assert.equal((await fetch(`${PAGES_URL}/club%3Cb%3E/scores/live.json`)).status, 404);
+  });
+
+  // The CDN keeps a copy per full URL, so a query string would skip it and
+  // reach Firestore on every request.
+  test('answers 404, cached briefly, to any query string but the logo version', async () => {
+    for (const path of ['live.json?x=1', 'results.json?x=1', 'logo?v=1&x=1', 'logo?x=1']) {
+      const res = await fetch(`${PAGES_URL}/${clubId}/scores/${path}`);
+      assert.equal(res.status, 404, path);
+      assert.equal(res.headers.get('cache-control'), 'public, max-age=60, s-maxage=60', path);
+    }
+    assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/live.json`)).status, 200);
+  });
+
+  // So that requests which skip the CDN do not each read it.
+  test('keeps whether the page is on for a while', async () => {
+    assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/results.json`)).status, 200);
+    await db.doc(`${club}/private/publicScores`).set({ enabled: false });
+    try {
+      assert.equal((await fetch(`${PAGES_URL}/${clubId}/scores/results.json`)).status, 200);
+    } finally {
+      await db.doc(`${club}/private/publicScores`).set({ enabled: true });
+    }
+  });
+});
+
+// The emulator ignores instance ceilings, so this reads them from the
+// definitions the deploy would use. A new function without one fails here.
+describe('instance ceilings', () => {
+  test('every function has one, and the public ones are as planned', () => {
+    const script = `
+      const fns = require(${JSON.stringify(new URL('../functions/lib/index.js', import.meta.url).pathname)});
+      const out = {};
+      for (const [name, fn] of Object.entries(fns)) if (fn && fn.__endpoint) out[name] = fn.__endpoint.maxInstances;
+      console.log(JSON.stringify(out));
+    `;
+    const ceilings = JSON.parse(execFileSync(process.execPath, ['-e', script], {
+      env: { ...process.env, GCLOUD_PROJECT: PROJECT_ID },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).toString());
+    assert.ok(Object.keys(ceilings).length > 10);
+    for (const [name, max] of Object.entries(ceilings)) {
+      assert.ok(Number.isInteger(max) && max > 0, `${name} has no ceiling`);
+    }
+    assert.equal(ceilings.api, 5);
+    assert.equal(ceilings.display, 10);
+    assert.equal(ceilings.startDisplaySession, 3);
+    assert.equal(ceilings.pairSheet, 3);
+    assert.equal(ceilings.provisionClub, 2);
   });
 });
 

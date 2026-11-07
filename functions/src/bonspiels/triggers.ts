@@ -1,5 +1,6 @@
 import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { MAX_INSTANCES } from '../limits';
 import { RecordedResult, isNewerResult, resolveBonspiel, taggedGame } from './state';
 
 // Keeps each bonspiel's state/current document in step with its plan and the
@@ -50,14 +51,14 @@ async function rebuild(
 
 // Fires on every change to a plan, including its deletion.
 export const syncBonspielPlan = onDocumentWritten(
-  'clubs/{clubId}/bonspiels/{bonspielId}',
+  { document: 'clubs/{clubId}/bonspiels/{bonspielId}', maxInstances: MAX_INSTANCES.trigger },
   (event) => rebuild(event.params.clubId, event.params.bonspielId),
 );
 
 // Fires on each completed game. Only games a scoreboard played for a
 // bonspiel carry its tag; the rest are let go without a read.
 export const syncBonspielResult = onDocumentCreated(
-  'clubs/{clubId}/sheets/{sheetId}/games/{gameId}',
+  { document: 'clubs/{clubId}/sheets/{sheetId}/games/{gameId}', maxInstances: MAX_INSTANCES.trigger },
   async (event) => {
     const { clubId, sheetId, gameId } = event.params;
     const data = event.data?.data();

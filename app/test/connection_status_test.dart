@@ -11,7 +11,8 @@ import 'helpers/pump_app.dart';
 const _connectedAs = 'Connected as Windy City CC – Sheet 1';
 const _pairingLost = 'Disconnected. This scoreboard is no longer paired';
 
-/// Stands in for the unpairSheet function, which accepts 4821.
+/// Stands in for the unpairSheet function, which accepts 4821 and, for
+/// 0000, says the sheet is locked after too many wrong PINs.
 class _FakeRegistrationService extends RegistrationService {
   _FakeRegistrationService(this._store) : super(_store);
 
@@ -21,6 +22,7 @@ class _FakeRegistrationService extends RegistrationService {
   @override
   Future<void> disconnect({required String pin}) async {
     pinsTried.add(pin);
+    if (pin == '0000') throw const AdminPinLockedException(minutes: 15);
     if (pin != '4821') throw const IncorrectAdminPinException();
     await _store.clear();
   }
@@ -157,6 +159,25 @@ void main() {
     expect(find.byType(ConnectionDialog), findsNothing);
     expect(find.text(_connectedAs), findsNothing);
     expect(find.text('Connection'), findsOneWidget);
+  });
+
+  testWidgets('says how long disconnecting is locked after wrong PINs', (
+    tester,
+  ) async {
+    final registration = await _pumpApp(tester);
+    await _openConnectionDialog(tester);
+
+    await tester.tap(find.text('Disconnect'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '0000');
+    await tester.tap(find.widgetWithText(TextButton, 'Disconnect').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Too many wrong PINs. Try again in 15 minutes.'),
+      findsOneWidget,
+    );
+    expect(registration.isRegistered, isTrue);
   });
 
   testWidgets('cancelling the PIN leaves the scoreboard connected', (

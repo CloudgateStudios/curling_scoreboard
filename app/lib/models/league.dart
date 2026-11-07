@@ -7,17 +7,28 @@ class LeagueDraw {
     required this.day,
     required this.startMinutes,
     required this.endMinutes,
+    this.sheetIds = const [],
   });
 
-  /// Reads `{day, start: 'HH:mm', end: 'HH:mm'}`, or returns null.
+  /// Reads `{day, start: 'HH:mm', end: 'HH:mm', sheetIds?}`, or returns null.
   static LeagueDraw? tryParse(Object? json) {
     if (json is! Map) return null;
     final day = json['day'];
     final start = _minutesOf(json['start']);
     final end = _minutesOf(json['end']);
+    final sheetIds = json['sheetIds'];
     if (day is! int || day < 1 || day > 7) return null;
     if (start == null || end == null || end <= start) return null;
-    return LeagueDraw(day: day, startMinutes: start, endMinutes: end);
+    return LeagueDraw(
+      day: day,
+      startMinutes: start,
+      endMinutes: end,
+      sheetIds: [
+        if (sheetIds is List)
+          for (final id in sheetIds)
+            if (id is String && id.isNotEmpty) id,
+      ],
+    );
   }
 
   static final _timePattern = RegExp(r'^(\d{2}):(\d{2})$');
@@ -43,10 +54,20 @@ class LeagueDraw {
   final int startMinutes;
   final int endMinutes;
 
+  /// The sheets the draw plays on, when the league shares the ice with
+  /// another. Empty means every sheet.
+  final List<String> sheetIds;
+
+  /// Whether the draw plays on [sheetId]. An unknown sheet, such as an
+  /// unpaired scoreboard's, is on every draw.
+  bool usesSheet(String? sheetId) =>
+      sheetIds.isEmpty || sheetId == null || sheetIds.contains(sheetId);
+
   Map<String, dynamic> toJson() => {
     'day': day,
     'start': _timeOf(startMinutes),
     'end': _timeOf(endMinutes),
+    if (sheetIds.isNotEmpty) 'sheetIds': sheetIds,
   };
 }
 
@@ -126,10 +147,17 @@ class League {
     );
   }
 
-  /// The league to offer for a game started at [now]: the only one in a
-  /// draw, or the club's only league. Null when there is no clear answer.
-  static League? suggested(List<League> leagues, DateTime now) {
-    final playing = leagues.where((l) => l.isPlayingAt(now)).toList();
+  /// The league to offer for a game started at [now] on [sheetId]: the
+  /// only one in a draw there, or the club's only league. Null when there
+  /// is no clear answer.
+  static League? suggested(
+    List<League> leagues,
+    DateTime now, {
+    String? sheetId,
+  }) {
+    final playing = leagues
+        .where((l) => l.isPlayingAt(now, sheetId: sheetId))
+        .toList();
     if (playing.length == 1) return playing.single;
     return leagues.length == 1 ? leagues.single : null;
   }
@@ -175,9 +203,9 @@ class League {
   final List<LeagueTeam> teams;
 
   /// Whether the league is in one of its draws at [now], which is the
-  /// scoreboard's local time. A league with no schedule is never playing; it
-  /// can still be picked by hand.
-  bool isPlayingAt(DateTime now) {
+  /// scoreboard's local time, on [sheetId] when it is known. A league with
+  /// no schedule is never playing; it can still be picked by hand.
+  bool isPlayingAt(DateTime now, {String? sheetId}) {
     if (!active) return false;
 
     // ISO dates compare correctly as text.
@@ -192,6 +220,7 @@ class League {
     return draws.any(
       (draw) =>
           draw.day == now.weekday &&
+          draw.usesSheet(sheetId) &&
           minutes >= draw.startMinutes - leadTime.inMinutes &&
           minutes <= draw.endMinutes,
     );

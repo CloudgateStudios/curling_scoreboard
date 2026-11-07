@@ -481,6 +481,12 @@ abstract class AppLocalizations {
   /// **'{clubName} has no admin PIN yet. A club admin can set one in the admin portal.'**
   String disconnectDialogErrorNoPin(String clubName);
 
+  /// Error shown when disconnecting is locked for a while after too many wrong admin PINs.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many wrong PINs. Try again in {minutes, plural, =1{1 minute} other{{minutes} minutes}}.'**
+  String disconnectDialogErrorLocked(int minutes);
+
   /// Generic error shown when disconnecting fails.
   ///
   /// In en, this message translates to:

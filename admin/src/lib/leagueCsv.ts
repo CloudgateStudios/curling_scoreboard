@@ -7,10 +7,12 @@ import { suggestShortName } from './leagues.ts';
 //   league,day,start,end,team,external_id
 //   Monday Night,Mon,18:30,20:30,Team Smith,1042
 //
-// Only `league` and `team` are required. Nothing here touches Firestore, so
-// the whole import can be previewed before anything is written.
+// Only `league` and `team` are required. A league that shares the ice with
+// another at the same time can name its draw's sheets in a `sheets` column,
+// separated by semicolons: "Sheet 1;Sheet 2". Nothing here touches
+// Firestore, so the whole import can be previewed before anything is written.
 
-export const CSV_COLUMNS = ['league', 'day', 'start', 'end', 'team', 'external_id'];
+export const CSV_COLUMNS = ['league', 'day', 'start', 'end', 'sheets', 'team', 'external_id'];
 
 export const CSV_EXAMPLE = [
   'league,day,start,end,team,external_id',
@@ -110,9 +112,33 @@ export function parseTime(value: string): string | null {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-/** Reads the leagues and teams out of a CSV file. Rows with a problem are
- *  reported and left out; the rest are still usable. */
-export function parseLeagueCsv(text: string): ParsedCsv {
+/** A sheet the club has, for matching the names in a `sheets` column. */
+export interface CsvSheet {
+  id: string;
+  name: string;
+}
+
+/** The sheets named in a `sheets` cell, by their IDs, or the first name that
+ *  matches none of the club's sheets. Names match ignoring case. */
+export function parseSheets(value: string, sheets: CsvSheet[]): { sheetIds: string[] } | { unknown: string } {
+  const sheetIds: string[] = [];
+  for (const name of value.split(';').map((n) => n.trim()).filter(Boolean)) {
+    const sheet = sheets.find((s) => s.name.trim().toLowerCase() === name.toLowerCase());
+    if (!sheet) return { unknown: name };
+    if (!sheetIds.includes(sheet.id)) sheetIds.push(sheet.id);
+  }
+  // In the club's order, and every sheet is the whole ice, as in the portal.
+  const ordered = sheets.map((s) => s.id).filter((id) => sheetIds.includes(id));
+  return { sheetIds: ordered.length === sheets.length ? [] : ordered };
+}
+
+const sameSheets = (a: string[] | undefined, b: string[] | undefined) =>
+  (a ?? []).join(';') === (b ?? []).join(';');
+
+/** Reads the leagues and teams out of a CSV file, matching sheet names
+ *  against the club's [sheets]. Rows with a problem are reported and left
+ *  out; the rest are still usable. */
+export function parseLeagueCsv(text: string, sheets: CsvSheet[] = []): ParsedCsv {
   const rows = parseCsvRows(text);
   const problems: CsvProblem[] = [];
   if (rows.length === 0) {
@@ -149,13 +175,21 @@ export function parseLeagueCsv(text: string): ParsedCsv {
       if (end === null) return void problems.push({ line, message: `"${cell('end')}" is not an end time.` });
       if (end <= start) return void problems.push({ line, message: 'The draw ends before it starts.' });
       draw = { day, start, end };
+      if (cell('sheets')) {
+        const found = parseSheets(cell('sheets'), sheets);
+        if ('unknown' in found) return void problems.push({ line, message: `There is no sheet called "${found.unknown}".` });
+        if (found.sheetIds.length > 0) draw.sheetIds = found.sheetIds;
+      }
+    } else if (cell('sheets')) {
+      return void problems.push({ line, message: 'Sheets need a draw: a day, a start and an end.' });
     }
 
     const key = leagueName.toLowerCase();
     const league = leagues.get(key) ?? { name: leagueName, draws: [], teams: [] };
     leagues.set(key, league);
 
-    if (draw && !league.draws.some((d) => d.day === draw.day && d.start === draw.start && d.end === draw.end)) {
+    if (draw && !league.draws.some((d) => d.day === draw.day && d.start === draw.start && d.end === draw.end
+      && sameSheets(d.sheetIds, draw.sheetIds))) {
       league.draws.push(draw);
     }
 

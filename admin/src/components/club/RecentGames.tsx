@@ -52,7 +52,9 @@ export function RecentGames({ clubId, clubName, sheets }: Props) {
   useEffect(() => {
     const sheetMeta = JSON.parse(sheetKey) as { id: string; name: string }[];
     if (!sheetMeta.length) return;
-    let cancelled = false;
+    // Aborted when the sheets change or the page closes, so a slow answer
+    // to an old request is dropped.
+    const request = new AbortController();
     const since = Timestamp.fromDate(new Date(Date.now() - WINDOW_MS));
     Promise.all(
       sheetMeta.map((sheet) =>
@@ -75,11 +77,11 @@ export function RecentGames({ clubId, clubName, sheets }: Props) {
         ),
       ),
     ).then((results) => {
-      if (cancelled) return;
+      if (request.signal.aborted) return;
       const games = results.flat().sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
       setResult({ key: requestKey, games });
     });
-    return () => { cancelled = true; };
+    return () => request.abort();
   }, [clubId, sheetKey, requestKey]);
 
   const loading = hasSheets && result?.key !== requestKey;

@@ -1,7 +1,10 @@
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { scoreboardPinRef } from './scoreboardPin';
+import { MAX_INSTANCES } from './limits';
+import { clearWrongPins, countWrongPin, requireNotLockedOut, scoreboardPinRef } from './scoreboardPin';
+import { callerOf, requireNotBlocked, requireWithinLimit } from './rateLimit';
+import { requireSwitchOn } from './switches';
 
 // Custom claims that tell the security rules which sheet a scoreboard says it
 // is paired with. The rules still check the sheet's scoreboardUid, so a claim
@@ -27,11 +30,17 @@ export async function clearScoreboardClaims(uid: string): Promise<void> {
 // Pairs the calling scoreboard with the sheet holding the given pairing code.
 // Done server side so clients never need to query or read pairing codes,
 // which would let them list every unpaired sheet and claim any of them.
-export const pairSheet = onCall(async (request) => {
+export const pairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before pairing.');
   }
+  await requireSwitchOn('pairing', 'Pairing');
   const uid = request.auth.uid;
+  const caller = callerOf(request.rawRequest);
+  await requireNotBlocked(caller);
+  // A real scoreboard pairs once, so this only stops guessing at codes.
+  await requireWithinLimit('pairingPerUser', [uid], caller.forwardedFor);
+  await requireWithinLimit('pairingPerIp', caller.addresses, caller.forwardedFor);
 
   // Pairing replaces the caller's custom claims, which would strip an admin
   // of their access. Scoreboards sign in anonymously and have no role.
@@ -98,10 +107,12 @@ export const pairSheet = onCall(async (request) => {
 // PIN has been entered on it. The PIN is checked here so it never has to be
 // sent to the scoreboards, and so the rules can stop a scoreboard letting go
 // of its sheet by itself.
-export const unpairSheet = onCall(async (request) => {
+export const unpairSheet = onCall({ maxInstances: MAX_INSTANCES.publicCallable }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Sign in before disconnecting.');
   }
+  await requireSwitchOn('pairing', 'Disconnecting');
+  await requireNotBlocked(callerOf(request.rawRequest));
   const uid = request.auth.uid;
 
   const data = request.data as { clubId?: unknown; sheetId?: unknown; pin?: unknown } | undefined;
@@ -124,13 +135,18 @@ export const unpairSheet = onCall(async (request) => {
     return { unpaired: false };
   }
 
+  // After too many wrong PINs the sheet is locked for a while, even to the
+  // right one, so that guessing takes too long to be worth it.
+  await requireNotLockedOut(clubId, sheetId);
+
   const expected = (await scoreboardPinRef(clubId).get()).get('pin') as string | undefined;
   if (!expected) {
     throw new HttpsError('failed-precondition', 'This club has no admin PIN set.');
   }
   if (pin !== expected) {
-    throw new HttpsError('permission-denied', 'Incorrect admin PIN.');
+    throw await countWrongPin(clubId, sheetId);
   }
+  await clearWrongPins(clubId, sheetId);
 
   // The sheet may have been paired with another device since it was read.
   const unpaired = await db.runTransaction(async (tx) => {

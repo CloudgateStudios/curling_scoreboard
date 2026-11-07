@@ -179,6 +179,21 @@ Every function the `functions/` package exports, from `functions/src/index.ts`.
 Callable functions check their callers themselves, so each must be public;
 see "Adding a new callable Cloud Function" in the README.
 
+Each function has a ceiling on how many instances may run at once, set in
+`functions/src/limits.ts`: 5 for `api`, 10 for `display` and the triggers,
+3 for the callables anyone can call (`pairSheet`, `unpairSheet`,
+`startDisplaySession`), and 2 for the rest. The ceiling caps what a flood or
+a runaway client can cost. A request beyond it gets a 429 before our code
+runs, and a trigger's event is delivered again later. A new function gets
+the default of 2 unless it sets its own, and the emulator tests check that
+none is left without one.
+
+The same file says how long each instance keeps what it reads in memory:
+a club and its API key for a minute, each API answer for 15 seconds, and
+whether a club's scores page is on for 30 seconds. A burst of the same
+requests then reads Firestore once, and a change made in the portal reaches
+the function after at most that long. `functions/src/kept.ts` holds them.
+
 ## Where to read more
 
 | Page                                                        | What it covers                                                                                                         |
@@ -192,3 +207,4 @@ see "Adding a new callable Cloud Function" in the README.
 | [Admin portal](architecture/admin-portal.md)                | Routes by role, and what each tab and settings group does                                                             |
 | [REST API and webhook](architecture/api-and-webhook.md)     | The public read only API and the completed game webhook                                                               |
 | [Deploys and updates](architecture/deploys-and-updates.md)  | Environments, CI and the deploy pipeline, how scoreboards and display pages update themselves, and hosting headers    |
+| [Monitoring and alerts](architecture/monitoring.md)        | The usage dashboard, the alerts, the free allowances they guard, and what to do when one fires                        |

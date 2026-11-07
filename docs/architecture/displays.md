@@ -180,6 +180,11 @@ its club's display summary and nothing else. The club API key is never used:
 it would expose the whole API, and replacing it would break the club's other
 integrations.
 
+Each address may start 30 sessions a minute, which every screen at a club,
+starting at once after a power cut, shares. Past that, and from an address
+a super admin has blocked, the call is refused and the page tries again
+later. See [Monitoring](monitoring.md).
+
 `revokeDisplayLink` deletes the link and its Auth user. No new session can
 start from it, and a screen already signed in stops within the hour, when
 its ID token expires and cannot be renewed. The rules do not look the link
@@ -421,10 +426,18 @@ CDN caches, so only a cache miss reaches the function and Firestore
 | `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
 
 A club without the page turned on gets a 404 for each, cached for a minute.
+While a super admin has the scores pages switched off for every club (see
+[Monitoring](monitoring.md)), each gets a 503, cached for a minute too, and
+the page shows itself offline and keeps trying.
+So does any request with a query string, other than the logo's `v`: the CDN
+keeps a copy per full URL, so `live.json?x=1` would otherwise skip the cache
+and reach Firestore every time. The page never adds one.
 Express gives each response an ETag and answers a matching `If-None-Match`
 with a 304, so a poll that finds nothing new costs only headers. A cache miss
-reads the switch and the summary; the branding, which holds the logo, is
-kept in each function instance for five minutes.
+reads the summary. Each function instance keeps the switch for 30 seconds
+and the branding, which holds the logo, for five minutes, so a request that
+skips the CDN, or one for a club without the page, does not read them each
+time.
 
 ```mermaid
 flowchart TD

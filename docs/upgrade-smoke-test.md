@@ -101,6 +101,7 @@ Anything other than the expected result is a finding.
 | Score bug page | `curl -s -o /dev/null -w '%{http_code}\n' $SITE/display/$CLUB_ID/sheets/$SHEET_ID/bug` | 200 |
 | Unknown display path | `.../display/$CLUB_ID/no-such-page` | 404 |
 | Public scores | `curl -si $SITE/display/$CLUB_ID/scores/live.json` | 200 with an `etag` if the page is on; 404 if it is off |
+| Public scores with a query | `curl -s -o /dev/null -w '%{http_code}\n' "$SITE/display/$CLUB_ID/scores/live.json?x=1"` | 404, so a query string cannot skip the CDN |
 | Public scores, unchanged | repeat with `-H 'If-None-Match: <that etag>'` | 304 |
 | Callable, signed out | `curl -s -w ' %{http_code}\n' -X POST $FUNCTIONS/pairSheet -H 'Content-Type: application/json' -d '{"data":{"pairingCode":"ZZZZZZ"}}'` | 401, status `UNAUTHENTICATED` |
 | Callable, bad link | `curl -s -w ' %{http_code}\n' -X POST $FUNCTIONS/startDisplaySession -H 'Content-Type: application/json' -d '{"data":{"clubId":"'$CLUB_ID'","token":"bogus"}}'` | 403, status `PERMISSION_DENIED`, "This display link is not valid…" |

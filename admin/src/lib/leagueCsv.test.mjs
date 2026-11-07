@@ -2,7 +2,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CSV_EXAMPLE, parseCsvRows, parseDay, parseLeagueCsv, parseTime, planLeagueImport,
+  CSV_EXAMPLE, parseCsvRows, parseDay, parseLeagueCsv, parseSheets, parseTime, planLeagueImport,
 } from './leagueCsv.ts';
 
 describe('parseCsvRows', () => {
@@ -62,6 +62,30 @@ describe('parseLeagueCsv', () => {
         teams: [{ name: 'Stone Cold' }],
       },
     ]);
+  });
+
+  test('reads the sheets a draw plays on, by name', () => {
+    const sheets = [{ id: 's1', name: 'Sheet 1' }, { id: 's2', name: 'Sheet 2' }, { id: 's3', name: 'Sheet 3' }];
+    const { leagues, problems } = parseLeagueCsv([
+      'league,day,start,end,sheets,team',
+      'Early,Mon,18:30,20:30,sheet 2;Sheet 1,Team Smith',
+      'Late,Mon,18:30,20:30,Sheet 3,Team Jones',
+      'Late,Mon,18:30,20:30,Sheet 9,Team Brown',
+      'Open,,,,Sheet 1,Team Green',
+    ].join('\n'), sheets);
+    assert.deepEqual(leagues.map((l) => l.draws), [
+      [{ day: 1, start: '18:30', end: '20:30', sheetIds: ['s1', 's2'] }],
+      [{ day: 1, start: '18:30', end: '20:30', sheetIds: ['s3'] }],
+    ]);
+    assert.deepEqual(problems, [
+      { line: 4, message: 'There is no sheet called "Sheet 9".' },
+      { line: 5, message: 'Sheets need a draw: a day, a start and an end.' },
+    ]);
+  });
+
+  test('takes every sheet as the whole ice', () => {
+    const sheets = [{ id: 's1', name: 'Sheet 1' }, { id: 's2', name: 'Sheet 2' }];
+    assert.deepEqual(parseSheets('Sheet 1; Sheet 2', sheets), { sheetIds: [] });
   });
 
   test('takes columns in any order and needs only league and team', () => {

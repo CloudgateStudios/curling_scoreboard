@@ -9,10 +9,15 @@
     "backfill-scoreboard-pins": "node backfill-scoreboard-pins.js",
     "set-super-admin": "node set-super-admin.js",
     "backfill-display-state": "node backfill-display-state.js",
-    "smoke-test": "node smoke-test.mjs"
+    "smoke-test": "node smoke-test.mjs",
+    "setup-monitoring": "node setup-monitoring.mjs"
   },
   "dependencies": {
-    "firebase": "^13.1.0",
+    "firebase": "^13.2.0",
     "firebase-admin": "^14.0.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.5",
+    "glob": "^14.0.2"
   }
 }

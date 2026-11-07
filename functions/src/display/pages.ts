@@ -4,6 +4,9 @@ import express, { NextFunction, Request, Response } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { LIVE_GAME_TIMEOUT_MS } from '../liveGame';
+import { Kept } from '../kept';
+import { KEPT_MS, MAX_INSTANCES } from '../limits';
+import { switches } from '../switches';
 import { currentProjectId, webConfig } from './firebaseConfig';
 import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
 import { DisplaySummary, FINAL_SHOWN_MS } from './state';
@@ -257,21 +260,24 @@ const OFF_CACHE = 'public, max-age=60, s-maxage=60';
  *  logo, up to 250 KB, and only changes when an admin saves it. */
 const BRANDING_KEPT_MS = 5 * 60 * 1000;
 
-const brandingKept = new Map<string, { at: number; branding: ScoresBranding | null }>();
+const keptBranding = new Kept<ScoresBranding | null>(BRANDING_KEPT_MS);
+const keptSwitches = new Kept<boolean>(KEPT_MS.scoresSwitch);
 
-async function brandingOf(clubId: string): Promise<ScoresBranding | null> {
-  const kept = brandingKept.get(clubId);
-  if (kept && Date.now() - kept.at < BRANDING_KEPT_MS) return kept.branding;
-  const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
-  const branding = (snap.data() as ScoresBranding | undefined) ?? null;
-  brandingKept.set(clubId, { at: Date.now(), branding });
-  return branding;
+function brandingOf(clubId: string): Promise<ScoresBranding | null> {
+  return keptBranding.get(clubId, async () => {
+    const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
+    return (snap.data() as ScoresBranding | undefined) ?? null;
+  });
 }
 
-/** Whether a club admin has turned the scores page on, in the portal. */
-async function scoresOn(clubId: string): Promise<boolean> {
-  const snap = await getFirestore().doc(`clubs/${clubId}/private/publicScores`).get();
-  return snap.get('enabled') === true;
+/** Whether a club admin has turned the scores page on, in the portal. Kept
+ *  for a while by each instance, so that requests that skip the CDN, or
+ *  for clubs without the page, do not each read it. */
+function scoresOn(clubId: string): Promise<boolean> {
+  return keptSwitches.get(clubId, async () => {
+    const snap = await getFirestore().doc(`clubs/${clubId}/private/publicScores`).get();
+    return snap.get('enabled') === true;
+  });
 }
 
 async function summaryOf(clubId: string): Promise<DisplaySummary | null> {
@@ -289,14 +295,32 @@ function scoresOff(res: Response) {
 // Runs [handler] for a club with the scores page on. Express adds an ETag to
 // each response and answers a matching If-None-Match with a 304, so a poll
 // that finds nothing new costs only headers.
-function scoresRoute(handler: (clubId: string, req: Request, res: Response) => Promise<void>) {
+//
+// The CDN keeps a copy for each full URL, query string included, so adding
+// anything to the URL would skip the cache and reach Firestore every time.
+// The page never adds one, except the logo's version, so any other query
+// is turned away before a read, with a 404 the CDN keeps too.
+function scoresRoute(
+  handler: (clubId: string, req: Request, res: Response) => Promise<void>,
+  allowedQuery: readonly string[] = [],
+) {
   return async (req: Request, res: Response) => {
     const { clubId } = req.params as Record<string, string>;
     if (!ID_PATTERN.test(clubId)) {
       notFound(res);
       return;
     }
+    if (Object.keys(req.query).some((key) => !allowedQuery.includes(key))) {
+      scoresOff(res);
+      return;
+    }
     try {
+      // A super admin has turned every club's page off. The page shows
+      // itself offline and keeps trying, and the CDN keeps this answer.
+      if (!(await switches()).scoresPage) {
+        res.set('Cache-Control', OFF_CACHE).status(503).type('text/plain').send('Turned off for now');
+        return;
+      }
       if (!(await scoresOn(clubId))) {
         scoresOff(res);
         return;
@@ -344,7 +368,7 @@ app.get('/display/:clubId/scores/logo', scoresRoute(async (clubId, req, res) => 
   const current = req.query['v'] === versionOf(branding?.logo);
   res.set('Cache-Control', current ? 'public, max-age=31536000, immutable' : RESULTS_CACHE)
     .type(logo.type).send(logo.bytes);
-}));
+}, ['v']));
 
 // A display link's own URL. The page reads the link's settings and opens the
 // page they name, which then follows any change an admin makes to them.
@@ -361,4 +385,4 @@ app.get('/display/:clubId', (req: Request, res: Response) => {
 app.use((_req: Request, res: Response) => notFound(res));
 
 // cors: false: these are pages, not an API, so no other site may read them.
-export const display = onRequest({ cors: false }, app);
+export const display = onRequest({ cors: false, maxInstances: MAX_INSTANCES.display }, app);

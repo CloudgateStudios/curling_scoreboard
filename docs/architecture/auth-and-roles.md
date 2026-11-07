@@ -45,8 +45,8 @@ link's Auth user.
 
 | Role              | Claims                                    | Signs in with                           | Can                                                                                                                                                                                                                                                                       |
 | ----------------- | ----------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Super admin       | `role: 'superadmin'`                      | Email and password                      | Everything: create clubs and club admins, add and delete sheets, rotate API keys, read and write all data                                                                                                                                                                 |
-| Club admin        | `role: 'clubadmin'`, `clubId`             | Email and password                      | Their club: read it and its API key, rename sheets and generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, plan bonspiels, manage display links, the warm room branding and the public scores switch, read game history |
+| Super admin       | `role: 'superadmin'`                      | Email and password                      | Everything: create clubs and club admins, add and delete sheets, rotate API keys, turn the service switches off and on, read and write all data                                                                                                                                                                 |
+| Club admin        | `role: 'clubadmin'`, `clubId`             | Email and password                      | Their club: read it and its API key, turn its API off and on, rename sheets and generate and clear pairing codes, set the rock colors, the completed game webhook and the scoreboard admin PIN, manage leagues and teams, plan bonspiels, manage display links, the warm room branding and the public scores switch, read game history |
 | Bonspiel admin    | `role: 'bonspieladmin'`, `clubId`         | Email and password                      | Their club: read it, its sheets and their game history, and plan its bonspiels. Changes nothing else                                                                                                                                                                       |
 | Paired scoreboard | `role: 'scoreboard'`, `clubId`, `sheetId` | Anonymous                               | Its own sheet: read it, write `liveGame` and `device`, add completed games. Its club: read `config`, `leagues`, and `bonspiels` with their state                                                                                                                           |
 | Display           | `role: 'display'`, `clubId`, `linkId`     | Custom token from `startDisplaySession` | Its club: read `private/displayState`, `private/displayBranding`, and `bonspiels` with their state; read its own link and write its `device`                                                                                                                              |
@@ -60,8 +60,9 @@ document. The rest, path by path, under `clubs/{clubId}`:
 | Path                        | Club admin                              | Bonspiel admin      | Paired scoreboard                         | Display                         |
 | --------------------------- | --------------------------------------- | ------------------- | ----------------------------------------- | ------------------------------- |
 | the club document           | read                                    | read                | —                                         | —                               |
-| `private/apiKey`            | read                                    | —                   | —                                         | —                               |
+| `private/apiKey`            | read, and write `enabled` only          | —                   | —                                         | —                               |
 | `private/scoreboardPin`     | read, write (4 to 8 digits)             | —                   | —                                         | —                               |
+| `private/pinTries`          | read                                    | —                   | —                                         | —                               |
 | `private/webhook`           | read, write, delete                     | —                   | —                                         | —                               |
 | `private/webhookStatus`     | read                                    | —                   | —                                         | —                               |
 | `private/displayState`      | read                                    | —                   | —                                         | read                            |
@@ -70,6 +71,8 @@ document. The rest, path by path, under `clubs/{clubId}`:
 | `displayLinks/{linkId}`     | read; change `label` and `settings`     | —                   | —                                         | its own: read; write `device`   |
 | `admins/{uid}`              | read                                    | —                   | —                                         | —                               |
 | `config/scoreboard`         | read, write                             | —                   | read¹                                     | —                               |
+| `config/club`               | read, write                             | —                   | read¹                                     | —                               |
+| `config/stream`             | read, write                             | —                   | read¹                                     | —                               |
 | `leagues/{leagueId}`        | read, write, delete                     | —                   | read¹                                     | —                               |
 | `bonspiels/{bonspielId}`    | read, write, delete                     | read, write, delete | read¹                                     | read                            |
 | `bonspiels/{id}/state/*`    | read                                    | read                | read¹                                     | read                            |
@@ -80,7 +83,8 @@ document. The rest, path by path, under `clubs/{clubId}`:
 `scoreboardUid`.
 
 Writes are also held to a shape: the PIN to digits, the webhook to an
-`https` URL and the settings the portal offers, a display link's settings to
+`https` URL and the settings the portal offers, the time zone to a zone
+name, stream titles to their three kinds and lengths, a display link's settings to
 what the pages understand, the logo to a PNG, JPEG or WebP data URL, and
 leagues and bonspiels to their outline. Every rule has cases in
 `emulator-tests/rules.test.mjs`.

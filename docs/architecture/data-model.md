@@ -13,11 +13,13 @@ Functions and admin scripts.
 flowchart LR
   FS(("Firestore"))
   FS --> APP_CONFIG["appConfig/scoreboard<br/>appConfig/displays"]
+  FS --> SWITCHES["adminConfig/switches"]
   FS --> CLUB["clubs/{clubId}"]
 
   CLUB --> PRIV["private/"]
   PRIV --> KEY["apiKey"]
   PRIV --> PIN["scoreboardPin"]
+  PRIV --> TRIES["pinTries"]
   PRIV --> WH["webhook"]
   PRIV --> WHS["webhookStatus"]
   PRIV --> DS["displayState"]
@@ -25,7 +27,7 @@ flowchart LR
   PRIV --> PUB["publicScores"]
 
   CLUB --> LINKS["displayLinks/{linkId}"]
-  CLUB --> CFG["config/scoreboard"]
+  CLUB --> CFG["config/scoreboard<br/>config/club<br/>config/stream"]
   CLUB --> LEAGUES["leagues/{leagueId}"]
   CLUB --> BON["bonspiels/{bonspielId}"]
   BON --> BST["state/current"]
@@ -36,17 +38,18 @@ flowchart LR
   classDef client fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
   classDef fn fill:#fde68a,stroke:#b45309,color:#78350f
   classDef both fill:#dcfce7,stroke:#15803d,color:#14532d
-  class WH,BR,PUB,CFG,LEAGUES,BON client
-  class APP_CONFIG,CLUB,KEY,WHS,DS,BST,ADM fn
-  class PIN,LINKS,SH,GAMES both
+  class WH,BR,PUB,CFG,LEAGUES,BON,SWITCHES client
+  class APP_CONFIG,CLUB,TRIES,WHS,DS,BST,ADM fn
+  class KEY,PIN,LINKS,SH,GAMES both
 ```
 
 - **Blue**, written by clients: club admins and bonspiel admins in the
   portal, within what the rules allow.
 - **Yellow**, written only by the functions, the deploy workflows
   (`appConfig`) or the admin scripts.
-- **Green**, written by both. `provisionClub` sets a club's first scoreboard
-  PIN and its admins change it. A display link is created by
+- **Green**, written by both. `provisionClub` sets a club's API key and
+  first scoreboard PIN; its admins switch the API off and on, and change
+  the PIN. A display link is created by
   `createDisplayLink`, its label and settings changed in the portal, and its
   `device` written by its screen. A sheet is named and given pairing codes
   in the portal, has its `scoreboardUid` set by `pairSheet`, and has its
@@ -54,7 +57,8 @@ flowchart LR
   scoreboard, and its `webhook` field set by `sendCompletedGameWebhook`.
 
 Super admins can read and write everything, which the portal uses to rename
-clubs, add sheets and rotate API keys. Those writes are left out above.
+clubs, add sheets and rotate API keys. Those writes are left out above,
+except `adminConfig/switches`, which only super admins write.
 
 ## Fields
 
@@ -67,14 +71,28 @@ appConfig/displays
   buildId: string            // commit SHA of the deployed functions, and so
   deployedAt: timestamp      // of the display pages
 
+adminConfig/switches         // super admins only; absent means all on
+  api?: boolean              // false: the REST API answers 503
+  scoresPage?: boolean       // false: the scores pages' JSON answers 503
+  displaySessions?: boolean  // false: startDisplaySession is unavailable
+  pairing?: boolean          // false: pairSheet and unpairSheet are unavailable
+  limits?: map               // a rate limit's name in RATE_LIMITS to a new limit
+  blockedIps?: string[]      // turned away from the API and the public callables
+
 clubs/{clubId}
   name: string
 
 clubs/{clubId}/private/apiKey
   key: string                // 32 hex characters
+  enabled?: boolean          // false: the club's API answers 503; set by its admins
 
 clubs/{clubId}/private/scoreboardPin   // asked for to disconnect a scoreboard
   pin: string                // 4 to 8 digits
+
+clubs/{clubId}/private/pinTries        // written by unpairSheet; absent until a wrong PIN
+  {sheetId}: map             // one per sheet with wrong PINs since its last right one
+    wrong: number            // wrong PINs in a row
+    lockedUntil?: timestamp  // set after 5; no disconnecting from the scoreboard until then
 
 clubs/{clubId}/private/webhook       // absent means no webhook
   url: string                // https, where completed games are posted
@@ -172,6 +190,17 @@ clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
     team2: { name: string, hex: string }
   }
 
+clubs/{clubId}/config/club          // club settings the functions need
+  timeZone?: string          // IANA zone the club's league and bonspiel times are in;
+                             // absent until a club admin sets it
+
+clubs/{clubId}/config/stream         // the club's stream titles; absent for the defaults
+  templates?: {              // for each kind of answer from the API's /now, only
+    league?: { title?: string, description?: string }     // what differs from the
+    bonspiel?: { title?: string, description?: string }   // default; title up to 300
+    none?: { title?: string, description?: string }       // characters, description 5000
+  }
+
 clubs/{clubId}/leagues/{leagueId}
   name: string
   shortName?: string         // what the score bug calls it, such as 'Mixed 4s'; up to 30 characters
@@ -182,6 +211,7 @@ clubs/{clubId}/leagues/{leagueId}
     day: int                 // 1 (Monday) to 7 (Sunday)
     start: string            // 'HH:mm', 24 hour
     end: string
+    sheetIds?: string[]      // the sheets it plays on; absent means every sheet
   }]
   teams: [{
     id: string               // stable across renames and imports

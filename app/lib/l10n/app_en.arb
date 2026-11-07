@@ -312,6 +312,15 @@
       }
     }
   },
+  "disconnectDialogErrorLocked": "Too many wrong PINs. Try again in {minutes, plural, =1{1 minute} other{{minutes} minutes}}.",
+  "@disconnectDialogErrorLocked": {
+    "description": "Error shown when disconnecting is locked for a while after too many wrong admin PINs.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "disconnectDialogErrorGeneric": "Could not disconnect. Check the internet connection and try again.",
   "@disconnectDialogErrorGeneric": {
     "description": "Generic error shown when disconnecting fails."

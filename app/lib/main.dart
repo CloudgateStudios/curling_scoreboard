@@ -305,7 +305,12 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
     final gameLeague = gameObject.league;
     final league =
         leagues.where((league) => league.id == gameLeague?.id).firstOrNull ??
-        await showLeagueChooser(context, leagues: leagues, now: DateTime.now());
+        await showLeagueChooser(
+          context,
+          leagues: leagues,
+          now: DateTime.now(),
+          sheetId: widget.registrationService.sheetId,
+        );
     if (league == null || !mounted) return;
 
     LeagueTeam? leagueTeamOf(CurlingTeam team) =>

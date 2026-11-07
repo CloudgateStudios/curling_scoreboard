@@ -39,6 +39,9 @@ club's admin PIN:
    until the ring fills.
 2. Press **Disconnect** and enter the **Admin PIN**.
 
+After five wrong PINs in a row, that scoreboard cannot be disconnected for 15
+minutes, even with the right PIN. Wait, or unpair it from the portal.
+
 Or, from the portal: on **Sheets & Games**, press **Edit** on the sheet, then
 **Unpair Scoreboard**.
 

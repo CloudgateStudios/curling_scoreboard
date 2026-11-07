@@ -2,6 +2,7 @@ import {
   DocumentReference, DocumentSnapshot, FieldPath, FieldValue, Transaction, getFirestore,
 } from 'firebase-admin/firestore';
 import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { MAX_INSTANCES } from '../limits';
 import {
   DisplaySheet, displayFinishedGame, displayResult, displaySheet, leagueDraws, withResult, withShortNames,
 } from './state';
@@ -60,7 +61,7 @@ async function sheetEntry(tx: Transaction, clubRef: DocumentReference, sheet: Do
 // event. A late delivery then writes the current state again instead of an
 // older one, and a sheet that has since been deleted stays removed.
 export const syncDisplaySheet = onDocumentWritten(
-  'clubs/{clubId}/sheets/{sheetId}',
+  { document: 'clubs/{clubId}/sheets/{sheetId}', maxInstances: MAX_INSTANCES.trigger },
   async (event) => {
     const { clubId, sheetId } = event.params;
     const before = event.data?.before;
@@ -103,7 +104,7 @@ export const syncDisplaySheet = onDocumentWritten(
 // a game joins the results in its place by when it finished, so it does not
 // become the sheet's final score over a later one.
 export const syncDisplayResults = onDocumentCreated(
-  'clubs/{clubId}/sheets/{sheetId}/games/{gameId}',
+  { document: 'clubs/{clubId}/sheets/{sheetId}/games/{gameId}', maxInstances: MAX_INSTANCES.trigger },
   async (event) => {
     const { clubId, sheetId, gameId } = event.params;
     const game = event.data?.data();

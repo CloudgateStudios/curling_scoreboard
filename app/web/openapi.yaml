@@ -8,6 +8,11 @@ info:
     All endpoints require a valid `X-API-Key` header. API keys are scoped per club —
     contact your club administrator to obtain one.
 
+    Answers may be up to 15 seconds old, so polling more often than that gains
+    nothing. No answer may be cached (`Cache-Control: private, no-store`). Each club may make 60 requests a minute and 5,000 a day; past
+    that, requests get a 429 with a `Retry-After` header. A key replaced in the admin portal takes up to a minute to start
+    working, and the old key works until then.
+
     The API can be called from any origin (CORS), so a web page can fetch it
     directly from the browser. A key used in browser code is visible to anyone who
     views the page; integrations that need to keep their key private should call
@@ -48,6 +53,42 @@ components:
       description: Per-club API key. Include in every request as the `X-API-Key` header.
 
   responses:
+    TooManyRequests:
+      description: >-
+        Too many requests: from this address (60 a minute), with wrong keys or
+        unknown clubs from this address (10 a minute), or for this club
+        (60 a minute and 5,000 a day, however many addresses its key is used
+        from). Try again after the number of seconds in the `Retry-After`
+        header. Answers are kept for up to 15 seconds, so asking for the same
+        thing more often than that gains nothing.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 12
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Too many requests
+    TurnedOff:
+      description: >-
+        The API is turned off, for this club by its admins or for every club
+        while something is being fixed. Sent only to a request with the
+        club's key, or to every request while it is off for every club. Try
+        again after the number of seconds in the `Retry-After` header.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 300
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: The API is turned off for this club
     InternalError:
       description: Unexpected server error.
       content:
@@ -169,6 +210,14 @@ components:
           type: string
           pattern: '^\d{2}:\d{2}$'
           example: '20:30'
+        sheetIds:
+          type: [array, 'null']
+          items:
+            type: string
+          description: >-
+            The sheets the draw plays on, when the league shares the ice with
+            another at the same time. Null when it has the whole ice.
+          example: [sheet-1, sheet-2]
 
     LeagueTeam:
       type: object
@@ -420,6 +469,149 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/BonspielGame'
+
+    NowNamed:
+      type: object
+      required: [id, name, shortName]
+      properties:
+        id:
+          type: string
+          example: monday-night
+        name:
+          type: string
+          example: Monday Night Men's
+        shortName:
+          type: [string, 'null']
+          example: Men's
+
+    NowTeam:
+      type: object
+      required: [teamId, name]
+      properties:
+        teamId:
+          type: [string, 'null']
+          description: Matches a league's or bonspiel's team `id`.
+          example: 4f9c2a71b3de
+        name:
+          type: string
+          example: Team Smith
+
+    NowCandidate:
+      type: object
+      description: >-
+        One thing that could be on the sheet: a league draw or a bonspiel game.
+      required: [kind, source, confidence, minutesFromStart, league, bonspiel, draw, game, team1, team2]
+      properties:
+        kind:
+          type: string
+          enum: [league, bonspiel]
+        source:
+          type: string
+          enum: [liveGame, schedule]
+          description: >-
+            `liveGame` when the sheet's scoreboard is playing it, `schedule`
+            when the schedule has it near the time.
+        confidence:
+          type: string
+          enum: [high, medium, low]
+          description: >-
+            `high` from 30 minutes before the draw starts until it ends, or
+            for a live game. `medium` up to 90 minutes before, or when two
+            leagues are both on the sheet. `low` up to 3 hours before, or up
+            to an hour after it ends.
+        minutesFromStart:
+          type: [integer, 'null']
+          description: >-
+            Minutes from the draw's start to the time asked about, negative
+            before it starts. Null for a live game with no draw near.
+          example: -8
+        league:
+          oneOf:
+            - $ref: '#/components/schemas/NowNamed'
+            - type: 'null'
+        bonspiel:
+          oneOf:
+            - $ref: '#/components/schemas/NowNamed'
+            - type: 'null'
+        draw:
+          type: [object, 'null']
+          required: [date, start, end, label]
+          properties:
+            date:
+              type: string
+              format: date
+              description: The day the draw starts, even after midnight.
+              example: '2026-11-03'
+            start:
+              type: string
+              example: '18:30'
+            end:
+              type: [string, 'null']
+              description: Null for a bonspiel draw, which has no end time.
+              example: '20:30'
+            label:
+              type: [string, 'null']
+              description: A bonspiel draw's label; null for a league.
+              example: null
+        game:
+          type: [object, 'null']
+          description: A bonspiel game; null for a league.
+          required: [id, label, event]
+          properties:
+            id:
+              type: string
+              example: g7Hq2
+            label:
+              type: string
+              example: A7
+            event:
+              type: [string, 'null']
+              example: A Event
+        team1:
+          description: The first team, once known.
+          oneOf:
+            - $ref: '#/components/schemas/NowTeam'
+            - type: 'null'
+        team2:
+          oneOf:
+            - $ref: '#/components/schemas/NowTeam'
+            - type: 'null'
+
+    Now:
+      type: object
+      required: [at, timeZone, title, description, match, candidates]
+      properties:
+        at:
+          type: string
+          description: The club's local time the answer is for, `YYYY-MM-DDTHH:mm`.
+          example: '2026-11-03T18:22'
+        timeZone:
+          type: [string, 'null']
+          description: The club's time zone, or null when it has none set.
+          example: America/Chicago
+        title:
+          type: string
+          maxLength: 100
+          description: >-
+            A title for a stream on the sheet, from the club's templates. Always
+            filled in, from the "nothing scheduled" template when there is no
+            match. One line with no angle brackets, as YouTube takes it.
+          example: Monday Night Men's · Sheet 2 · November 3, 2026
+        description:
+          type: string
+          maxLength: 5000
+          example: |-
+            Monday Night Men's on Sheet 2 at Windy City Curling, Tuesday, November 3, 2026.
+        match:
+          description: The best guess, or null when nothing is near.
+          oneOf:
+            - $ref: '#/components/schemas/NowCandidate'
+            - type: 'null'
+        candidates:
+          type: array
+          description: Everything near the time, best first. The match is the first.
+          items:
+            $ref: '#/components/schemas/NowCandidate'
 
     LiveGame:
       type: object
@@ -743,6 +935,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/leagues:
     get:
@@ -793,6 +989,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/leagues/{leagueId}:
     get:
@@ -842,6 +1042,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/bonspiels:
     get:
@@ -890,6 +1094,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/bonspiels/{bonspielId}:
     get:
@@ -942,6 +1150,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/sheets/{sheetId}:
     get:
@@ -993,6 +1205,93 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
+
+  /clubs/{clubId}/sheets/{sheetId}/now:
+    get:
+      summary: What is on the sheet now
+      description: |
+        Returns what is on a sheet at a time, with a title and description for
+        a stream of it. The answer is the sheet's live league or bonspiel game
+        if it has one; otherwise the bonspiel game or league draw the schedule
+        has on the sheet near the time. A draw that starts a little early or
+        late still matches.
+
+        The time is the club's local time now, from the time zone set in the
+        admin portal, unless `at` is given. A club with no time zone must send
+        `at`.
+
+        Call it again a few minutes into a stream: once the game has started
+        on the scoreboard, the answer names its teams.
+      operationId: getNow
+      tags: [Sheets]
+      parameters:
+        - name: clubId
+          in: path
+          required: true
+          description: Unique identifier for the club.
+          schema:
+            type: string
+          example: windy-city-curling
+        - name: sheetId
+          in: path
+          required: true
+          description: Unique identifier for the sheet within the club.
+          schema:
+            type: string
+          example: sheet-2
+        - name: at
+          in: query
+          required: false
+          description: >-
+            A local time to ask about instead of now, `YYYY-MM-DDTHH:mm`, with
+            no offset.
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$'
+          example: '2026-11-03T18:22'
+      responses:
+        '200':
+          description: What is on the sheet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Now'
+        '400':
+          description: >-
+            `at` is not a local time, or it was left out and the club has no
+            time zone set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: API key header missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: API key is not valid for this club.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Club or sheet not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'
 
   /clubs/{clubId}/sheets/{sheetId}/games:
     get:
@@ -1064,3 +1363,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/TurnedOff'

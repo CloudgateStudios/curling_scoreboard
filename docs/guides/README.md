@@ -11,6 +11,7 @@ feature does is in [FEATURES](../FEATURES.md).
 | [Run a bonspiel](run-a-bonspiel.md)                         | Planning one, starting its games on the scoreboards, and its results       |
 | [Post results to Slack or Discord](post-results-to-chat.md) | Each finished game in a channel                                            |
 | [Share scores with members](share-scores-with-members.md)   | The public scores page for members' phones                                 |
+| [Name your streams](name-your-streams.md)                   | A title for each sheet's stream, from what is on it                        |
 
 The admin portal's club page has five tabs: **Sheets & Games**, **Leagues**,
 **Bonspiels**, **Displays** and **Settings**. Settings has three groups:
