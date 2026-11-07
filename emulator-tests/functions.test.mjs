@@ -32,7 +32,9 @@ import {
 } from '../functions/lib/display/assets/update-model.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
 import { Kept } from '../functions/lib/kept.js';
-import { KEPT_MS } from '../functions/lib/limits.js';
+import { KEPT_MS, RATE_LIMITS } from '../functions/lib/limits.js';
+import { Buckets, callerAddresses } from '../functions/lib/rateLimit.js';
+import { limitsWith } from '../functions/lib/switches.js';
 import { formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../functions/lib/now.js';
 import {
   DEFAULT_STREAM_TEMPLATES, renderStreamTemplate, streamText,
@@ -94,7 +96,15 @@ async function waitFor(what, check) {
   }
 }
 
+// Every request in these tests comes from this machine, so the real rate
+// limits would soon turn them away. They are raised for the whole file, and
+// the rate limit tests lower one at a time, sending their own addresses.
+const RAISED_LIMITS = Object.fromEntries(Object.keys(RATE_LIMITS).map((name) => [name, 100_000]));
+const switchesDoc = db.doc('adminConfig/switches');
+const raiseLimits = () => switchesDoc.set({ limits: RAISED_LIMITS });
+
 before(async () => {
+  await raiseLimits();
   await db.doc('clubs/club-a').set({ name: 'Club A' });
   await db.doc('clubs/club-a/private/apiKey').set({ key: 'key-a' });
   // Carries the status of a scoreboard that was paired here before.
@@ -461,13 +471,12 @@ describe('a club\'s API switch', () => {
 // The emulator tests read the switches afresh each time; see
 // functions/.env.demo-functions.
 describe('service switches', () => {
-  const switches = db.doc('adminConfig/switches');
   const turnedOff = async (name, check) => {
-    await switches.set({ [name]: false });
+    await switchesDoc.set({ [name]: false }, { merge: true });
     try {
       await check();
     } finally {
-      await switches.delete();
+      await raiseLimits();
     }
   };
 
@@ -499,16 +508,144 @@ describe('service switches', () => {
     );
   }));
 
-  test('leave everything on without the document, or set to true', async () => {
-    await switches.set({ api: true });
+  test('leave everything on unless set to false', async () => {
+    await switchesDoc.set({ api: true }, { merge: true });
     try {
       assert.equal((await fetch(`${API_URL}/clubs/club-a`, { headers: { 'x-api-key': 'key-a' } })).status, 200);
     } finally {
-      await switches.delete();
+      await raiseLimits();
     }
     const client = await anonymous();
     await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE' }), 'functions/not-found');
   });
+});
+
+describe('rate limit buckets', () => {
+  test('allow a burst up to the limit, then refill evenly', () => {
+    let t = 0;
+    const buckets = new Buckets(100, () => t);
+    for (let i = 0; i < 3; i++) assert.equal(buckets.take('a', 3, 3000), 0);
+    assert.equal(buckets.take('a', 3, 3000), 1000);
+    t += 1000;
+    assert.equal(buckets.take('a', 3, 3000), 0);
+    assert.equal(buckets.take('a', 3, 3000), 1000);
+    // Another caller has its own.
+    assert.equal(buckets.take('b', 3, 3000), 0);
+  });
+
+  test('check without taking, and let go of the oldest past their limit', () => {
+    const buckets = new Buckets(2, () => 0);
+    buckets.take('a', 1, 1000);
+    assert.equal(buckets.has('a', 1, 1000), false);
+    buckets.take('b', 1, 1000);
+    buckets.take('c', 1, 1000);
+    assert.equal(buckets.has('a', 1, 1000), true);
+  });
+
+  test('count a request against both of the last two forwarded addresses', () => {
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '6.6.6.6, 1.1.1.1, 2.2.2.2' }), ['1.1.1.1', '2.2.2.2']);
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '1.1.1.1' }), ['1.1.1.1']);
+    assert.deepEqual(callerAddresses({ 'x-forwarded-for': '1.1.1.1, 1.1.1.1' }), ['1.1.1.1']);
+    assert.deepEqual(callerAddresses({}, '127.0.0.1'), ['127.0.0.1']);
+  });
+
+  test('take a changed limit only when it is a whole number of at least 1', () => {
+    const limits = limitsWith({ apiPerIp: 0, apiPerClubPerDay: 7, pairingPerIp: 'x', unknown: 3 });
+    assert.equal(limits.apiPerIp.limit, RATE_LIMITS.apiPerIp.limit);
+    assert.equal(limits.apiPerClubPerDay.limit, 7);
+    assert.equal(limits.apiPerClubPerDay.per, RATE_LIMITS.apiPerClubPerDay.per);
+    assert.equal(limits.pairingPerIp.limit, RATE_LIMITS.pairingPerIp.limit);
+    assert.equal('unknown' in limits, false);
+    assert.deepEqual(limitsWith(undefined).apiPerIp, RATE_LIMITS.apiPerIp);
+  });
+});
+
+// Each test lowers one limit and uses addresses of its own, since buckets
+// last as long as the emulator's instance.
+describe('rate limits', () => {
+  const withLimits = async (limits, check, extra = {}) => {
+    await switchesDoc.set({ limits: { ...RAISED_LIMITS, ...limits }, ...extra });
+    try {
+      await check();
+    } finally {
+      await raiseLimits();
+    }
+  };
+  const from = (ip, headers = {}) => ({ headers: { 'x-forwarded-for': ip, ...headers } });
+  // A callable, called as the SDK does, so the test can say where from.
+  const callFrom = async (ip, name, data) => {
+    const res = await fetch(`http://127.0.0.1:5001/${PROJECT_ID}/us-central1/${name}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+      body: JSON.stringify({ data }),
+    });
+    return (await res.json()).error?.status ?? 'OK';
+  };
+
+  before(async () => {
+    await db.doc('clubs/club-limited').set({ name: 'Club Limited' });
+    await db.doc('clubs/club-limited/private/apiKey').set({ key: 'key-limited' });
+  });
+
+  test('turn away an address making too many API requests, whatever it adds in front', () =>
+    withLimits({ apiPerIp: 3 }, async () => {
+      for (let i = 0; i < 3; i++) {
+        assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.1'))).status, 401);
+      }
+      const res = await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.1'));
+      assert.equal(res.status, 429);
+      assert.ok(Number(res.headers.get('retry-after')) >= 1);
+      assert.deepEqual(await res.json(), { error: 'Too many requests' });
+      // A made up address in front gets no fresh bucket.
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('198.51.100.9, 203.0.113.1'))).status, 429);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, from('203.0.113.2'))).status, 401);
+    }));
+
+  test('turn away an address after too many wrong keys, even with the right one', () =>
+    withLimits({ apiFailuresPerIp: 2 }, async () => {
+      const wrong = from('203.0.113.3', { 'x-api-key': 'wrong' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, wrong)).status, 403);
+      assert.equal((await fetch(`${API_URL}/clubs/nowhere`, wrong)).status, 404);
+      const right = (ip) => from(ip, { 'x-api-key': 'key-limited' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, right('203.0.113.3'))).status, 429);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited`, right('203.0.113.4'))).status, 200);
+    }));
+
+  test('limit each club however many addresses its key is used from', () =>
+    withLimits({ apiPerClubPerMinute: 2 }, async () => {
+      const right = (ip) => from(ip, { 'x-api-key': 'key-limited' });
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.5'))).status, 200);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.6'))).status, 200);
+      assert.equal((await fetch(`${API_URL}/clubs/club-limited/leagues`, right('203.0.113.7'))).status, 429);
+      // Another club has its own.
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.7', { 'x-api-key': 'key-a' }))).status, 200);
+    }));
+
+  test('limit display sign-ins from an address', () =>
+    withLimits({ displaySessionsPerIp: 1 }, async () => {
+      assert.equal(await callFrom('203.0.113.8', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+      assert.equal(await callFrom('203.0.113.8', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'RESOURCE_EXHAUSTED');
+      assert.equal(await callFrom('203.0.113.9', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+    }));
+
+  test('limit how often a scoreboard tries to pair', () =>
+    withLimits({ pairingPerUser: 2 }, async () => {
+      const client = await anonymous();
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE01' }), 'functions/not-found');
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE02' }), 'functions/not-found');
+      await rejectsWith(client.call('pairSheet', { pairingCode: 'NOPE03' }), 'functions/resource-exhausted');
+      const another = await anonymous();
+      await rejectsWith(another.call('pairSheet', { pairingCode: 'NOPE04' }), 'functions/not-found');
+    }));
+
+  test('turn away an address a super admin has blocked', () =>
+    withLimits({}, async () => {
+      const res = await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.66', { 'x-api-key': 'key-a' }));
+      assert.equal(res.status, 403);
+      assert.deepEqual(await res.json(), { error: 'This address is blocked' });
+      assert.equal(await callFrom('203.0.113.66', 'startDisplaySession', { clubId: 'club-a', token: 'x' }), 'PERMISSION_DENIED');
+      assert.equal((await fetch(`${API_URL}/clubs/club-a`, from('203.0.113.67', { 'x-api-key': 'key-a' }))).status, 200);
+    }, { blockedIps: ['203.0.113.66'] }));
 });
 
 describe('REST API live games', () => {

@@ -68,6 +68,26 @@ few Firestore reads:
 
 At most 1,000 of each are kept per instance, the oldest let go first.
 
+Each request is counted against limits, in memory in each instance (see
+`functions/src/rateLimit.ts`). Past one, it gets a 429 with `Retry-After`:
+
+| Counted against | Limit | Checked |
+| --- | --- | --- |
+| The caller's address | 60 a minute | Before the key check reads anything |
+| The caller's address, wrong keys and unknown clubs only | 10 a minute | Before the key check reads anything, once reached |
+| The club | 60 a minute and 5,000 a day | After the key matches, however many addresses use it |
+
+With 5 instances at most, a caller gets at most five times these. A super
+admin can block an address, which then gets a 403, or change a limit,
+without a deploy; see [Monitoring](monitoring.md).
+
+The address comes from `X-Forwarded-For`. Cloud Run adds whoever connected
+to it as the last entry: the caller, for a request straight to the
+function, or a Google edge server, with the caller just before it, for one
+through Hosting. Entries further left are the caller's own and could be
+made up. So a request counts against both of the last two entries, one of
+which is always the caller.
+
 The API can be turned off, answering 503 with `Retry-After: 300`:
 
 - **For one club**, by its admins in the portal, as `enabled: false` beside

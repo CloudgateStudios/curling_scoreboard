@@ -26,7 +26,7 @@ flowchart LR
 ```
 
 - Super admin: `/` lists every club and creates new ones, with the service
-  switches below the list; `/clubs/:clubId`
+  switches and blocked addresses below the list; `/clubs/:clubId`
   shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
   `/clubs/:clubId/leagues/:leagueId` a league;
   `/clubs/:clubId/bonspiels/:bonspielId` a bonspiel.

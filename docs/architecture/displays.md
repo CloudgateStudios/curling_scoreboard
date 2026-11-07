@@ -178,6 +178,11 @@ its club's display summary and nothing else. The club API key is never used:
 it would expose the whole API, and replacing it would break the club's other
 integrations.
 
+Each address may start 30 sessions a minute, which every screen at a club,
+starting at once after a power cut, shares. Past that, and from an address
+a super admin has blocked, the call is refused and the page tries again
+later. See [Monitoring](monitoring.md).
+
 `revokeDisplayLink` deletes the link and its Auth user. No new session can
 start from it, and a screen already signed in stops within the hour, when
 its ID token expires and cannot be renewed. The rules do not look the link

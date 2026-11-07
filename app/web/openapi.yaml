@@ -9,7 +9,8 @@ info:
     contact your club administrator to obtain one.
 
     Answers may be up to 15 seconds old, so polling more often than that gains
-    nothing. A key replaced in the admin portal takes up to a minute to start
+    nothing. Each club may make 60 requests a minute and 5,000 a day; past
+    that, requests get a 429 with a `Retry-After` header. A key replaced in the admin portal takes up to a minute to start
     working, and the old key works until then.
 
     The API can be called from any origin (CORS), so a web page can fetch it
@@ -52,6 +53,25 @@ components:
       description: Per-club API key. Include in every request as the `X-API-Key` header.
 
   responses:
+    TooManyRequests:
+      description: >-
+        Too many requests: from this address (60 a minute), with wrong keys or
+        unknown clubs from this address (10 a minute), or for this club
+        (60 a minute and 5,000 a day, however many addresses its key is used
+        from). Try again after the number of seconds in the `Retry-After`
+        header. Answers are kept for up to 15 seconds, so asking for the same
+        thing more often than that gains nothing.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            example: 12
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Too many requests
     TurnedOff:
       description: >-
         The API is turned off, for this club by its admins or for every club
@@ -915,6 +935,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -967,6 +989,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1018,6 +1042,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1068,6 +1094,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1122,6 +1150,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1175,6 +1205,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1256,6 +1288,8 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'
 
@@ -1329,5 +1363,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/TurnedOff'

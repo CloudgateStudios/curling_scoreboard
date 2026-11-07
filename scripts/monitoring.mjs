@@ -82,7 +82,7 @@ export const alertPolicies = [
   policy(
     'Requests turned away or failing',
     sumOver('429s and 5xx in the last hour', TURNED_AWAY_OR_FAILED, HOUR, 20),
-    'More than 20 requests in the last hour were turned away (429, usually a function at its instance ceiling) or failed (5xx).',
+    'More than 20 requests in the last hour were turned away (429: a rate limit, or a function at its instance ceiling) or failed (5xx). Rate limits each log a "Rate limited" line naming the limit and the caller.',
   ),
   policy(
     'Errors in the function logs',
