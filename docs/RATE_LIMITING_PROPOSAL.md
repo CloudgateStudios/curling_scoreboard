@@ -2,7 +2,7 @@
 
 <!-- cspell:ignore setpolicy -->
 
-Draft for discussion · November 6, 2026
+Steps 1 to 5 done; App Check deferred · November 7, 2026
 
 ## The problem
 
@@ -267,7 +267,32 @@ off answers 503 without changing the key, so the integration works again
 as soon as it is fixed and switched back on. Club admins and super admins
 see it next to the key in the portal.
 
-#### App Check, later
+#### App Check, deferred
+
+Decided on November 7, 2026, after steps 1 to 5 were in place: not for
+now. The reasons, so the question can be picked up again:
+
+- It cannot cover the REST API, which other people's tools call, or the
+  scores page, which the CDN answers. That leaves the public callables,
+  which the instance ceilings, rate limits, blocked addresses, the PIN
+  lockout and the switches already cover.
+- On the web it checks that a request came from a browser on our page,
+  which a determined caller can still arrange, so it raises the bar rather
+  than closing a hole.
+- Displays run in OBS browser sources, kiosk browsers and old smart TVs,
+  where reCAPTCHA may fail, and enforced on Firestore it could stop a
+  scoreboard's games reaching anyone.
+- It needs a reCAPTCHA key per project, work in all three clients, a wider
+  content security policy on the display pages, and a debug token in CI.
+  With hour long tokens, about 15 screens left on would use up the 10,000
+  free checks a month; day long tokens leave room for about 300.
+
+Worth revisiting if the logs show callable abuse that the rate limits do
+not stop. Then: add it to the clients in monitoring mode with day long
+tokens, watch the console's verified share by device for a few weeks, and
+enforce on `pairSheet` and `unpairSheet` first.
+
+What the original plan said:
 
 App Check makes callables reject requests that do not come from our own
 apps. It fits `pairSheet`, `unpairSheet`, `startDisplaySession` and the
@@ -306,6 +331,7 @@ Each step is its own PR.
    `limits` overrides and `blockedIps`. Done, in `functions/src/rateLimit.ts`.
 5. **The unpair PIN lockout.** Done, in `functions/src/scoreboardPin.ts`.
 6. **App Check** in monitoring mode, then enforced where it is safe.
+   Deferred; see [App Check, deferred](#app-check-deferred).
 
 ## Open questions
 
