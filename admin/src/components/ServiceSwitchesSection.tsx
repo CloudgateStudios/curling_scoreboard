@@ -92,7 +92,7 @@ export function ServiceSwitchesSection() {
   return (
     <section className={styles.area} aria-labelledby="service-heading">
       <div className={styles.areaHeader}>
-        <h2 id="service-heading" className={styles.areaTitle}>Service Controls</h2>
+        <h1 id="service-heading" className={styles.areaTitle}>Service controls</h1>
         <p className={styles.areaSubtitle}>
           For when something is being flooded or misused. Changes reach every club within half a
           minute. Scoring on the sheets always carries on.

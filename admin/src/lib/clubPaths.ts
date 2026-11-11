@@ -8,6 +8,7 @@ export type ClubSection =
   | 'leagues'
   | 'bonspiels'
   | 'displays'
+  | 'devices'
   | 'settings/club'
   | 'settings/scoreboards'
   | 'settings/public-page'

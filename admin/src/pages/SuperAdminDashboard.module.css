@@ -183,3 +183,113 @@
   max-width: 24rem;
   margin-bottom: 1.25rem;
 }
+
+.muted {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+/* The counts across every club. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.kpiValue,
+.kpi_good,
+.kpi_warn,
+.kpi_bad {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi_good {
+  color: #137333;
+}
+
+.kpi_warn {
+  color: #b06000;
+}
+
+.kpi_bad {
+  color: #c5221f;
+}
+
+.kpiLabel {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.allGood {
+  background: #e6f4ea;
+  color: #137333;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #888;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e8e8e8;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.detail {
+  margin-left: 0.5rem;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.clubIdInline {
+  display: block;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #999;
+}

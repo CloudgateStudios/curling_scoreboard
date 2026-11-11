@@ -14,10 +14,10 @@ alerts are set well below them and fire long before a bill.
 | The usage dashboard | Cloud Monitoring, Dashboards, "Curling scoreboard usage" | `scripts/setup-monitoring.mjs` |
 | Five alerts, emailed | Cloud Monitoring, Alerting, each named "Curling scoreboard: ..." | `scripts/setup-monitoring.mjs` |
 | A ceiling on each function's instances, so a flood is turned away | `functions/src/limits.ts` | The functions deploy |
-| Service switches, to turn the API, the scores pages, display sign-ins or pairing off for every club | The portal's list of clubs, for super admins; kept in `adminConfig/switches` | A super admin, when needed |
+| Service switches, to turn the API, the scores pages, display sign-ins or pairing off for every club | The portal's Service controls, for super admins; kept in `adminConfig/switches` | A super admin, when needed |
 | A switch for each club's API | The club's Settings, Integrations, beside the key | The club's admins, when needed |
 | Rate limits on the API, display sign-ins and pairing, answering 429 or `resource-exhausted` | `RATE_LIMITS` in `functions/src/limits.ts`; changed without a deploy under `limits` in `adminConfig/switches` | The functions deploy; a super admin, when needed |
-| Blocked addresses | The portal's list of clubs, for super admins; kept as `blockedIps` in `adminConfig/switches` | A super admin, when needed |
+| Blocked addresses | The portal's Service controls, for super admins; kept as `blockedIps` in `adminConfig/switches` | A super admin, when needed |
 
 The dashboard goes on both projects. The alerts go on prod only, since each
 alert condition costs about $0.10 a month. Dev can have them with
@@ -82,9 +82,9 @@ which is why the alerts watch usage rather than spend.
    | A sheet's scoreboard is locked after wrong PINs, and someone needs it off now | A club admin unpairs it from the portal, under Sheets. The lockout ends by itself after 15 minutes |
    | A scoreboard is writing in a loop | Disconnect it with the club's PIN, or a super admin deletes the sheet in the portal |
    | A function is failing | Read the error in the logs; a bad deploy is undone by deploying the previous release tag |
-   | One address making too many requests, or guessing at keys | A super admin adds it under Blocked addresses, below the list of clubs. It is turned away within half a minute |
+   | One address making too many requests, or guessing at keys | A super admin adds it under Blocked addresses, on Service controls. It is turned away within half a minute |
    | A limit is too tight for a real club, or too loose | A super admin sets `limits.<name>` in `adminConfig/switches`, in the Firestore console, to a whole number; the names are in `RATE_LIMITS` in `functions/src/limits.ts`. Removing it puts the default back. It takes effect within half a minute |
-   | Many clubs at once, or no single caller to blame | A super admin turns off the part being flooded under Service Controls, below the list of clubs: the REST API, the public scores pages, display sign-ins or scoreboard pairing. Each takes effect within half a minute, and answers before reading anything |
+   | Many clubs at once, or no single caller to blame | A super admin turns off the part being flooded under Service controls: the REST API, the public scores pages, display sign-ins or scoreboard pairing. Each takes effect within half a minute, and answers before reading anything |
 
 4. **If nothing else works**, or the switches cannot be reached, take a
    function off the internet. This stops it answering anyone, the displays

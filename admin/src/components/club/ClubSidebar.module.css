@@ -161,3 +161,13 @@
     transition: none;
   }
 }
+
+/* A count that needs a look, such as service switches turned off. */
+.countAlert {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: #fce8e6;
+  color: #c5221f;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}

@@ -13,22 +13,24 @@ goes and which of a club's pages it can open:
 ```mermaid
 flowchart LR
   LOGIN["/ sign in<br/>email and password"] --> ROLE{"role claim"}
-  ROLE -- "superadmin" --> SA["/<br/>every club, new club,<br/>service switches"]
+  ROLE -- "superadmin" --> SA["/<br/>every club's health,<br/>new club"]
+  SA --> SVC["/service<br/>service switches,<br/>blocked addresses"]
   SA --> CLUB["/clubs/:clubId/…<br/>any club"]
   ROLE -- "clubadmin" --> CA["/clubs/:clubId/overview<br/>their club"]
   ROLE -- "bonspieladmin" --> BA["/clubs/:clubId/bonspiels/:id<br/>the bonspiel on now"]
 ```
 
-- Super admin: `/` lists every club and creates new ones, with the service
-  switches and blocked addresses below the list. They can open any club.
+- Super admin: `/` is the overview of every club, and creates new ones.
+  `/service` has the service switches and blocked addresses. They can open
+  any club, from the overview or from the club switcher in the top bar.
 - Club admin and bonspiel admin: `/` goes to their own club. Club admins,
   and super admins opening a club, land on its Overview. Bonspiel admins land
   on the bonspiel on today, or else the next to start, or else the list of
   bonspiels. Bonspiel admins cannot read the club's time zone, so "today" is
   the browser's date. A club path for any other club goes back to `/`.
 - Inside a club, `/clubs/:clubId/` and then:
-  - `overview`, `sheets`, `games`, `leagues`, `bonspiels`, `displays`: the
-    club's pages.
+  - `overview`, `sheets`, `games`, `leagues`, `bonspiels`, `displays`,
+    `devices`: the club's pages.
   - `settings/club`, `settings/scoreboards`, `settings/public-page`,
     `settings/integrations`: its settings.
   - `users`: super admins only.
@@ -122,8 +124,14 @@ Bonspiels; the other pages are not mounted for them at all.
   - Integrations: the API key with the club's API switch, the completed
     game webhook, which once saved is shown in short until it is edited, and
     the stream titles.
+- **Devices**: every scoreboard and display screen with all it last
+  reported (version, build, platform, clock, last sync error), and whether
+  the club's API, public page and webhook are working. **Copy report** puts
+  a plain text summary, with times in UTC, on the clipboard for an issue or
+  a message. Read only, for club admins and super admins.
 - **Users**: super admins only. Adds, edits and removes the club's club and
-  bonspiel admins.
+  bonspiel admins. Club admins see the same list, read only, under Club
+  settings.
 
 Every one of these pages stays mounted while another is shown, so a half-made
 change survives moving between them. Opening a sheet's games, a league or a
@@ -132,8 +140,38 @@ super admins can add sheets, rename the club, rotate the key or add club
 admins, and the portal tags what only they see. (The rules would let a club
 admin write their club's sheets; the portal just doesn't offer it.)
 
+A super admin in a club sees a purple bar saying so, with **See it as**:
+Super admin, Club admin or Bonspiel admin. The last two show the sidebar
+and pages as that role has them, so a super admin can see what a club's
+admins see while helping them. It changes only what is shown: the rules
+still treat them as a super admin.
+
 Each page links to its guide beside its title. The link opens in a new tab,
 like Help in the top bar, so a half-made change is not lost.
+
+## Super admin pages
+
+Super admins share one set of listeners over every club, set up in
+`src/hooks/useSystemData.tsx`: the clubs, every club's sheets and display
+links through collection group queries, the deployed builds, and the
+service switches. The rules let super admins read all of it.
+
+- **Overview** (`/`): counts across every club (clubs, scoreboards online,
+  paired but offline, sync errors today, games on now), then **Needs a
+  look**, each scoreboard with a sync error, offline, behind or with its
+  clock out, and each open screen that is behind, worst first, each linked
+  to its club's Devices. A closed screen is no problem, since screens are
+  switched off between events. Below, every club with its sheets, scoreboard
+  health, games on now and screens open, clubs with problems first.
+  `src/lib/systemHealth.ts` works these out.
+- **Service controls** (`/service`): the switches and blocked addresses.
+  While any switch is off, a red bar under the top bar says so on every
+  page.
+- **Club switcher**: in the top bar, or ⌘K (Ctrl K). Type part of a club's
+  name or ID; each club shows its health, and the best match offers its
+  Devices, Users, Sheets, Bonspiels and Settings.
+- The sidebar on these pages lists the three clubs opened last, kept in the
+  browser's local storage.
 
 ## Help
 

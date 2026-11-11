@@ -21,11 +21,14 @@ const roleLabel = (role: ClubUserRole) => ROLES.find((r) => r.id === role)!.labe
 interface Props {
   clubId: string;
   clubName: string;
+  /** For the club's own admins, who can see who else can sign in but leave
+   *  adding and removing people to super admins. */
+  readOnly?: boolean;
 }
 
 /** The people who can sign in to the portal for the club, and what they can
- *  do there. Shown to super admins only. */
-export function AdminsSection({ clubId, clubName }: Props) {
+ *  do there. Super admins change them; club admins see them. */
+export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
   const [users, setUsers] = useState<ClubUser[]>([]);
 
   // The form adds a user when `editing` is null and changes that user otherwise.
@@ -125,14 +128,20 @@ export function AdminsSection({ clubId, clubName }: Props) {
     <div className={common.section}>
       <div className={common.sectionHeader}>
         <h2 className={common.sectionTitle}>
-          Users ({users.length}) <span className={common.adminTag}>Super admin</span>
+          {readOnly ? 'Admins' : 'Users'} ({users.length}) {!readOnly && <span className={common.adminTag}>Super admin</span>}
         </h2>
-        <button className={common.primaryButton} onClick={() => openForm(null)}>
-          + Add User
-        </button>
+        {!readOnly && (
+          <button className={common.primaryButton} onClick={() => openForm(null)}>
+            + Add User
+          </button>
+        )}
       </div>
 
-      <p className={common.blurb}>People who can sign in to the portal for this club, and what they can do there.</p>
+      <p className={common.blurb}>
+        {readOnly
+          ? 'People who can sign in to the portal for this club. Ask a super admin to add or remove someone.'
+          : 'People who can sign in to the portal for this club, and what they can do there.'}
+      </p>
 
       <div className={styles.adminList}>
         {users.map((u) => (
@@ -142,7 +151,7 @@ export function AdminsSection({ clubId, clubName }: Props) {
             <span className={u.role === 'bonspieladmin' ? styles.bonspielRole : styles.clubRole}>
               {roleLabel(u.role)}
             </span>
-            <div className={styles.rowActions}>
+            {!readOnly && <div className={styles.rowActions}>
               <button className={common.linkButton} onClick={() => openForm(u)} disabled={removingUid !== null}>
                 Edit
               </button>
@@ -153,7 +162,7 @@ export function AdminsSection({ clubId, clubName }: Props) {
               >
                 {removingUid === u.uid ? 'Removing…' : 'Remove'}
               </button>
-            </div>
+            </div>}
           </div>
         ))}
         {users.length === 0 && <p className={common.empty}>No users yet.</p>}

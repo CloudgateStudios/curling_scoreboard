@@ -1,5 +1,7 @@
 import { signOut } from "firebase/auth";
 import { Link, useLocation } from "react-router-dom";
+import { SWITCH_LABELS, useSystemData } from "../hooks/useSystemData";
+import { ClubSwitcher } from "./ClubSwitcher";
 import { auth } from "../lib/firebase";
 import { confirmLeave } from "../lib/unsavedChanges";
 import type { AuthUser } from "../types";
@@ -30,6 +32,7 @@ export function Layout({ user, children }: Props) {
           {/* On phones the role moves here, under the name, to free the right side. */}
           {user && <span className={styles.brandRole}>{ROLE_BADGES[user.role ?? "clubadmin"]}</span>}
         </span>
+        {user?.role === "superadmin" && !onHelp && <ClubSwitcher />}
         <div className={styles.navRight}>
           {/* Help opens in a new tab, so a half-made change is not lost. */}
           {onHelp ? (
@@ -52,7 +55,23 @@ export function Layout({ user, children }: Props) {
           )}
         </div>
       </nav>
+      {!onHelp && <SwitchesOffBanner />}
       <main className={styles.main}>{children}</main>
+    </div>
+  );
+}
+
+/** For super admins, on every page while a service switch is off for every
+ *  club, so one left off is not forgotten. */
+function SwitchesOffBanner() {
+  const off = useSystemData()?.switchesOff ?? [];
+  if (off.length === 0) return null;
+  const names = off.map((name, i) => (i === 0 ? SWITCH_LABELS[name] : SWITCH_LABELS[name].toLowerCase()));
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
+  return (
+    <div className={styles.switchBanner} role="status">
+      <span>{list} {off.length > 1 ? "are" : "is"} off for every club.</span>
+      <Link to="/service" className={styles.switchBannerLink}>Service controls →</Link>
     </div>
   );
 }
