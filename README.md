@@ -11,7 +11,7 @@ bonspiels. It's a monorepo of products sharing one Firebase backend:
 | [`functions/`](functions/)           | Node.js + Express          | Callable functions, Firestore triggers, the REST API, the display pages and the public scores page |
 | [`scripts/`](scripts/)               | Node.js                    | Seeding dev, the first super admin, one-off migrations and backfills                               |
 | [`emulator-tests/`](emulator-tests/) | Node.js, Firebase emulators | Tests for `firestore.rules` and the functions                                                     |
-| [`docs-check/`](docs-check/)         | Node.js, Mermaid, Playwright | Checks that the Markdown's diagrams render and its links resolve                                |
+| [`docs-check/`](docs-check/)         | Node.js, Mermaid           | Checks that the Markdown's diagrams parse and its links resolve                                   |
 
 Shared Firebase config (`firebase.json`, `firestore.rules`, `firestore.indexes.json`) lives at the repo root.
 

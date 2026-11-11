@@ -1,5 +1,5 @@
 // Checks the repo's Markdown the way GitHub shows it: every Mermaid diagram
-// renders, and every relative link reaches a file, and a heading when it
+// parses, and every relative link reaches a file, and a heading when it
 // names one. GitHub only shows a broken diagram as an error box, and a link
 // to a heading that was renamed goes nowhere, so neither is noticed otherwise.
 //
@@ -8,13 +8,11 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { JSDOM } from 'jsdom';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
 
 // The changelog and release notes are written by the release workflow, and
 // link only to GitHub.
@@ -94,26 +92,25 @@ async function checkDiagrams(files) {
   }
   if (diagrams.length === 0) return { count: 0, problems: [] };
 
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-  await page.setContent('<!doctype html><body><div id="out"></div></body>');
-  await page.addScriptTag({ path: require.resolve('mermaid/dist/mermaid.min.js') });
-  await page.evaluate(() => window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' }));
+  // Mermaid's parser runs in Node; only its HTML sanitizer wants a window,
+  // which jsdom gives it. Parsing finds the mistakes people make (a missing
+  // bracket or quote, a label GitHub can't read) without drawing anything,
+  // so no browser is needed.
+  const { window } = new JSDOM('');
+  globalThis.window = window;
+  globalThis.document = window.document;
+  const { default: mermaid } = await import('mermaid');
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
 
   const problems = [];
-  for (const [i, { where, code }] of diagrams.entries()) {
-    const error = await page.evaluate(async ({ id, code }) => {
-      try {
-        const { svg } = await window.mermaid.render(id, code);
-        document.getElementById('out').innerHTML = svg;
-        return null;
-      } catch (e) {
-        return String(e?.message ?? e).split('\n').slice(0, 4).join('\n    ');
-      }
-    }, { id: `diagram${i}`, code });
-    if (error) problems.push(`${where}: diagram does not render\n    ${error}`);
+  for (const { where, code } of diagrams) {
+    try {
+      await mermaid.parse(code);
+    } catch (e) {
+      const error = String(e?.message ?? e).split('\n').slice(0, 4).join('\n    ');
+      problems.push(`${where}: diagram does not parse\n    ${error}`);
+    }
   }
-  await browser.close();
   return { count: diagrams.length, problems };
 }
 
