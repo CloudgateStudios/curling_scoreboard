@@ -20,7 +20,7 @@
 }
 
 .facts dt {
-  color: #666;
+  color: var(--text-muted);
   font-weight: 600;
 }
 

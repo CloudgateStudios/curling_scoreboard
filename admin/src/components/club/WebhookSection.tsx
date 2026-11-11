@@ -127,7 +127,12 @@ export function WebhookSection({ clubId }: Props) {
   const misspelled = unknownVariables(template);
   const hasMention = /@(everyone|here)\b|<@/.test(template);
 
-  useUnsavedChanges(changed);
+  useUnsavedChanges(changed, {
+    label: 'the webhook',
+    save: handleSave,
+    discard: handleCancel,
+    canSave,
+  });
 
   function handleCancel() {
     setUrl('');

@@ -31,7 +31,7 @@
 }
 
 .muted {
-  color: #777;
+  color: var(--text-muted);
   font-size: 0.88rem;
 }
 
@@ -52,7 +52,7 @@
 }
 
 .sheet {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
   display: flex;
@@ -110,7 +110,7 @@
   align-items: baseline;
   gap: 0.75rem;
   padding: 0.45rem 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
   flex-wrap: wrap;
 }
@@ -121,7 +121,7 @@
 
 .when {
   min-width: 7.5rem;
-  color: #555;
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -157,7 +157,7 @@
 }
 
 .stepDone .stepLabel {
-  color: #888;
+  color: var(--text-faint);
 }
 
 .tick,
@@ -166,7 +166,7 @@
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 4px;
-  border: 1.5px solid #ccc;
+  border: 1.5px solid var(--border-strong);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,9 +175,9 @@
 }
 
 .tickDone {
-  border-color: #137333;
-  background: #137333;
-  color: white;
+  border-color: var(--good);
+  background: var(--good);
+  color: var(--on-accent);
 }
 
 @media (max-width: 1100px) {

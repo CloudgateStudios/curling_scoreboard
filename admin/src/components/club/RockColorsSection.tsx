@@ -51,7 +51,15 @@ export function RockColorsSection({ clubId }: Props) {
   const missingName = SLOTS.some((slot) => !draft[slot].name.trim());
   const changed = !sameRockColor(draft.team1, saved.team1) || !sameRockColor(draft.team2, saved.team2);
 
-  useUnsavedChanges(changed);
+  useUnsavedChanges(changed, {
+    label: 'the rock colors',
+    save: handleSave,
+    discard: () => {
+      setDraft(saved);
+      setCustom(customSlotsFor(saved));
+    },
+    canSave: !sameColor && !missingName,
+  });
 
   function choosePreset(slot: TeamSlot, color: RockColor) {
     setDraft((current) => ({ ...current, [slot]: color }));

@@ -2,28 +2,15 @@
   max-width: 38rem;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.muted {
-  color: #777;
-  font-size: 0.88rem;
-}
-
 .hint {
   font-size: 0.8rem;
   font-weight: 400;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .mono {
   font-family: monospace;
-  color: #666;
+  color: var(--text-muted);
 }
 
 /* Where the person is in the three steps. */
@@ -40,10 +27,10 @@
 .stepOn,
 .stepDone {
   padding: 0.45rem 0.65rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: white;
-  color: #888;
+  background: var(--surface);
+  color: var(--text-faint);
   font-size: 0.85rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -51,13 +38,13 @@
 }
 
 .stepOn {
-  border-color: #1a73e8;
-  color: #1967d2;
+  border-color: var(--accent);
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
 .stepDone {
-  color: #137333;
+  color: var(--good);
 }
 
 .actions {
@@ -76,7 +63,7 @@
 }
 
 .review dt {
-  color: #666;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -89,8 +76,8 @@
 .message {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: #f6f8fa;
-  border: 1px solid #e8e8e8;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   font-size: 0.88rem;

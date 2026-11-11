@@ -35,7 +35,7 @@
   position: fixed;
   inset: 0;
   z-index: 300;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -44,16 +44,16 @@
 
 .dialog {
   width: min(32rem, 100%);
-  background: white;
+  background: var(--surface);
   border-radius: 10px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 20px 60px var(--shadow);
   padding: 0.5rem;
 }
 
 .input {
   width: 100%;
   padding: 0.7rem 0.8rem;
-  border: 1px solid #1a73e8;
+  border: 1px solid var(--accent);
   border-radius: 7px;
   font-size: 1rem;
   outline: none;
@@ -77,11 +77,11 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.92rem;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .itemActive {
-  background: #e8f0fe;
+  background: var(--accent-soft);
 }
 
 .itemText {
@@ -95,12 +95,12 @@
   margin-left: 0.5rem;
   font-family: monospace;
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
 }
 
 .none {
   padding: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
   font-size: 0.9rem;
 }
 

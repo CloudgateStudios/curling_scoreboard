@@ -52,7 +52,11 @@ export function StreamsSection({ clubId }: Props) {
   const isDefault = template.title === DEFAULT_STREAM_TEMPLATES[kind].title
     && template.description === DEFAULT_STREAM_TEMPLATES[kind].description;
 
-  useUnsavedChanges(changed);
+  useUnsavedChanges(changed, {
+    label: 'the stream titles',
+    save: handleSave,
+    discard: () => setDraft(saved),
+  });
 
   function edit(key: Field, value: string) {
     setDraft((current) => ({ ...current, [kind]: { ...current[kind], [key]: value } }));

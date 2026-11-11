@@ -34,7 +34,11 @@ export function TimeZoneSection({ clubId }: Props) {
 
   // The zone offered to a club with none is a suggestion, not an edit, so it
   // only counts as unsaved once the admin picks another.
-  useUnsavedChanges(saved !== undefined && draft !== (saved ?? BROWSER_TIME_ZONE));
+  useUnsavedChanges(saved !== undefined && draft !== (saved ?? BROWSER_TIME_ZONE), {
+    label: 'the time zone',
+    save: handleSave,
+    discard: () => setDraft(saved ?? BROWSER_TIME_ZONE),
+  });
 
   async function handleSave() {
     setSaving(true);

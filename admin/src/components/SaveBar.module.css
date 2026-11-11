@@ -1,0 +1,61 @@
+/* Dark on a light page and light on a dark one, so it stands apart from
+   the cards it sits over. */
+.bar {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 90;
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 0.9rem;
+}
+
+.text {
+  min-width: 0;
+}
+
+.buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.discard,
+.save {
+  border-radius: 7px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.discard {
+  background: transparent;
+  color: var(--surface);
+  border: 1px solid var(--text-faint);
+}
+
+.save {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface);
+}
+
+.discard:disabled,
+.save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.discard:focus-visible,
+.save:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

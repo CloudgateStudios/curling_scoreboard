@@ -3,6 +3,7 @@ import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import { SecretField } from '../components/SecretField';
+import { PageHeader } from '../components/PageHeader';
 import { SystemShell } from '../components/SystemShell';
 import { clubPath } from '../lib/clubPaths';
 import { generatePassword, generatePin } from '../lib/credentials';
@@ -101,7 +102,7 @@ export function NewClub() {
     return (
       <SystemShell>
         <div className={styles.page}>
-          <h1 className={common.title}>{clubName} is ready</h1>
+          <PageHeader title={`${clubName} is ready`} />
           {created.warning && <p className={common.warning}>{created.warning} Add them from the club's pages.</p>}
           <section className={common.section}>
             <h2 className={common.sectionTitle}>Send this to {adminName || adminEmail}</h2>
@@ -122,10 +123,7 @@ export function NewClub() {
   return (
     <SystemShell>
       <div className={styles.page}>
-        <div className={styles.header}>
-          <h1 className={common.title}>New club</h1>
-          <span className={styles.muted}>Step {step + 1} of {STEPS.length}</span>
-        </div>
+        <PageHeader title="New club" subtitle={`Step ${step + 1} of ${STEPS.length}`} />
         <ol className={styles.steps}>
           {STEPS.map((label, i) => (
             <li key={label} className={i === step ? styles.stepOn : i < step ? styles.stepDone : styles.step}>

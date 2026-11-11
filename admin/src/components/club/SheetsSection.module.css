@@ -7,7 +7,7 @@
 }
 
 .card {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.9rem 1rem;
   display: flex;
@@ -43,7 +43,7 @@
 }
 
 .idle {
-  color: #999;
+  color: var(--text-faint);
   font-size: 0.88rem;
 }
 
@@ -56,7 +56,7 @@
   gap: 0.3rem 0.75rem;
   padding: 0.6rem 0.75rem;
   border-radius: 8px;
-  background: #f4f6f9;
+  background: var(--surface-muted);
 }
 
 .pairingLabel {
@@ -65,7 +65,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .pairingCode {
@@ -73,7 +73,7 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   font-family: monospace;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .pairButton {
@@ -85,7 +85,7 @@
   gap: 1rem;
   margin-top: auto;
   padding-top: 0.25rem;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border);
 }
 
 .healthGood,
@@ -101,13 +101,13 @@
 }
 
 .healthGood {
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--good-soft);
+  color: var(--good);
 }
 
 .healthAttention {
-  background: #f8f9fb;
-  border: 1px solid #ececec;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
 }
 
 .renameForm {
@@ -130,8 +130,8 @@
 
 .dangerButton {
   background: transparent;
-  color: #c5221f;
-  border: 1px solid #f1b8b4;
+  color: var(--bad);
+  border: 1px solid var(--bad-border);
   border-radius: 8px;
   padding: 0.5rem 0.9rem;
   font-size: 0.85rem;
@@ -141,7 +141,7 @@
 }
 
 .dangerButton:hover:not(:disabled) {
-  border-color: #c5221f;
+  border-color: var(--bad);
 }
 
 .dangerButton:disabled {

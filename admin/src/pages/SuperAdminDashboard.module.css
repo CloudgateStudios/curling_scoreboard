@@ -1,25 +1,6 @@
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 2rem;
-}
-
-.title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.subtitle {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
 .primaryButton {
-  background: #1a73e8;
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 0.6rem 1.25rem;
@@ -31,7 +12,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: #1557b0;
+  background: var(--accent-hover);
 }
 
 .primaryButton:disabled {
@@ -41,8 +22,8 @@
 
 .ghostButton {
   background: transparent;
-  color: #444;
-  border: 1px solid #ddd;
+  color: var(--text-2);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 0.6rem 1.25rem;
   font-size: 0.9rem;
@@ -52,7 +33,7 @@
 }
 
 .ghostButton:hover {
-  border-color: #aaa;
+  border-color: var(--border-strong);
 }
 
 .clubGrid {
@@ -62,8 +43,8 @@
 }
 
 .clubCard {
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1.25rem 1.5rem;
   text-align: left;
@@ -75,30 +56,30 @@
 }
 
 .clubCard:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  border-color: #1a73e8;
+  box-shadow: 0 4px 16px var(--shadow);
+  border-color: var(--accent);
 }
 
 .clubName {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .clubId {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-faint);
   font-family: monospace;
 }
 
 .viewLink {
   font-size: 0.85rem;
-  color: #1a73e8;
+  color: var(--accent);
   margin-top: 0.5rem;
 }
 
 .empty {
-  color: #999;
+  color: var(--text-faint);
   grid-column: 1 / -1;
   padding: 2rem 0;
 }
@@ -106,7 +87,7 @@
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,12 +95,12 @@
 }
 
 .modalCard {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 2rem;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px var(--shadow);
 }
 
 .modalTitle {
@@ -140,18 +121,18 @@
   gap: 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text-2);
 }
 
 .hint {
   font-size: 0.8rem;
   font-weight: 400;
-  color: #777;
+  color: var(--text-muted);
 }
 
 .input {
   padding: 0.65rem 0.85rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 1rem;
   outline: none;
@@ -159,13 +140,13 @@
 }
 
 .input:focus {
-  border-color: #1a73e8;
+  border-color: var(--accent);
 }
 
 .error {
   font-size: 0.85rem;
-  color: #d93025;
-  background: #fce8e6;
+  color: var(--bad);
+  background: var(--bad-soft);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
 }
@@ -185,7 +166,7 @@
 }
 
 .muted {
-  color: #777;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -198,8 +179,8 @@
 }
 
 .kpi {
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.85rem 1rem;
   display: flex;
@@ -213,30 +194,30 @@
 .kpi_bad {
   font-size: 1.6rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .kpi_good {
-  color: #137333;
+  color: var(--good);
 }
 
 .kpi_warn {
-  color: #b06000;
+  color: var(--warn);
 }
 
 .kpi_bad {
-  color: #c5221f;
+  color: var(--bad);
 }
 
 .kpiLabel {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .allGood {
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--good-soft);
+  color: var(--good);
   border-radius: 8px;
   padding: 0.6rem 0.85rem;
   font-size: 0.9rem;
@@ -259,15 +240,15 @@
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-faint);
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .table td {
   padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
@@ -277,7 +258,7 @@
 
 .detail {
   margin-left: 0.5rem;
-  color: #555;
+  color: var(--text-2);
   font-size: 0.85rem;
 }
 
@@ -291,5 +272,5 @@
   display: block;
   font-family: monospace;
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
 }

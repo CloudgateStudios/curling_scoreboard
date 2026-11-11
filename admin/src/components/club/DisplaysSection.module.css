@@ -16,12 +16,12 @@
   gap: 0.3rem;
   font-size: 0.8rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text-2);
 }
 
 .url {
-  background: #f4f6f9;
-  border: 1px solid #e0e0e0;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
@@ -49,5 +49,5 @@
   margin: 0;
   font-size: 0.8rem;
   font-weight: 400;
-  color: #666;
+  color: var(--text-muted);
 }

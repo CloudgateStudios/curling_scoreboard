@@ -20,25 +20,25 @@
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #555;
+  color: var(--text-2);
   text-decoration: none;
 }
 
 .guides a:hover {
-  background: #f1f3f6;
-  color: #1a1a2e;
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .guides a[aria-current='page'] {
-  background: #e8f0fe;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 /* The guide itself, styled much as GitHub shows Markdown. */
 .guide {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #24292f;
+  color: var(--text);
 }
 
 .guide :global(h1) {
@@ -51,7 +51,7 @@
   font-size: 1.2rem;
   margin: 2rem 0 0.75rem;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .guide :global(h3) {
@@ -81,18 +81,18 @@
 }
 
 .guide :global(a) {
-  color: #1a73e8;
+  color: var(--accent);
 }
 
 .guide :global(code) {
-  background: #f1f3f6;
+  background: var(--surface-hover);
   border-radius: 4px;
   padding: 0.1rem 0.35rem;
   font-size: 0.85em;
 }
 
 .guide :global(pre) {
-  background: #f6f8fa;
+  background: var(--surface-muted);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   overflow-x: auto;
@@ -111,14 +111,14 @@
 
 .guide :global(th),
 .guide :global(td) {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   padding: 0.4rem 0.75rem;
   text-align: left;
   vertical-align: top;
 }
 
 .guide :global(th) {
-  background: #f6f8fa;
+  background: var(--surface-muted);
 }
 
 .guide :global(img) {

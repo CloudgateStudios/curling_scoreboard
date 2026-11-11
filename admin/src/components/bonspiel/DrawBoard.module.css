@@ -19,7 +19,7 @@
 .board thead th {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text-2);
   min-width: 11rem;
   padding: 0 0.25rem;
 }
@@ -30,7 +30,7 @@
   position: sticky;
   left: 0;
   z-index: 1;
-  background: white;
+  background: var(--surface);
 }
 
 .board thead .drawHeading {
@@ -50,7 +50,7 @@
 .drawLabel,
 .drawStart {
   padding: 0.35rem 0.5rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   font-size: 0.85rem;
   font-family: inherit;
@@ -63,13 +63,13 @@
 .drawLabel:focus,
 .drawStart:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: var(--accent);
 }
 
 .drawWhen {
   font-size: 0.75rem;
   font-weight: 400;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .removeDraw {
@@ -78,29 +78,29 @@
   border: none;
   padding: 0;
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
   cursor: pointer;
 }
 
 .removeDraw:hover {
-  color: #d93025;
+  color: var(--bad);
   text-decoration: underline;
 }
 
 .addGame {
   width: 100%;
   min-height: 6rem;
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
   background: transparent;
-  color: #999;
+  color: var(--text-faint);
   font-size: 1.5rem;
   cursor: pointer;
 }
 
 .addGame:hover {
-  border-color: #1a73e8;
-  color: #1a73e8;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* On a phone the draw column keeps to its name and time, leaving room for

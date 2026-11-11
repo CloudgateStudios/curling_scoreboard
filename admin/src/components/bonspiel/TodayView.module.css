@@ -5,8 +5,8 @@
 }
 
 .needs {
-  border: 1px solid #f3c969;
-  background: #fef7e0;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-soft);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
@@ -29,14 +29,14 @@
 .draw,
 .drawOn,
 .drawDone {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.75rem 1rem;
 }
 
 .drawOn {
-  border-color: #137333;
-  box-shadow: inset 4px 0 0 #137333;
+  border-color: var(--good);
+  box-shadow: inset 4px 0 0 var(--good);
 }
 
 .drawDone {
@@ -57,7 +57,7 @@
 }
 
 .drawTime {
-  color: #555;
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -84,5 +84,5 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-faint);
 }

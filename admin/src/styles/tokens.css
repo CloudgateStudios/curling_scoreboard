@@ -1,0 +1,86 @@
+/* Every color in the portal, as a token, with a dark value for when the
+   computer is set to dark mode. Stylesheets use these and never a literal
+   color, apart from the top bar and the sign in page, which are dark in
+   both, and previews of what a screen or a rock really looks like.
+
+   Meanings stay the same in both: green is well, amber needs a look, red is
+   broken, purple is for super admins only. */
+:root {
+  color-scheme: light dark;
+
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  /* Wells, chips and quiet fills inside a surface. */
+  --surface-muted: #f6f8fa;
+  --surface-hover: #f1f3f6;
+  --border: #e8e8e8;
+  --border-strong: #d4d8de;
+
+  --text: #1a1a2e;
+  --text-2: #444;
+  --text-muted: #666;
+  --text-faint: #999;
+
+  --accent: #1a73e8;
+  --accent-hover: #1557b0;
+  /* Accent text on a soft accent fill. */
+  --accent-strong: #1967d2;
+  --accent-soft: #e8f0fe;
+  /* Text on a filled accent, good or bad button. */
+  --on-accent: #ffffff;
+
+  --good: #137333;
+  --good-soft: #e6f4ea;
+  --warn: #b06000;
+  --warn-soft: #fef7e0;
+  --warn-border: #f3c969;
+  --bad: #c5221f;
+  --bad-soft: #fce8e6;
+  --bad-border: #f1b8b4;
+  --super: #7b1fa2;
+  --super-soft: #f3e8fd;
+
+  --overlay: rgba(0, 0, 0, 0.4);
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1419;
+    --surface: #182029;
+    --surface-muted: #1f2933;
+    --surface-hover: #26313c;
+    --border: #2b3640;
+    --border-strong: #3c4956;
+
+    --text: #e6edf3;
+    --text-2: #c5ced7;
+    --text-muted: #9aa7b4;
+    --text-faint: #7b8794;
+
+    --accent: #6ea8fe;
+    --accent-hover: #8fbcff;
+    --accent-strong: #9cc3ff;
+    --accent-soft: #1b2c44;
+    --on-accent: #0b1520;
+
+    --good: #6dd58c;
+    --good-soft: #16301f;
+    --warn: #f0b45a;
+    --warn-soft: #362a12;
+    --warn-border: #6b5321;
+    --bad: #f28b82;
+    --bad-soft: #3a1d1b;
+    --bad-border: #6b2c28;
+    --super: #d59ce6;
+    --super-soft: #2e2038;
+
+    --overlay: rgba(0, 0, 0, 0.6);
+    --shadow: rgba(0, 0, 0, 0.45);
+  }
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

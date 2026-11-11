@@ -23,7 +23,7 @@
 .weekDayName {
   font-size: 0.78rem;
   font-weight: 600;
-  color: #666;
+  color: var(--text-muted);
   text-align: center;
   padding-bottom: 0.4rem;
 }
@@ -37,19 +37,19 @@
   right: 0.5rem;
   transform: translateY(-50%);
   font-size: 0.7rem;
-  color: #999;
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
 
 .weekDay {
   position: relative;
-  border-left: 1px solid #efefef;
-  border-bottom: 1px solid #efefef;
-  background-image: linear-gradient(#efefef 1px, transparent 1px);
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background-image: linear-gradient(var(--surface-muted) 1px, transparent 1px);
 }
 
 .weekDay:last-child {
-  border-right: 1px solid #efefef;
+  border-right: 1px solid var(--border);
 }
 
 .weekDraw {
@@ -60,11 +60,11 @@
   gap: 0.1rem;
   overflow: hidden;
   padding: 0.25rem 0.4rem;
-  border: 1px solid white;
-  border-left: 3px solid #1967d2;
+  border: 1px solid var(--surface);
+  border-left: 3px solid var(--accent-strong);
   border-radius: 4px;
-  background: #e8f0fe;
-  color: #174ea6;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -75,15 +75,15 @@
 }
 
 .weekDrawConflict {
-  border-left-color: #d93025;
-  background: #fce8e6;
-  color: #a50e0e;
+  border-left-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 .weekDrawInactive {
-  border-left-color: #bbb;
-  background: #f4f6f9;
-  color: #999;
+  border-left-color: var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text-faint);
 }
 
 .weekDrawName {

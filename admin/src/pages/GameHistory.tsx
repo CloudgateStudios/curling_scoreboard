@@ -6,6 +6,7 @@ import { clubPath } from '../lib/clubPaths';
 import { downloadCsv, gamesCsv, gamesCsvFilename } from '../lib/gamesCsv';
 import type { Game } from '../types';
 import { GameCard } from '../components/GameCard';
+import { PageHeader } from '../components/PageHeader';
 import common from '../styles/common.module.css';
 import styles from './GameHistory.module.css';
 
@@ -79,19 +80,15 @@ export function GameHistory({ clubId }: Props) {
         </button>
       </div>
 
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{sheetName || '…'}</h1>
-          <p className={styles.subtitle}>
-            {mayHaveMore ? `Latest ${games.length}` : games.length} completed game{games.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {games.length > 0 && (
+      <PageHeader
+        title={sheetName || '…'}
+        subtitle={`${mayHaveMore ? `Latest ${games.length}` : games.length} completed game${games.length !== 1 ? 's' : ''}`}
+        actions={games.length > 0 && (
           <button className={common.ghostButton} onClick={handleExport}>
             Export CSV
           </button>
         )}
-      </div>
+      />
 
       <div className={styles.gameList}>
         {games.map((game) => (

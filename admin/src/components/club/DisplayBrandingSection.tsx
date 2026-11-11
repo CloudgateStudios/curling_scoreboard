@@ -45,7 +45,14 @@ export function DisplayBrandingSection({ clubId, clubName }: Props) {
 
   const trimmedTitle = title.trim();
   const changed = trimmedTitle !== (saved.title ?? '') || logo !== saved.logo;
-  useUnsavedChanges(changed);
+  useUnsavedChanges(changed, {
+    label: 'the warm room title and logo',
+    save: handleSave,
+    discard: () => {
+      setTitle(saved.title ?? '');
+      setLogo(saved.logo);
+    },
+  });
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

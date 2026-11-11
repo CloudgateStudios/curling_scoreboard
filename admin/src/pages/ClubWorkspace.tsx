@@ -29,6 +29,8 @@ import { AdminsSection } from '../components/club/AdminsSection';
 import { SheetsSection } from '../components/club/SheetsSection';
 import { BonspielsSection } from '../components/club/BonspielsSection';
 import { ClubNameSection } from '../components/club/ClubNameSection';
+import { PageHeader } from '../components/PageHeader';
+import { SaveBar } from '../components/SaveBar';
 import { GameHistory } from './GameHistory';
 import { LeagueDetail } from './LeagueDetail';
 import { BonspielDetail } from './BonspielDetail';
@@ -173,6 +175,7 @@ export function ClubWorkspace({ clubId, user }: Props) {
             }
           />
         </Routes>
+        <SaveBar />
       </div>
     </div>
   );
@@ -258,14 +261,7 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
 
   return (
     <>
-      <div className={styles.pageHeader}>
-        <h1 className={common.title}>{section.title}</h1>
-        {guide && (
-          <a className={styles.guideLink} href={guide.path} target="_blank" rel="noopener">
-            Guide: {guide.title}
-          </a>
-        )}
-      </div>
+      <PageHeader title={section.title} guide={guide} />
 
       <div hidden={!shown('sheets')}>
         <SheetsSection
