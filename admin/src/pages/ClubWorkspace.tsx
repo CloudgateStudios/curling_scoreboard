@@ -267,7 +267,7 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
         )}
       </div>
 
-      <div hidden={!shown('sheets')} className={styles.narrow}>
+      <div hidden={!shown('sheets')}>
         <SheetsSection
           clubId={clubId}
           sheets={sheets}

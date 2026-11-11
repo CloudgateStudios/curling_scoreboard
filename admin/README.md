@@ -37,7 +37,7 @@ themselves and check every link between them.
 | Path                          | What is in it                                                                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `src/App.tsx`                 | Sign-in and the routes for each role                                                                           |
-| `src/pages/`                  | One file a route: the super admin's overview and service controls, a club's workspace, a sheet's game history, a league, a bonspiel, sign-in, help |
+| `src/pages/`                  | One file a route: the super admin's overview, new club and service controls, a club's workspace, a sheet's game history, a league, a bonspiel, sign-in, help |
 | `src/components/club/`        | The club's sidebar and its pages, one component a section                                                    |
 | `src/components/bonspiel/`    | The bonspiel page: draw board, game and template dialogs, bracket view                                         |
 | `src/lib/`                    | Logic with no React in it, with its tests beside it                                                            |
@@ -67,7 +67,8 @@ themselves and check every link between them.
 | `deviceHealth.ts`       | Whether a scoreboard or screen is online and up to date                                            |
 | `webhookMessage.ts`     | The webhook message variables and the preview; matches `functions/src/webhookMessage.ts`           |
 | `gameWebhook.ts`        | How a game's webhook post went                                                                     |
-| `credentials.ts`        | Generating API keys and pairing codes                                                              |
+| `welcome.ts`            | The message sent to a new portal user, with how to sign in                                         |
+| `credentials.ts`        | Generating API keys, pairing codes, passwords and PINs                                             |
 | `unsavedChanges.ts`     | Warning before leaving with unsaved edits                                                          |
 | `guides.ts`             | The guides in `docs/guides/`, read in when the portal is built, for the help pages                 |
 | `helpMarkdown.ts`       | A guide as HTML, with its links and heading ids as GitHub gives them                               |

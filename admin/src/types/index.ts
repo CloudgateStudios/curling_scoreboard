@@ -63,6 +63,8 @@ export interface LiveGame {
   currentEnd: number;
   team1: { name: string; score: number; hasHammer: boolean };
   team2: { name: string; score: number; hasHammer: boolean };
+  /** The bonspiel game it is, when started from the scoreboard's bonspiel bar. */
+  bonspiel?: { id: string; name: string; gameId: string };
 }
 
 export type TeamSlot = 'team1' | 'team2';

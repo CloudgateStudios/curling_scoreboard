@@ -80,6 +80,8 @@ export interface ClubDraw {
   name: string;
   /** A bonspiel draw's label, "Draw 5"; null for a league. */
   label: string | null;
+  /** A bonspiel draw's ID in the plan; null for a league. */
+  drawId: string | null;
   /** Local minutes. */
   start: number;
   /** Local minutes; for a bonspiel, until the next draw takes over. */
@@ -103,7 +105,7 @@ function leagueDraws(leagues: League[], from: number, days: number): ClubDraw[] 
         const endOfDraw = minutesOfDay(draw.end);
         if (draw.day !== weekdayOf(day) || startOfDraw === null || endOfDraw === null) continue;
         found.push({
-          kind: 'league', id: league.id, name: league.name, label: null,
+          kind: 'league', id: league.id, name: league.name, label: null, drawId: null,
           start: day + startOfDraw,
           // A draw that ends after midnight.
           end: day + endOfDraw + (endOfDraw <= startOfDraw ? MINUTES_PER_DAY : 0),
@@ -117,10 +119,10 @@ function leagueDraws(leagues: League[], from: number, days: number): ClubDraw[] 
 
 /** Every active bonspiel's draws, each on until the lead time before the
  *  next, and the last of a day for as long as a game takes. */
-function bonspielDraws(bonspiels: Bonspiel[]): ClubDraw[] {
+function bonspielDraws(bonspiels: Bonspiel[], evenInactive = false): ClubDraw[] {
   const found: ClubDraw[] = [];
   for (const bonspiel of bonspiels) {
-    if (!bonspiel.active) continue;
+    if (!bonspiel.active && !evenInactive) continue;
     const draws = bonspiel.draws
       .map((draw) => ({ draw, start: parseLocalTime(draw.start) }))
       .filter((d): d is { draw: typeof d.draw; start: number } => d.start !== null)
@@ -129,7 +131,7 @@ function bonspielDraws(bonspiels: Bonspiel[]): ClubDraw[] {
       const next = draws[i + 1];
       const sheetIds = [...new Set(bonspiel.games.filter((g) => g.drawId === draw.id).map((g) => g.sheetId))];
       found.push({
-        kind: 'bonspiel', id: bonspiel.id, name: bonspiel.name, label: draw.label,
+        kind: 'bonspiel', id: bonspiel.id, name: bonspiel.name, label: draw.label, drawId: draw.id,
         start,
         // The next draw takes over at its lead time, so this one ends the
         // minute before.
@@ -167,6 +169,37 @@ export function bonspielToOpen(bonspiels: Bonspiel[], today: string): Bonspiel |
     ?? list.find((b) => b.startDate > today)
     ?? null;
   return pick(byStart.filter((b) => b.active)) ?? pick(byStart);
+}
+
+export type DayDrawStatus = 'done' | 'on' | 'next' | 'later';
+
+export interface DayDraw {
+  drawId: string;
+  label: string;
+  /** Local minutes. */
+  start: number;
+  status: DayDrawStatus;
+}
+
+/** A bonspiel's draws for the day of [at], in order: those finished, the
+ *  one on now, the next to start, and the rest. A late draw from the night
+ *  before that is still on counts as today's. Inactive bonspiels count too,
+ *  since their coordinator still runs them. */
+export function bonspielDay(bonspiel: Bonspiel, at: number): DayDraw[] {
+  const today = dateOf(at);
+  const draws = bonspielDraws([bonspiel], true)
+    .filter((d) => dateOf(d.start) === today || (at >= d.start - DRAW_LEAD_MINUTES && at <= d.end));
+  let nextFound = false;
+  return draws.map((d) => {
+    let status: DayDrawStatus;
+    if (at > d.end) status = 'done';
+    else if (at >= d.start - DRAW_LEAD_MINUTES) status = 'on';
+    else if (!nextFound) {
+      status = 'next';
+      nextFound = true;
+    } else status = 'later';
+    return { drawId: d.drawId ?? '', label: d.label ?? '', start: d.start, status };
+  });
 }
 
 /** What the setup checklist reads. Undefined is not known yet. */

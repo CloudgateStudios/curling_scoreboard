@@ -149,6 +149,9 @@ else, plan and run each bonspiel in the portal.
   playoff. What they make can be edited like anything else.
 - **A draw board** shows the draws down the side and the sheets across, and
   the portal checks the plan makes sense before it saves.
+- **Today**, on each of the bonspiel's days, puts the day's draws first: the
+  one on now, each game's live score, and the games that need the
+  coordinator, a tie to settle or a sheet with no scoreboard.
 - **Results come in by themselves.** A game started from the scoreboard's
   bonspiel bar sends its result to the bracket when it finishes, and the
   winners and losers move on to their next games. A coordinator can enter or
@@ -216,7 +219,11 @@ How it works: [REST API and webhook](architecture/api-and-webhook.md).
 ## Super admins
 
 Super admins look after every club: they create clubs and their users (club
-admins and bonspiel admins), add and remove sheets, and rotate API keys.
+admins and bonspiel admins), add and remove sheets, and rotate API keys. A
+new club is three short steps (the club, with its time zone and sheets; its
+first admin; a check) and the portal makes the admin's password and the
+scoreboard PIN, then gives the message to send them. Adding a user to a
+club makes a password the same way.
 They start on an overview of every club: how many scoreboards are online,
 which need a look and why, and each club with its health, problems first.
 A club switcher in the top bar (⌘K) opens any club or a page in one. In a

@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { ServiceControls } from './pages/ServiceControls';
+import { NewClub } from './pages/NewClub';
 import { SystemDataProvider } from './hooks/useSystemData';
 import { ClubWorkspace } from './pages/ClubWorkspace';
 import { Help } from './pages/Help';
@@ -52,6 +53,7 @@ function Portal({ user, loading }: ReturnType<typeof useAuth>) {
           <>
             <Route path="/" element={<SuperAdminDashboard />} />
             <Route path="/service" element={<ServiceControls />} />
+            <Route path="/new-club" element={<NewClub />} />
           </>
         ) : (
           <Route path="/" element={<OwnClub user={user} />} />

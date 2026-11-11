@@ -3,6 +3,9 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../lib/firebase';
 import { errorMessage } from '../../lib/format';
+import { generatePassword } from '../../lib/credentials';
+import { welcomeMessage } from '../../lib/welcome';
+import { SecretField } from '../SecretField';
 import type { ClubUser, ClubUserRole } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './AdminsSection.module.css';
@@ -41,6 +44,9 @@ export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // The message for the person just added, with their password.
+  const [welcome, setWelcome] = useState('');
+  const [copied, setCopied] = useState(false);
   const [removingUid, setRemovingUid] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState('');
 
@@ -66,9 +72,12 @@ export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
     setName(user?.displayName ?? '');
     setEmail(user?.email ?? '');
     setRole(user?.role ?? 'clubadmin');
-    setPassword('');
+    // A new user gets a password made for them, to send with the rest.
+    setPassword(user ? '' : generatePassword());
     setError('');
     setSuccess('');
+    setWelcome('');
+    setCopied(false);
     setShowForm(true);
   }
 
@@ -96,10 +105,12 @@ export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
           adminPassword: password,
           role,
         });
-        setSuccess(`Account created for ${name || email}.`);
+        setSuccess(`Account created for ${name || email}. Send them this; the password is not shown again.`);
+        setWelcome(welcomeMessage({ clubName, role, email, password, portalUrl: window.location.origin }));
+        setCopied(false);
         setName('');
         setEmail('');
-        setPassword('');
+        setPassword(generatePassword());
       }
     } catch (err) {
       setError(errorMessage(err, editing ? `Could not update ${editing.email}.` : 'Could not add the user.'));
@@ -215,19 +226,30 @@ export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
                   </label>
                 ))}
               </fieldset>
-              <label className={common.label}>
-                {editing ? 'New Password' : 'Password'}
-                <input
-                  type="password"
-                  className={common.input}
+              {!editing ? (
+                <SecretField
+                  id="new-user-password"
+                  label="Password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={editing ? 'Leave blank to keep the current one' : undefined}
-                  autoComplete="new-password"
-                  required={!editing}
+                  onChange={setPassword}
+                  onGenerate={generatePassword}
                   minLength={8}
+                  hint="Made for you, to send with the rest of what they need."
                 />
-              </label>
+              ) : (
+                <label className={common.label}>
+                  New Password
+                  <input
+                    type="password"
+                    className={common.input}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={editing ? 'Leave blank to keep the current one' : undefined}
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                </label>
+              )}
               {signsOut && (
                 <p className={styles.note}>
                   Saving signs {editing.displayName || editing.email} out of the portal, so they sign in again
@@ -236,6 +258,18 @@ export function AdminsSection({ clubId, clubName, readOnly = false }: Props) {
               )}
               {error && <p className={common.error}>{error}</p>}
               {success && <p className={common.success}>{success}</p>}
+              {welcome && (
+                <div className={styles.welcome}>
+                  <pre className={styles.welcomeText}>{welcome}</pre>
+                  <button
+                    type="button"
+                    className={common.ghostButton}
+                    onClick={() => navigator.clipboard.writeText(welcome).then(() => setCopied(true), () => {})}
+                  >
+                    {copied ? 'Copied' : 'Copy message'}
+                  </button>
+                </div>
+              )}
               <div className={common.modalActions}>
                 <button type="button" className={common.ghostButton} onClick={() => setShowForm(false)}>
                   {editing ? 'Cancel' : 'Close'}

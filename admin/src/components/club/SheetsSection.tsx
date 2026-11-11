@@ -93,7 +93,7 @@ export function SheetsSection({ clubId, sheets, canManageSheets, readOnly, onVie
 
       {error && <p className={common.error}>{error}</p>}
 
-      <div className={common.list}>
+      <div className={styles.cards}>
         {sheets.map((sheet) => (
           <SheetRow
             key={sheet.id}

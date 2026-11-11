@@ -90,8 +90,9 @@ Bonspiels; the other pages are not mounted for them at all.
   opens the page that does it. What is on now is worked out in
   `src/lib/clubNow.ts`, in the club's time zone, with the same lead time as
   the scoreboard and the API.
-- **Sheets**: sheets with their live games, scoreboard status and pairing
-  codes. Each sheet opens its full game history.
+- **Sheets**: a card for each sheet with its live game, scoreboard status
+  and pairing code, the code large enough to read from the sheet. Each
+  sheet opens its full game history.
 - **Games**: the games from the last seven days, and a button for each
   sheet's full history. Both export as CSV, a row a game with each team's
   total and points by end, for keeping league standings.
@@ -109,7 +110,13 @@ Bonspiels; the other pages are not mounted for them at all.
   winners come from, ending at the final and the event's winner. A pool
   shows its standings and its games instead, and where teams share a place
   the coordinator orders them with Move up, which saves as the event's
-  `tiebreak`. Duplicate
+  `tiebreak`. On each of the bonspiel's days, **Today** comes first, above
+  the details: the day's draws in order with the one on now marked (from
+  `bonspielDay` in `src/lib/clubNow.ts`, with the same lead time as the
+  scoreboard), each game's live score from its sheet, and **Needs a hand**,
+  for a tie or a game on a sheet with no scoreboard. Its times are the
+  browser's clock, since bonspiel admins cannot read the club's time zone.
+  Duplicate
   copies a bonspiel's events, draws and games to new dates, without its teams
   or results, to run it again. The knockout and pools templates fill a
   bonspiel in from a list of teams; see [Bonspiels](bonspiels.md#templates).
@@ -164,6 +171,15 @@ service switches. The rules let super admins read all of it.
   switched off between events. Below, every club with its sheets, scoreboard
   health, games on now and screens open, clubs with problems first.
   `src/lib/systemHealth.ts` works these out.
+- **New club** (`/new-club`): three steps, the club (name, ID, time zone and
+  how many sheets), its first admin, then a check. The portal makes the
+  admin's password and a six digit scoreboard PIN, which can be typed over,
+  calls `provisionClub`, then writes the time zone and the sheets. It ends
+  on the message to send the admin, with how to sign in and the PIN.
+  Adding a user under a club's Users makes a password the same way and
+  shows the same message. Passwords are 16 characters from
+  `generatePassword` in `src/lib/credentials.ts`, leaving out characters
+  that are easy to misread.
 - **Service controls** (`/service`): the switches and blocked addresses.
   While any switch is off, a red bar under the top bar says so on every
   page.

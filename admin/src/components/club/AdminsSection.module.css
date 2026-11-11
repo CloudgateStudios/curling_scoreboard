@@ -100,3 +100,24 @@
   font-size: 0.85rem;
   color: #b06000;
 }
+
+/* The message for someone just added, shown in full to copy. */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.welcomeText {
+  width: 100%;
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f6f8fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
