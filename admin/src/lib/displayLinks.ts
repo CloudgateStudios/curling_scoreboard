@@ -185,3 +185,11 @@ export function describeSettings(
   const earlier = s.earlier === true ? ', with earlier results' : '';
   return `Warm room, ${VIEW_NAMES[view] ?? VIEW_NAMES.totals}${every}${earlier}`;
 }
+
+/** "Display 1", or the first number no link's name uses yet. */
+export function nextDisplayName(labels: string[]): string {
+  const taken = new Set(labels.map((l) => l.trim().toLowerCase()));
+  let n = 1;
+  while (taken.has(`display ${n}`)) n++;
+  return `Display ${n}`;
+}

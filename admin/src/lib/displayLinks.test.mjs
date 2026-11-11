@@ -1,7 +1,7 @@
 // Run with `npm test`. Node strips the types from the .ts imports itself.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { describeSettings, displayPreviewUrl, displayUrl, settingsToSave, showsSheet, withPage } from './displayLinks.ts';
+import { describeSettings, displayPreviewUrl, displayUrl, nextDisplayName, settingsToSave, showsSheet, withPage } from './displayLinks.ts';
 
 const SITE = 'https://curlingscoreboard.app';
 const TOKEN = 'abc123.0123456789abcdef0123456789abcdef';
@@ -181,5 +181,19 @@ describe('bonspiel screens', () => {
       'Fall Spiel, the brackets in turn, every 30 seconds');
     assert.equal(describeSettings({ page: 'bonspiel', bonspielId: 'gone', view: 'schedule' }, none, name),
       'a removed bonspiel, every draw');
+  });
+});
+
+describe('nextDisplayName', () => {
+  test('is Display 1 for the first', () => {
+    assert.equal(nextDisplayName([]), 'Display 1');
+  });
+
+  test('takes the first number not in use, ignoring case and spaces', () => {
+    assert.equal(nextDisplayName(['display 1', ' Display 3 ', 'Warm room TV']), 'Display 2');
+  });
+
+  test('skips names that are taken in a row', () => {
+    assert.equal(nextDisplayName(['Display 1', 'Display 2']), 'Display 3');
   });
 });

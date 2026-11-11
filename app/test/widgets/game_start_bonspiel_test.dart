@@ -89,6 +89,7 @@ void main() {
     String sheetId = 's1',
     List<Bonspiel>? bonspiels,
     List<League> leagues = const [],
+    bool use24Hour = false,
   }) async {
     tester.view.physicalSize = const Size(3000, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -99,6 +100,13 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        // As the app sets it from the club's clock.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(alwaysUse24HourFormat: use24Hour),
+          child: child!,
+        ),
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
@@ -156,6 +164,24 @@ void main() {
     expect(game.team1.teamId, 't1');
     expect(game.team2.teamId, 't2');
     expect(game.team2.externalId, 'J-7');
+  });
+
+  testWidgets("shows the draw's time on the 12 hour clock by default", (
+    tester,
+  ) async {
+    await openDialog(tester, now: _fridayEvening);
+    expect(
+      find.textContaining(RegExp(r'Draw 1 · Fri 7:00\sPM')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets("shows the draw's time on the club's 24 hour clock", (
+    tester,
+  ) async {
+    await openDialog(tester, now: _fridayEvening, use24Hour: true);
+    expect(find.textContaining('Draw 1 · Fri 19:00'), findsOneWidget);
+    expect(find.textContaining('PM'), findsNothing);
   });
 
   testWidgets('asks for the teams not known yet, offering likely ones first', (

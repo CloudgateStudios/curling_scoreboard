@@ -42,6 +42,7 @@ themselves and check every link between them.
 | `src/components/bonspiel/`    | The bonspiel page: draw board, game and template dialogs, bracket view                                         |
 | `src/lib/`                    | Logic with no React in it, with its tests beside it                                                            |
 | `src/hooks/useAuth.ts`        | The signed in user and their role claims                                                                       |
+| `src/hooks/useClubClock.tsx`  | The club's 12 or 24 hour clock, read once for every page in the club                                          |
 | `src/hooks/useSystemData.tsx` | Super admins only: every club, sheet and display link, and the service switches, shared by their pages        |
 | `src/types/index.ts`          | Firestore document types                                                                                       |
 | `src/styles/tokens.css`       | Every color, light and dark; stylesheets use these and never a literal color                                   |
@@ -53,7 +54,7 @@ themselves and check every link between them.
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `firebase.ts`           | Firebase setup for dev and prod, and the scoreboard site's address                                 |
 | `clubPaths.ts`          | The path of each page in a club, and where old `?tab=` links go                                    |
-| `systemHealth.ts`       | Every club's scoreboard and screen health, what needs a look, matching clubs by name, and the Devices page's report |
+| `systemHealth.ts`       | Every club's scoreboard and screen health, what needs a look, matching clubs by name, and the report copied from Sheets |
 | `recentClubs.ts`        | The clubs a super admin opened last, kept in the browser                                           |
 | `clubNow.ts`            | What is on the ice now and next, the bonspiel a bonspiel admin opens on, and the setup checklist; the lead time matches `functions/src/now.ts` |
 | `leagues.ts`            | League checks, draw times and overlaps                                                             |
@@ -64,6 +65,7 @@ themselves and check every link between them.
 | `gameEnds.ts`, `liveGame.ts` | Reading ends and live games, including older records                                          |
 | `rockColors.ts`         | The rock colors a club can pick                                                                    |
 | `displayLinks.ts`       | Display link settings and URLs                                                                     |
+| `clock.ts`              | Showing times on the club's 12 or 24 hour clock; matches `functions/src/display/assets/clock.js`   |
 | `displayBranding.ts`    | Shrinking a logo to fit and encoding it                                                            |
 | `deviceHealth.ts`       | Whether a scoreboard or screen is online and up to date                                            |
 | `webhookMessage.ts`     | The webhook message variables and the preview; matches `functions/src/webhookMessage.ts`           |

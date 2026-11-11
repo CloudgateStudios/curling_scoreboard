@@ -1,33 +1,8 @@
+/* One full-width column: setup first while any step is left, then what is
+   on the ice, what is next and the latest results. */
 .overview {
   display: flex;
   flex-direction: column;
-}
-
-/* What is on now across the top, then the rest in two columns. */
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
-}
-
-.grid > * {
-  margin-bottom: 0;
-}
-
-.onIce {
-  grid-column: 1 / -1;
-}
-
-.column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  min-width: 0;
-}
-
-.column > * {
-  margin-bottom: 0;
 }
 
 .muted {
@@ -178,10 +153,4 @@
   border-color: var(--good);
   background: var(--good);
   color: var(--on-accent);
-}
-
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

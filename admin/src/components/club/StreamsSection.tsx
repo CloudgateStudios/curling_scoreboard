@@ -10,6 +10,8 @@ import {
 } from '../../lib/streamMessage';
 import common from '../../styles/common.module.css';
 import styles from './StreamsSection.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
+import { sampleOf } from '../../lib/webhookMessage';
 
 interface Props {
   clubId: string;
@@ -23,6 +25,7 @@ const same = (a: StreamTemplates, b: StreamTemplates) =>
 /** The title and description the API's /now gives a stream on a sheet, for
  *  each kind of answer: a league draw, a bonspiel game, or nothing. */
 export function StreamsSection({ clubId }: Props) {
+  const clock = useClubClock();
   const [saved, setSaved] = useState<StreamTemplates>(DEFAULT_STREAM_TEMPLATES);
   const [draft, setDraft] = useState<StreamTemplates>(DEFAULT_STREAM_TEMPLATES);
   const [kind, setKind] = useState<StreamKind>('league');
@@ -44,8 +47,8 @@ export function StreamsSection({ clubId }: Props) {
   const changed = !same(draft, saved);
   const template = draft[kind];
   const isGame = kind !== 'none';
-  const before = previewStream(kind, template, false);
-  const after = isGame ? previewStream(kind, template, true) : null;
+  const before = previewStream(kind, template, false, clock);
+  const after = isGame ? previewStream(kind, template, true, clock) : null;
   const tooLong = Math.max(before.titleLength, after?.titleLength ?? 0) > MAX_TITLE_LENGTH;
   const misspelled = unknownStreamVariables(`${template.title} ${template.description}`);
   const variables = STREAM_VARIABLES.filter((v) => v.kinds.includes(kind));
@@ -162,7 +165,7 @@ export function StreamsSection({ clubId }: Props) {
             key={variable.name}
             type="button"
             className={styles.variableChip}
-            title={`${variable.description}, e.g. ${variable.sample}`}
+            title={`${variable.description}, e.g. ${sampleOf(variable, clock)}`}
             // Keeps the cursor in the field, so the variable goes where it was.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => insertVariable(variable.name)}

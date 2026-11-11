@@ -77,7 +77,9 @@ Every change to `firestore.rules` or to a function's behavior needs a case in
   stream title variables, defaults and the bracketed parts, in
   `functions/src/streamMessage.ts` and `admin/src/lib/streamMessage.ts`;
   the live game timeout in `functions/src/liveGame.ts` and
-  `admin/src/lib/liveGame.ts`; when a page reloads onto a new build, in
+  `admin/src/lib/liveGame.ts`; the club's 12 or 24 hour clock in
+  `functions/src/clock.ts`, `assets/clock.js`, `admin/src/lib/clock.ts` and
+  `app/lib/services/club_clock_service.dart`; when a page reloads onto a new build, in
   `assets/update-model.js` and the app's `UpdateService`; and the draw on
   now and where each side comes from, in `assets/bonspiel-model.js`,
   `admin/src/lib/bonspiels.ts` and `app/lib/models/bonspiel.dart`; and the

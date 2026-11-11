@@ -5,6 +5,8 @@ import type { ScheduledDraw } from '../../lib/leagues';
 import type { League } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './LeagueWeek.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
+import { formatHm, formatHour } from '../../lib/clock';
 
 interface Props {
   leagues: League[];
@@ -47,6 +49,7 @@ function layOut(draws: ScheduledDraw[]): Block[] {
 
 /** The week's draws on a calendar, Sunday first, with overlaps called out. */
 export function LeagueWeek({ leagues, onOpenLeague }: Props) {
+  const clock = useClubClock();
   const draws = scheduledDraws(leagues);
   if (draws.length === 0) return null;
 
@@ -67,7 +70,7 @@ export function LeagueWeek({ leagues, onOpenLeague }: Props) {
           </strong>
           <ul className={styles.weekConflicts}>
             {conflicts.map((conflict, i) => (
-              <li key={i}>{formatConflict(conflict)}</li>
+              <li key={i}>{formatConflict(conflict, clock)}</li>
             ))}
           </ul>
         </div>
@@ -87,7 +90,7 @@ export function LeagueWeek({ leagues, onOpenLeague }: Props) {
           <div className={styles.weekHours} style={{ height: rem(hours.length * 60) }}>
             {hours.map((hour) => (
               <span key={hour} style={{ top: rem((hour - firstHour) * 60) }}>
-                {String(hour).padStart(2, '0')}:00
+                {formatHour(hour, clock)}
               </span>
             ))}
           </div>
@@ -119,12 +122,12 @@ export function LeagueWeek({ leagues, onOpenLeague }: Props) {
                         left: `${(lane / lanes) * 100}%`,
                         width: `${100 / lanes}%`,
                       }}
-                      title={`${league.name}${league.active ? '' : ' (inactive)'} · ${draw.start}–${draw.end}`}
+                      title={`${league.name}${league.active ? '' : ' (inactive)'} · ${formatHm(draw.start, clock)}–${formatHm(draw.end, clock)}`}
                       onClick={() => onOpenLeague(league.id)}
                     >
                       <span className={styles.weekDrawName}>{league.name}</span>
                       <span className={styles.weekDrawTime}>
-                        {draw.start}–{draw.end}
+                        {formatHm(draw.start, clock)}–{formatHm(draw.end, clock)}
                       </span>
                     </button>
                   );

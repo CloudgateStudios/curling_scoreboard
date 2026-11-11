@@ -9,7 +9,6 @@ import styles from './ClubSwitcher.module.css';
 
 // The pages offered inside the club that matches best.
 const CLUB_PAGES: { section: ClubSection; label: string }[] = [
-  { section: 'devices', label: 'Devices' },
   { section: 'users', label: 'Users' },
   { section: 'sheets', label: 'Sheets' },
   { section: 'bonspiels', label: 'Bonspiels' },

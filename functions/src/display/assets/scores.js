@@ -10,6 +10,7 @@
 import { el, endLabel, firstUnplayedEnd, isPlayedOut, textColorOn } from './game-view.js';
 import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
 import { asSummaryResults, isIdle, pollDelay, timeUntilDue } from './scores-model.js';
+import { clockOf, timeOptions } from './clock.js';
 
 // Ends a game shows before it is played, when it does not say how many.
 const DEFAULT_ENDS = 8;
@@ -50,7 +51,8 @@ const expanded = new Set();
 // Each sheet's scores as last shown, so a change can be marked as it lands.
 const shown = new Map();
 
-const timeOf = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+// On the club's clock, which comes with live.json.
+const timeOf = (ms) => new Date(ms).toLocaleTimeString(undefined, timeOptions(clockOf(live?.clock)));
 
 // Asks the browser to check its copy with the server, which answers 304
 // when nothing has changed, so an unchanged poll costs only headers.

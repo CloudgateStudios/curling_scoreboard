@@ -345,165 +345,161 @@ function BonspielPage({ clubId }: Props) {
       {/* On one of its days, the board comes first, to run the day from. */}
       {hasToday && board}
 
-      <div className={styles.columns}>
-        <div className={styles.column}>
-          <div className={common.section}>
-            <h2 className={common.sectionTitle}>Details</h2>
-            <div className={common.form}>
-              <label className={common.label}>
-                Name
-                <input
-                  className={common.input}
-                  value={bonspiel.name}
-                  maxLength={80}
-                  onChange={(e) => edit({ name: e.target.value })}
-                />
-              </label>
-              <label className={common.label}>
-                Short name on the score bug
-                <input
-                  className={common.input}
-                  value={bonspiel.shortName ?? ''}
-                  maxLength={30}
-                  placeholder={bonspiel.name}
-                  onChange={(e) => edit({ shortName: e.target.value || undefined })}
-                />
-                <ShortNameSuggestion name={bonspiel.name} shortName={bonspiel.shortName} onUse={(shortName) => edit({ shortName })} />
-              </label>
-              <label className={common.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={bonspiel.active}
-                  onChange={(e) => edit({ active: e.target.checked })}
-                />
-                Active: offered on scoreboards during its dates
-              </label>
-              <div className={styles.fieldRow}>
-                <label className={common.label}>
-                  Starts
-                  <input
-                    type="date"
-                    className={common.input}
-                    value={bonspiel.startDate}
-                    onChange={(e) => handleDates(e.target.value, bonspiel.endDate)}
-                  />
-                </label>
-                <label className={common.label}>
-                  Ends
-                  <input
-                    type="date"
-                    className={common.input}
-                    value={bonspiel.endDate}
-                    onChange={(e) => handleDates(bonspiel.startDate, e.target.value)}
-                  />
-                </label>
-                <label className={common.label}>
-                  Ends per game
-                  <select
-                    className={common.input}
-                    value={bonspiel.numberOfEnds}
-                    onChange={(e) => edit({ numberOfEnds: Number(e.target.value) })}
-                  >
-                    {ENDS.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className={common.section}>
-            <div className={common.sectionHeader}>
-              <h2 className={common.sectionTitle}>Events ({bonspiel.events.length})</h2>
-              <button className={common.ghostButton} onClick={addEvent}>+ Add Event</button>
-            </div>
-            <p className={common.blurb}>
-              Each event ends in its own final. Games are placed in an event on the draw board.
-            </p>
-            {bonspiel.events.map((event) => {
-              const inUse = bonspiel.games.filter((g) => g.eventId === event.id).length;
-              const winner = state?.events[event.id]?.winner;
-              return (
-                <div key={event.id} className={styles.fieldRow}>
-                  <input
-                    className={common.input}
-                    aria-label="Event name"
-                    placeholder="Event name"
-                    value={event.name}
-                    maxLength={40}
-                    onChange={(e) => editEvent(event.id, { name: e.target.value })}
-                  />
-                  <select
-                    className={`${common.input} ${styles.endsInput}`}
-                    aria-label="Ends per game"
-                    value={event.numberOfEnds ?? ''}
-                    onChange={(e) => editEvent(event.id, { numberOfEnds: e.target.value ? Number(e.target.value) : undefined })}
-                  >
-                    <option value="">{bonspiel.numberOfEnds} ends</option>
-                    {ENDS.map((n) => <option key={n} value={n}>{n} ends</option>)}
-                  </select>
-                  <button
-                    className={common.ghostButton}
-                    disabled={inUse > 0}
-                    title={inUse > 0 ? `Move or remove its ${inUse} game${inUse !== 1 ? 's' : ''} first` : undefined}
-                    onClick={() => edit((b) => ({ ...b, events: b.events.filter((e) => e.id !== event.id) }))}
-                  >
-                    Remove
-                  </button>
-                  {winner && <span className={styles.winner}>Won by {winner.name}</span>}
-                </div>
-              );
-            })}
+      <div className={common.section}>
+        <h2 className={common.sectionTitle}>Details</h2>
+        <div className={common.form}>
+          <label className={common.label}>
+            Name
+            <input
+              className={common.input}
+              value={bonspiel.name}
+              maxLength={80}
+              onChange={(e) => edit({ name: e.target.value })}
+            />
+          </label>
+          <label className={common.label}>
+            Short name on the score bug
+            <input
+              className={common.input}
+              value={bonspiel.shortName ?? ''}
+              maxLength={30}
+              placeholder={bonspiel.name}
+              onChange={(e) => edit({ shortName: e.target.value || undefined })}
+            />
+            <ShortNameSuggestion name={bonspiel.name} shortName={bonspiel.shortName} onUse={(shortName) => edit({ shortName })} />
+          </label>
+          <label className={common.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={bonspiel.active}
+              onChange={(e) => edit({ active: e.target.checked })}
+            />
+            Active: offered on scoreboards during its dates
+          </label>
+          <div className={styles.fieldRow}>
+            <label className={common.label}>
+              Starts
+              <input
+                type="date"
+                className={common.input}
+                value={bonspiel.startDate}
+                onChange={(e) => handleDates(e.target.value, bonspiel.endDate)}
+              />
+            </label>
+            <label className={common.label}>
+              Ends
+              <input
+                type="date"
+                className={common.input}
+                value={bonspiel.endDate}
+                onChange={(e) => handleDates(bonspiel.startDate, e.target.value)}
+              />
+            </label>
+            <label className={common.label}>
+              Ends per game
+              <select
+                className={common.input}
+                value={bonspiel.numberOfEnds}
+                onChange={(e) => edit({ numberOfEnds: Number(e.target.value) })}
+              >
+                {ENDS.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
           </div>
         </div>
+      </div>
 
-        <div className={common.section}>
-          <div className={common.sectionHeader}>
-            <h2 className={common.sectionTitle}>Teams ({bonspiel.teams.length})</h2>
-            <div className={common.rowActions}>
-              <button className={common.ghostButton} onClick={() => setPasting((p) => !p)}>Paste Teams</button>
-              <button
-                className={common.ghostButton}
-                onClick={() => edit((b) => ({ ...b, teams: [...b.teams, { id: newBonspielId(), name: '' }] }))}
-              >
-                + Add Team
-              </button>
-            </div>
-          </div>
-          {pasting && (
-            <div className={styles.paste}>
-              <textarea
-                className={`${common.input} ${styles.pasteInput}`}
-                placeholder={'One team to a line, e.g.\nSmith\nJones'}
-                value={pasted}
-                onChange={(e) => setPasted(e.target.value)}
-                rows={6}
-                autoFocus
-              />
-              <div className={common.rowActions}>
-                <button className={common.primaryButton} onClick={addTeams} disabled={!pasted.trim()}>
-                  Add {parseTeamNames(pasted).length || ''} Team{parseTeamNames(pasted).length === 1 ? '' : 's'}
-                </button>
-                <button className={common.ghostButton} onClick={() => setPasting(false)}>Cancel</button>
-              </div>
-            </div>
-          )}
-          {bonspiel.teams.map((team) => (
-            <div key={team.id} className={styles.fieldRow}>
+      <div className={common.section}>
+        <div className={common.sectionHeader}>
+          <h2 className={common.sectionTitle}>Events ({bonspiel.events.length})</h2>
+          <button className={common.ghostButton} onClick={addEvent}>+ Add Event</button>
+        </div>
+        <p className={common.blurb}>
+          Each event ends in its own final. Games are placed in an event on the draw board.
+        </p>
+        {bonspiel.events.map((event) => {
+          const inUse = bonspiel.games.filter((g) => g.eventId === event.id).length;
+          const winner = state?.events[event.id]?.winner;
+          return (
+            <div key={event.id} className={styles.fieldRow}>
               <input
                 className={common.input}
-                aria-label="Team name"
-                placeholder="Team name"
-                value={team.name}
-                maxLength={60}
-                onChange={(e) => editTeam(team.id, { name: e.target.value })}
+                aria-label="Event name"
+                placeholder="Event name"
+                value={event.name}
+                maxLength={40}
+                onChange={(e) => editEvent(event.id, { name: e.target.value })}
               />
-              <button className={common.ghostButton} onClick={() => removeTeam(team)}>Remove</button>
+              <select
+                className={`${common.input} ${styles.endsInput}`}
+                aria-label="Ends per game"
+                value={event.numberOfEnds ?? ''}
+                onChange={(e) => editEvent(event.id, { numberOfEnds: e.target.value ? Number(e.target.value) : undefined })}
+              >
+                <option value="">{bonspiel.numberOfEnds} ends</option>
+                {ENDS.map((n) => <option key={n} value={n}>{n} ends</option>)}
+              </select>
+              <button
+                className={common.ghostButton}
+                disabled={inUse > 0}
+                title={inUse > 0 ? `Move or remove its ${inUse} game${inUse !== 1 ? 's' : ''} first` : undefined}
+                onClick={() => edit((b) => ({ ...b, events: b.events.filter((e) => e.id !== event.id) }))}
+              >
+                Remove
+              </button>
+              {winner && <span className={styles.winner}>Won by {winner.name}</span>}
             </div>
-          ))}
-          {bonspiel.teams.length === 0 && (
-            <p className={common.empty}>No teams yet. Add them one at a time, or paste a list.</p>
-          )}
+          );
+        })}
+      </div>
+
+      <div className={common.section}>
+        <div className={common.sectionHeader}>
+          <h2 className={common.sectionTitle}>Teams ({bonspiel.teams.length})</h2>
+          <div className={common.rowActions}>
+            <button className={common.ghostButton} onClick={() => setPasting((p) => !p)}>Paste Teams</button>
+            <button
+              className={common.ghostButton}
+              onClick={() => edit((b) => ({ ...b, teams: [...b.teams, { id: newBonspielId(), name: '' }] }))}
+            >
+              + Add Team
+            </button>
+          </div>
         </div>
+        {pasting && (
+          <div className={styles.paste}>
+            <textarea
+              className={`${common.input} ${styles.pasteInput}`}
+              placeholder={'One team to a line, e.g.\nSmith\nJones'}
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              rows={6}
+              autoFocus
+            />
+            <div className={common.rowActions}>
+              <button className={common.primaryButton} onClick={addTeams} disabled={!pasted.trim()}>
+                Add {parseTeamNames(pasted).length || ''} Team{parseTeamNames(pasted).length === 1 ? '' : 's'}
+              </button>
+              <button className={common.ghostButton} onClick={() => setPasting(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+        {bonspiel.teams.map((team) => (
+          <div key={team.id} className={styles.fieldRow}>
+            <input
+              className={common.input}
+              aria-label="Team name"
+              placeholder="Team name"
+              value={team.name}
+              maxLength={60}
+              onChange={(e) => editTeam(team.id, { name: e.target.value })}
+            />
+            <button className={common.ghostButton} onClick={() => removeTeam(team)}>Remove</button>
+          </div>
+        ))}
+        {bonspiel.teams.length === 0 && (
+          <p className={common.empty}>No teams yet. Add them one at a time, or paste a list.</p>
+        )}
       </div>
 
       {!hasToday && board}

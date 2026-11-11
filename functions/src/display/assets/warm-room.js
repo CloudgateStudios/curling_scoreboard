@@ -18,6 +18,7 @@ import {
 } from './display.js';
 import { lineScore } from './game-view.js';
 import { endedOffSchedule, todaysDraws, winnerOf } from './results-model.js';
+import { clockOf, DEFAULT_CLOCK, timeOptions } from './clock.js';
 
 // Width over height of a sheet's card, which the layout keeps to as closely
 // as the screen allows. The full view is a wide, short line score, so it
@@ -54,6 +55,8 @@ root.append(header, body, status);
 
 let summary = undefined;
 let linkStatus = 'connecting';
+// The club's 12 or 24 hour clock, from its settings.
+let clubClock = DEFAULT_CLOCK;
 // Each sheet's scores as last shown, so a change can be marked as it lands.
 const shown = new Map();
 
@@ -154,7 +157,7 @@ function resultRow(result) {
   return row;
 }
 
-const drawTime = (start) => new Date(start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const drawTime = (start) => new Date(start).toLocaleTimeString(undefined, timeOptions(clubClock));
 
 // Lists today's draws, the latest first, as far as they fit: whole games
 // drop off the bottom, and a draw with none left goes with them. The list
@@ -199,7 +202,7 @@ function showStatus(message) {
 
 function render() {
   const at = now();
-  clock.textContent = new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  clock.textContent = new Date(at).toLocaleTimeString(undefined, timeOptions(clubClock));
 
   const message = STATUS_MESSAGES[linkStatus];
   if (message) {
@@ -240,6 +243,9 @@ connect({
     summary = next;
     render();
   },
+  extraDocs: [
+    { what: 'club settings', path: ['config', 'club'], on: (next) => { clubClock = clockOf(next?.clock); render(); } },
+  ],
   onStatus: (next) => {
     linkStatus = next;
     render();

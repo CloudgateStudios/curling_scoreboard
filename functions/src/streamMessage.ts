@@ -9,6 +9,7 @@
 // The admin portal lists the same variables and defaults, with sample values
 // for its preview, in admin/src/lib/streamMessage.ts: keep the two in step.
 
+import { Clock, timeOptions } from './clock';
 import { Candidate } from './now';
 
 export type StreamKind = 'league' | 'bonspiel' | 'none';
@@ -53,6 +54,8 @@ export interface StreamContext {
   today: string;
   /** The public scores page, or null when the club has it switched off. */
   scoresUrl: string | null;
+  /** The club's 12 or 24 hour clock for the draw time; 12 hour if not given. */
+  clock?: Clock;
 }
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -65,11 +68,11 @@ function formatDay(date: string | undefined, options: Intl.DateTimeFormatOptions
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(at);
 }
 
-function formatTime(hhmm: string | undefined): string {
+function formatTime(hhmm: string | undefined, clock: Clock): string {
   const match = /^(\d{2}):(\d{2})$/.exec(hhmm ?? '');
   if (!match) return '';
   const at = new Date(Date.UTC(1970, 0, 1, Number(match[1]), Number(match[2])));
-  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(at);
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...timeOptions(clock) }).format(at);
 }
 
 /** Which of the club's templates an answer uses. */
@@ -78,7 +81,7 @@ export function streamKindOf(match: Candidate | null): StreamKind {
 }
 
 /** Every variable a template can use, and its value for this answer. */
-export function streamVariables({ clubName, sheetName, match, today, scoresUrl }: StreamContext): Record<string, string> {
+export function streamVariables({ clubName, sheetName, match, today, scoresUrl, clock = '12h' }: StreamContext): Record<string, string> {
   // The draw's day, so a stream started after midnight keeps its evening.
   const date = match?.draw?.date ?? today;
   const team1 = match?.team1?.name ?? '';
@@ -99,7 +102,7 @@ export function streamVariables({ clubName, sheetName, match, today, scoresUrl }
     date: formatDay(date, { year: 'numeric', month: 'long', day: 'numeric' }),
     shortDate: formatDay(date, { year: 'numeric', month: 'numeric', day: 'numeric' }),
     weekday: formatDay(date, { weekday: 'long' }),
-    drawTime: formatTime(match?.draw?.start),
+    drawTime: formatTime(match?.draw?.start, clock),
     scoresUrl: scoresUrl ?? '',
   };
 }

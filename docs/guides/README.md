@@ -15,7 +15,7 @@ feature does is in [FEATURES](../FEATURES.md).
 
 In the admin portal, the club's pages are in a menu down the left side, or
 behind **☰** on a phone: **Overview**, **Sheets**, **Games**, **Leagues**,
-**Bonspiels**, **Displays** and **Devices**, then under **Settings**:
+**Bonspiels** and **Displays**, then under **Settings**:
 **Club**, **Scoreboards**, **Public page** and **Integrations**. Super admins also get **Users**. A bonspiel
 admin sees only Sheets, Games and Bonspiels, and opens on the bonspiel on
 now.

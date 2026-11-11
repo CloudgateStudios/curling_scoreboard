@@ -7,6 +7,7 @@ import 'package:curling_scoreboard/firebase_options_prod.dart' as prod;
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/bonspiel_service.dart';
+import 'package:curling_scoreboard/services/club_clock_service.dart';
 import 'package:curling_scoreboard/services/device_status_service.dart';
 import 'package:curling_scoreboard/services/league_service.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
@@ -38,6 +39,7 @@ Future<void> main() async {
     CurlingScoreboardApp(
       registrationService: registrationService,
       rockColorsService: RockColorsService(prefs, registrationService)..start(),
+      clubClockService: ClubClockService(prefs, registrationService)..start(),
       leagueService: LeagueService(prefs, registrationService)..start(),
       bonspielService: BonspielService(prefs, registrationService)..start(),
       updateService: UpdateService.forCurrentPlatform(prefs)?..start(),
@@ -49,6 +51,7 @@ class CurlingScoreboardApp extends StatelessWidget {
   const CurlingScoreboardApp({
     required this.registrationService,
     this.rockColorsService,
+    this.clubClockService,
     this.leagueService,
     this.bonspielService,
     this.updateService,
@@ -57,13 +60,30 @@ class CurlingScoreboardApp extends StatelessWidget {
 
   final RegistrationService registrationService;
   final RockColorsService? rockColorsService;
+
+  /// The paired club's 12 or 24 hour clock. Without it times are 12 hour.
+  final ClubClockService? clubClockService;
   final LeagueService? leagueService;
   final BonspielService? bonspielService;
   final UpdateService? updateService;
 
   @override
   Widget build(BuildContext context) {
+    final clock = clubClockService?.use24HourClock;
     return MaterialApp(
+      // Times follow the club's clock rather than the device's, so every
+      // scoreboard at the club shows them the same way.
+      builder: clock == null
+          ? null
+          : (context, child) => ValueListenableBuilder<bool>(
+              valueListenable: clock,
+              builder: (context, use24Hour, _) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(alwaysUse24HourFormat: use24Hour),
+                child: child!,
+              ),
+            ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(
@@ -73,6 +93,7 @@ class CurlingScoreboardApp extends StatelessWidget {
       home: CurlingScoreboardScreen(
         registrationService: registrationService,
         rockColorsService: rockColorsService,
+        clubClockService: clubClockService,
         leagueService: leagueService,
         bonspielService: bonspielService,
         updateService: updateService,
@@ -85,6 +106,7 @@ class CurlingScoreboardScreen extends StatefulWidget {
   const CurlingScoreboardScreen({
     required this.registrationService,
     this.rockColorsService,
+    this.clubClockService,
     this.leagueService,
     this.bonspielService,
     this.updateService,
@@ -96,6 +118,9 @@ class CurlingScoreboardScreen extends StatefulWidget {
   /// The paired club's rock colors. Without it the scoreboard is red and
   /// yellow.
   final RockColorsService? rockColorsService;
+
+  /// The paired club's 12 or 24 hour clock, followed again after pairing.
+  final ClubClockService? clubClockService;
 
   /// The paired club's leagues. Without it only open games can be started.
   final LeagueService? leagueService;
@@ -244,12 +269,13 @@ class _CurlingScoreboardScreenState extends State<CurlingScoreboardScreen> {
   }
 
   /// The scoreboard connected to a club or disconnected from one, so its
-  /// colors and leagues are now some other club's, or the defaults.
+  /// colors, clock and leagues are now some other club's, or the defaults.
   void _onConnectionChanged() {
     // Let the admin portal see a newly paired scoreboard without waiting for
     // a heartbeat. Does nothing once disconnected.
     _deviceStatus.reportNow();
     widget.rockColorsService?.start();
+    widget.clubClockService?.start();
     widget.leagueService?.start();
     widget.bonspielService?.start();
   }

@@ -1,5 +1,6 @@
 import type { Timestamp } from 'firebase/firestore';
 import type { DeviceStatus, Sheet } from '../types';
+import { timeOptions, type Clock } from './clock.ts';
 
 // Scoreboards and display pages report every 30 minutes
 // (Constants.deviceStatusHeartbeat in the app, STATUS_HEARTBEAT_MS in the
@@ -74,8 +75,8 @@ export function shortBuild(buildId: string): string {
   return buildId.slice(0, 7);
 }
 
-export function formatTime(time: Timestamp | undefined): string | null {
-  return time ? time.toDate().toLocaleString() : null;
+export function formatTime(time: Timestamp | undefined, clock: Clock): string | null {
+  return time ? time.toDate().toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium', hourCycle: timeOptions(clock).hourCycle }) : null;
 }
 
 export function formatUtcOffset(minutes: number): string {

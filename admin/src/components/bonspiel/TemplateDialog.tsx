@@ -7,6 +7,7 @@ import {
 import type { Bonspiel, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './BonspielDialog.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
 
 interface Props {
   bonspiel: Bonspiel;
@@ -32,6 +33,7 @@ type Format = 'knockout' | 'pools';
  *  every game with where its teams come from, and the draws they are played
  *  in. */
 export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
+  const clock = useClubClock();
   const first = sortedDraws(bonspiel.draws)[0];
   const [teams, setTeams] = useState(String(bonspiel.teams.length >= 2 ? Math.min(bonspiel.teams.length, MAX_TEMPLATE_TEAMS) : 16));
   const [format, setFormat] = useState<Format>('knockout');
@@ -227,8 +229,8 @@ export function TemplateDialog({ bonspiel, sheets, onApply, onClose }: Props) {
           {preview && (
             <div className={common.success}>
               {preview.games.length} games in {preview.events.map((e) => e.name.replace(' Event', '')).join(', ')}{' '}
-              over {previewDraws.length} draws, {formatDrawStart(previewDraws[0].start)} to{' '}
-              {formatDrawStart(previewDraws[previewDraws.length - 1].start)}.
+              over {previewDraws.length} draws, {formatDrawStart(previewDraws[0].start, clock)} to{' '}
+              {formatDrawStart(previewDraws[previewDraws.length - 1].start, clock)}.
             </div>
           )}
           {!problem && bonspiel.teams.length < teamCount && (

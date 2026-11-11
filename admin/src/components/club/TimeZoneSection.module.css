@@ -9,3 +9,8 @@
   max-width: 20rem;
   flex: 1 1 14rem;
 }
+
+.clock {
+  flex: 0 1 12rem;
+  min-width: 10rem;
+}

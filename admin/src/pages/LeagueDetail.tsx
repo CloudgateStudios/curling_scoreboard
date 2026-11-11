@@ -139,192 +139,187 @@ export function LeagueDetail({ clubId }: Props) {
 
       {error && <p className={common.error}>{error}</p>}
 
-      {/* Details and schedule beside the teams, so wide windows don't stretch every field. */}
-      <div className={styles.columns}>
-        <div className={styles.column}>
-          <div className={common.section}>
-            <h2 className={common.sectionTitle}>Details</h2>
-            <div className={common.form}>
-              <label className={common.label}>
-                Name
-                <input
-                  className={common.input}
-                  value={league.name}
-                  maxLength={80}
-                  onChange={(e) => edit({ name: e.target.value })}
-                />
-              </label>
-              <label className={common.label}>
-                Short name on the score bug
-                <input
-                  className={common.input}
-                  value={league.shortName ?? ''}
-                  maxLength={30}
-                  placeholder={league.name}
-                  onChange={(e) => edit({ shortName: e.target.value || undefined })}
-                />
-                <ShortNameSuggestion name={league.name} shortName={league.shortName} onUse={(shortName) => edit({ shortName })} />
-              </label>
-              <label className={common.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={league.active}
-                  onChange={(e) => edit({ active: e.target.checked })}
-                />
-                Active: offered on scoreboards when starting a league game
-              </label>
-              <div className={styles.leagueFieldRow}>
-                <label className={common.label}>
-                  Season starts
-                  <input
-                    type="date"
-                    className={common.input}
-                    value={league.seasonStart ?? ''}
-                    onChange={(e) => edit({ seasonStart: e.target.value || undefined })}
-                  />
-                </label>
-                <label className={common.label}>
-                  Season ends
-                  <input
-                    type="date"
-                    className={common.input}
-                    value={league.seasonEnd ?? ''}
-                    onChange={(e) => edit({ seasonEnd: e.target.value || undefined })}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className={common.section}>
-            <div className={common.sectionHeader}>
-              <h2 className={common.sectionTitle}>Schedule</h2>
-              <button
-                className={common.ghostButton}
-                onClick={() => edit({ draws: [...league.draws, { day: 1, start: '18:30', end: '20:30' }] })}
-              >
-                + Add Draw
-              </button>
-            </div>
-            <p className={common.blurb}>
-              When this league plays each week. A scoreboard suggests the league when a game is started
-              during one of its draws, using the scoreboard's own clock. A league that shares the ice
-              with another at the same time can be given its sheets.
-            </p>
-            {league.draws.map((draw, index) => (
-              // Draws have no identity of their own, and the list only changes
-              // through this form, so the position is a stable enough key.
-              <div key={index} className={styles.draw}>
-                <div className={styles.leagueFieldRow}>
-                  <select
-                    className={common.input}
-                    aria-label="Day"
-                    value={draw.day}
-                    onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
-                  >
-                    {DAY_NAMES.map((name, i) => (
-                      <option key={name} value={i + 1}>{name}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="time"
-                    className={common.input}
-                    aria-label="Start"
-                    value={draw.start}
-                    onChange={(e) => editDraw(index, { start: e.target.value })}
-                  />
-                  <input
-                    type="time"
-                    className={common.input}
-                    aria-label="End"
-                    value={draw.end}
-                    onChange={(e) => editDraw(index, { end: e.target.value })}
-                  />
-                  <button
-                    className={common.ghostButton}
-                    onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
-                  >
-                    Remove
-                  </button>
-                </div>
-                {sheets.length > 1 && (
-                  <div className={styles.drawSheets} role="group" aria-label="Sheets">
-                    <button
-                      type="button"
-                      aria-pressed={!draw.sheetIds?.length}
-                      className={!draw.sheetIds?.length ? styles.sheetChipSelected : styles.sheetChip}
-                      onClick={() => editDraw(index, { sheetIds: [] })}
-                    >
-                      All sheets
-                    </button>
-                    {sheets.map((sheet) => {
-                      const selected = !!draw.sheetIds?.includes(sheet.id);
-                      return (
-                        <button
-                          key={sheet.id}
-                          type="button"
-                          aria-pressed={selected}
-                          className={selected ? styles.sheetChipSelected : styles.sheetChip}
-                          onClick={() => editDraw(index, {
-                            sheetIds: toggleDrawSheet(draw.sheetIds, sheet.id, sheets.map((s) => s.id)),
-                          })}
-                        >
-                          {sheet.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
-            {league.draws.length === 0 && (
-              <p className={common.empty}>
-                No schedule. The league can still be picked by hand on a scoreboard.
-              </p>
-            )}
+      <div className={common.section}>
+        <h2 className={common.sectionTitle}>Details</h2>
+        <div className={common.form}>
+          <label className={common.label}>
+            Name
+            <input
+              className={common.input}
+              value={league.name}
+              maxLength={80}
+              onChange={(e) => edit({ name: e.target.value })}
+            />
+          </label>
+          <label className={common.label}>
+            Short name on the score bug
+            <input
+              className={common.input}
+              value={league.shortName ?? ''}
+              maxLength={30}
+              placeholder={league.name}
+              onChange={(e) => edit({ shortName: e.target.value || undefined })}
+            />
+            <ShortNameSuggestion name={league.name} shortName={league.shortName} onUse={(shortName) => edit({ shortName })} />
+          </label>
+          <label className={common.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={league.active}
+              onChange={(e) => edit({ active: e.target.checked })}
+            />
+            Active: offered on scoreboards when starting a league game
+          </label>
+          <div className={styles.leagueFieldRow}>
+            <label className={common.label}>
+              Season starts
+              <input
+                type="date"
+                className={common.input}
+                value={league.seasonStart ?? ''}
+                onChange={(e) => edit({ seasonStart: e.target.value || undefined })}
+              />
+            </label>
+            <label className={common.label}>
+              Season ends
+              <input
+                type="date"
+                className={common.input}
+                value={league.seasonEnd ?? ''}
+                onChange={(e) => edit({ seasonEnd: e.target.value || undefined })}
+              />
+            </label>
           </div>
         </div>
+      </div>
 
-        <div className={common.section}>
-          <div className={common.sectionHeader}>
-            <h2 className={common.sectionTitle}>Teams ({league.teams.length})</h2>
-            <button
-              className={common.ghostButton}
-              onClick={() => edit({ teams: [...league.teams, { id: newTeamId(), name: '' }] })}
-            >
-              + Add Team
-            </button>
-          </div>
-          {league.teams.map((team) => (
-            <div key={team.id} className={styles.leagueFieldRow}>
-              <input
+      <div className={common.section}>
+        <div className={common.sectionHeader}>
+          <h2 className={common.sectionTitle}>Schedule</h2>
+          <button
+            className={common.ghostButton}
+            onClick={() => edit({ draws: [...league.draws, { day: 1, start: '18:30', end: '20:30' }] })}
+          >
+            + Add Draw
+          </button>
+        </div>
+        <p className={common.blurb}>
+          When this league plays each week. A scoreboard suggests the league when a game is started
+          during one of its draws, using the scoreboard's own clock. A league that shares the ice
+          with another at the same time can be given its sheets.
+        </p>
+        {league.draws.map((draw, index) => (
+          // Draws have no identity of their own, and the list only changes
+          // through this form, so the position is a stable enough key.
+          <div key={index} className={styles.draw}>
+            <div className={styles.leagueFieldRow}>
+              <select
                 className={common.input}
-                aria-label="Team name"
-                placeholder="Team name"
-                value={team.name}
-                maxLength={60}
-                onChange={(e) => editTeam(team.id, { name: e.target.value })}
+                aria-label="Day"
+                value={draw.day}
+                onChange={(e) => editDraw(index, { day: Number(e.target.value) })}
+              >
+                {DAY_NAMES.map((name, i) => (
+                  <option key={name} value={i + 1}>{name}</option>
+                ))}
+              </select>
+              <input
+                type="time"
+                className={common.input}
+                aria-label="Start"
+                value={draw.start}
+                onChange={(e) => editDraw(index, { start: e.target.value })}
               />
               <input
-                className={`${common.input} ${styles.externalIdInput}`}
-                aria-label="External ID"
-                placeholder="External ID (optional)"
-                value={team.externalId ?? ''}
-                maxLength={60}
-                onChange={(e) => editTeam(team.id, { externalId: e.target.value.trim() || undefined })}
+                type="time"
+                className={common.input}
+                aria-label="End"
+                value={draw.end}
+                onChange={(e) => editDraw(index, { end: e.target.value })}
               />
               <button
                 className={common.ghostButton}
-                onClick={() => edit({ teams: league.teams.filter((t) => t.id !== team.id) })}
+                onClick={() => edit({ draws: league.draws.filter((_, i) => i !== index) })}
               >
                 Remove
               </button>
             </div>
-          ))}
-          {league.teams.length === 0 && (
-            <p className={common.empty}>No teams yet. Add them here, or import them from the club page.</p>
-          )}
+            {sheets.length > 1 && (
+              <div className={styles.drawSheets} role="group" aria-label="Sheets">
+                <button
+                  type="button"
+                  aria-pressed={!draw.sheetIds?.length}
+                  className={!draw.sheetIds?.length ? styles.sheetChipSelected : styles.sheetChip}
+                  onClick={() => editDraw(index, { sheetIds: [] })}
+                >
+                  All sheets
+                </button>
+                {sheets.map((sheet) => {
+                  const selected = !!draw.sheetIds?.includes(sheet.id);
+                  return (
+                    <button
+                      key={sheet.id}
+                      type="button"
+                      aria-pressed={selected}
+                      className={selected ? styles.sheetChipSelected : styles.sheetChip}
+                      onClick={() => editDraw(index, {
+                        sheetIds: toggleDrawSheet(draw.sheetIds, sheet.id, sheets.map((s) => s.id)),
+                      })}
+                    >
+                      {sheet.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+        {league.draws.length === 0 && (
+          <p className={common.empty}>
+            No schedule. The league can still be picked by hand on a scoreboard.
+          </p>
+        )}
+      </div>
+
+      <div className={common.section}>
+        <div className={common.sectionHeader}>
+          <h2 className={common.sectionTitle}>Teams ({league.teams.length})</h2>
+          <button
+            className={common.ghostButton}
+            onClick={() => edit({ teams: [...league.teams, { id: newTeamId(), name: '' }] })}
+          >
+            + Add Team
+          </button>
         </div>
+        {league.teams.map((team) => (
+          <div key={team.id} className={styles.leagueFieldRow}>
+            <input
+              className={common.input}
+              aria-label="Team name"
+              placeholder="Team name"
+              value={team.name}
+              maxLength={60}
+              onChange={(e) => editTeam(team.id, { name: e.target.value })}
+            />
+            <input
+              className={`${common.input} ${styles.externalIdInput}`}
+              aria-label="External ID"
+              placeholder="External ID (optional)"
+              value={team.externalId ?? ''}
+              maxLength={60}
+              onChange={(e) => editTeam(team.id, { externalId: e.target.value.trim() || undefined })}
+            />
+            <button
+              className={common.ghostButton}
+              onClick={() => edit({ teams: league.teams.filter((t) => t.id !== team.id) })}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        {league.teams.length === 0 && (
+          <p className={common.empty}>No teams yet. Add them here, or import them from the club page.</p>
+        )}
       </div>
     </div>
   );

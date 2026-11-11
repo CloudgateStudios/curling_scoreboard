@@ -26,8 +26,12 @@ String describeBonspielSide(
   };
 }
 
-/// "Sat 2:00 PM"
-String _when(DateTime start) => DateFormat.E().add_jm().format(start);
+/// "Sat 2:00 PM", or "Sat 14:00" when the club uses the 24 hour clock, which
+/// the app passes down as the 24 hour setting in [MediaQuery].
+String _when(BuildContext context, DateTime start) =>
+    MediaQuery.alwaysUse24HourFormatOf(context)
+    ? DateFormat.E().add_Hm().format(start)
+    : DateFormat.E().add_jm().format(start);
 
 /// Takes the league bar's place on the setup screen during a bonspiel. Its
 /// left side names the game this sheet plays next and changes it; its right
@@ -106,7 +110,7 @@ class BonspielBar extends StatelessWidget {
                               Text(
                                 l10n.bonspielBarDrawLabel(
                                   draw.label,
-                                  _when(draw.start),
+                                  _when(context, draw.start),
                                 ),
                                 style: const TextStyle(fontSize: 24),
                               ),
@@ -454,7 +458,10 @@ class _GameOption extends StatelessWidget {
               [
                 game.label,
                 if (draw != null)
-                  l10n.bonspielBarDrawLabel(draw.label, _when(draw.start)),
+                  l10n.bonspielBarDrawLabel(
+                    draw.label,
+                    _when(context, draw.start),
+                  ),
                 if (played) l10n.bonspielGameChooserPlayed,
               ].join(' · '),
               style: const TextStyle(fontSize: 22),

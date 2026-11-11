@@ -53,6 +53,8 @@ export interface ScoresSheet {
 
 export interface ScoresLive {
   title: string | null;
+  /** The club's clock for the page's times, as set in the portal. */
+  clock: '12h' | '24h';
   /** Relative to the page, or null without a logo. */
   logo: string | null;
   /** Changes whenever results.json does. */
@@ -76,6 +78,12 @@ export interface ScoresResult {
 
 export interface ScoresResults {
   results: ScoresResult[];
+}
+
+/** The club's config/club document, as the portal saves it. Only the clock
+ *  is sent; see clock.js for what it means. */
+export interface ClubSettings {
+  clock?: unknown;
 }
 
 /** The branding document's fields, as the portal saves them. */
@@ -138,14 +146,15 @@ export function scoresResults(summary: DisplaySummary | null | undefined): Score
 }
 
 /**
- * live.json for [summary] and [branding] at [now]: each sheet, in name
- * order, with what the club's screens would show on it. Every kind of game
- * is shown, league, bonspiel or neither.
+ * live.json for [summary], [branding] and the club's [settings] at [now]:
+ * each sheet, in name order, with what the club's screens would show on it.
+ * Every kind of game is shown, league, bonspiel or neither.
  */
 export function scoresLive(
   summary: DisplaySummary | null | undefined,
   branding: ScoresBranding | null | undefined,
   now: number,
+  settings?: ClubSettings | null,
 ): ScoresLive {
   const sheets = Object.entries(summary?.sheets ?? {})
     .sort(([, a], [, b]) => collator.compare(a.name, b.name))
@@ -171,5 +180,6 @@ export function scoresLive(
     });
   const title = typeof branding?.title === 'string' && branding.title !== '' ? branding.title : null;
   const logo = decodeLogo(branding?.logo) ? `logo?v=${versionOf(branding?.logo)}` : null;
-  return { title, logo, resultsVersion: versionOf(scoresResults(summary)), sheets };
+  const clock = settings?.clock === '24h' ? '24h' : '12h';
+  return { title, clock, logo, resultsVersion: versionOf(scoresResults(summary)), sheets };
 }

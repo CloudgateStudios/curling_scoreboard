@@ -5,6 +5,8 @@ import type { Bonspiel, BonspielGame, BonspielState, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import { GameCard } from './GameCard';
 import styles from './TodayView.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
+import { formatHm } from '../../lib/clock';
 
 interface Props {
   bonspiel: Bonspiel;
@@ -27,6 +29,7 @@ const STATUS: Record<DayDrawStatus, { label: string; chip: string }> = {
  * club; bonspiel admins cannot read the club's time zone.
  */
 export function TodayView({ bonspiel, sheets, state, onOpenGame }: Props) {
+  const clock = useClubClock();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
@@ -80,7 +83,7 @@ export function TodayView({ bonspiel, sheets, state, onOpenGame }: Props) {
         <section key={d.drawId} className={d.status === 'on' ? styles.drawOn : d.status === 'done' ? styles.drawDone : styles.draw}>
           <div className={styles.drawHeader}>
             <span className={styles.drawLabel}>{d.label || 'Draw'}</span>
-            <span className={styles.drawTime}>{timeOf(d.start)}</span>
+            <span className={styles.drawTime}>{formatHm(timeOf(d.start), clock)}</span>
             <span className={STATUS[d.status].chip}>{STATUS[d.status].label}</span>
           </div>
           <div className={styles.games}>

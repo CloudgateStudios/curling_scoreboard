@@ -65,28 +65,6 @@
   resize: vertical;
 }
 
-.columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.5rem;
-  align-items: start;
-}
-
-.columns > *,
-.column > :last-child {
-  margin-bottom: 1.5rem;
-}
-
-.column > :last-child {
-  margin-bottom: 0;
-}
-
-@media (max-width: 1000px) {
-  .columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 .viewTabs {
   display: flex;
   gap: 0.25rem;

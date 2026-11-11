@@ -25,3 +25,8 @@ test('lists each misspelled variable once', () => {
   assert.deepEqual(unknownVariables('{teem2} {team1} {teem2} {Date}'), ['teem2', 'Date']);
   assert.deepEqual(unknownVariables(DEFAULT_TEMPLATE), []);
 });
+
+test('shows the sample times on the club\'s clock', () => {
+  assert.equal(previewTemplate('{startTime} to {finishTime}'), '6:30 PM to 8:25 PM');
+  assert.equal(previewTemplate('{startTime} to {finishTime}', '24h'), '18:30 to 20:25');
+});

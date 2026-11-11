@@ -3,6 +3,9 @@
 // functions/src/streamMessage.ts: keep the two in step. The samples here are
 // only for the preview.
 
+import { DEFAULT_CLOCK, type Clock } from './clock.ts';
+import { sampleOf } from './webhookMessage.ts';
+
 export type StreamKind = 'league' | 'bonspiel' | 'none';
 
 export interface StreamTemplate {
@@ -47,7 +50,10 @@ export interface StreamVariable {
   description: string;
   /** Only filled in for these kinds; empty for the others. */
   kinds: StreamKind[];
+  /** On the 12 hour clock, for a time. */
   sample: string;
+  /** For a time, the sample's 'HH:mm', to show it on the club's clock. */
+  time?: string;
 }
 
 const ALL: StreamKind[] = ['league', 'bonspiel', 'none'];
@@ -69,7 +75,7 @@ export const STREAM_VARIABLES: StreamVariable[] = [
   { name: 'date', description: 'The draw\'s day, or today with nothing scheduled', kinds: ALL, sample: 'November 3, 2026' },
   { name: 'shortDate', description: 'The same day, in numbers', kinds: ALL, sample: '11/3/2026' },
   { name: 'weekday', description: 'Day of the week', kinds: ALL, sample: 'Tuesday' },
-  { name: 'drawTime', description: 'When the draw is due to start', kinds: GAMES, sample: '6:30 PM' },
+  { name: 'drawTime', description: 'When the draw is due to start', kinds: GAMES, sample: '6:30 PM', time: '18:30' },
   { name: 'scoresUrl', description: 'The public scores page, when it is on', kinds: ALL, sample: 'https://example.com/display/club/scores' },
 ];
 
@@ -80,10 +86,10 @@ const has = (variables: Record<string, string>, name: string) =>
 
 /** The sample values for [kind], with the teams left empty unless
  *  [withTeams], to preview a stream started before they are picked. */
-export function sampleVariables(kind: StreamKind, withTeams: boolean): Record<string, string> {
+export function sampleVariables(kind: StreamKind, withTeams: boolean, clock: Clock = DEFAULT_CLOCK): Record<string, string> {
   return Object.fromEntries(STREAM_VARIABLES.map((v) => [
     v.name,
-    v.kinds.includes(kind) && (withTeams || !TEAM_VARIABLES.includes(v.name)) ? v.sample : '',
+    v.kinds.includes(kind) && (withTeams || !TEAM_VARIABLES.includes(v.name)) ? sampleOf(v, clock) : '',
   ]));
 }
 
@@ -133,8 +139,9 @@ export function previewStream(
   kind: StreamKind,
   template: StreamTemplate,
   withTeams: boolean,
+  clock: Clock = DEFAULT_CLOCK,
 ): StreamTemplate & { titleLength: number } {
-  const variables = sampleVariables(kind, withTeams);
+  const variables = sampleVariables(kind, withTeams, clock);
   const title = renderStreamTemplate(template.title.trim() || DEFAULT_STREAM_TEMPLATES[kind].title, variables);
   const description = renderStreamTemplate(
     template.description.trim() || DEFAULT_STREAM_TEMPLATES[kind].description, variables,

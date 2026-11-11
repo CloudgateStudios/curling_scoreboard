@@ -4,7 +4,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions, scoreboardSiteUrl } from '../../lib/firebase';
 import {
   DEFAULT_EVERY, DEFAULT_SETTINGS, MAX_EVERY, MIN_EVERY, describeSettings, displayPreviewUrl, displayUrl,
-  settingsToSave, showsSheet, withPage,
+  nextDisplayName, settingsToSave, showsSheet, withPage,
   type BonspielView, type DisplayPage, type BugEndSide, type BugLabel, type DisplaySettings, type DisplayView,
 } from '../../lib/displayLinks';
 import { errorMessage, formatAgo } from '../../lib/format';
@@ -48,10 +48,10 @@ function describeUse(link: DisplayLink, now: Date): string {
  *  own, so one can be changed or removed without affecting the others. */
 export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
   const [links, setLinks] = useState<DisplayLink[]>([]);
-  const [label, setLabel] = useState('');
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'create' | null>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deployedBuildId, setDeployedBuildId] = useState<string | null>(null);
   // Re-read each minute so "last used" stays current while the page is open.
   const [now, setNow] = useState(() => new Date());
@@ -80,10 +80,10 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
   const sheetName = (sheetId: string) => sheets.find((sheet) => sheet.id === sheetId)?.name;
   const bonspielName = (bonspielId: string) => bonspiels.find((b) => b.id === bonspielId)?.name;
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = label.trim();
-    if (!trimmed) return;
+  // Made at once with a name to change, so its URL is ready in the dialog
+  // that opens, along with the name and what it shows.
+  async function handleCreate() {
+    const trimmed = nextDisplayName(links.map((l) => l.label));
     setBusy('create');
     setError('');
     try {
@@ -94,7 +94,6 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
         link: { id: result.data.linkId, label: trimmed, settings: DEFAULT_SETTINGS },
         token: result.data.token,
       });
-      setLabel('');
     } catch (err) {
       setError(errorMessage(err, 'Could not create the link.'));
     } finally {
@@ -102,59 +101,31 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
     }
   }
 
-  async function handleReset(link: DisplayLink) {
-    if (!confirm(`Give "${link.label}" a new URL? Screens using the current one stop within the hour.`)) return;
-    setBusy(link.id);
-    setError('');
+  async function handleCopy(link: DisplayLink) {
+    if (!link.token) return;
     try {
-      const result = await httpsCallable<{ clubId: string; linkId: string }, LinkResult>(
-        functions, 'resetDisplayLink',
-      )({ clubId, linkId: link.id });
-      setEditing({ link, token: result.data.token });
-    } catch (err) {
-      setError(errorMessage(err, 'Could not give the link a new URL.'));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleRemove(link: DisplayLink) {
-    if (!confirm(`Remove "${link.label}"? A screen using it stops updating within the hour.`)) return;
-    setBusy(link.id);
-    setError('');
-    try {
-      await httpsCallable(functions, 'revokeDisplayLink')({ clubId, linkId: link.id });
-    } catch (err) {
-      setError(errorMessage(err, 'Could not remove the link.'));
-    } finally {
-      setBusy(null);
+      await navigator.clipboard.writeText(displayUrl(scoreboardSiteUrl, clubId, link.token));
+      setCopiedId(link.id);
+    } catch {
+      setError('Could not copy the URL. Open Edit to copy it by hand.');
     }
   }
 
   return (
     <div className={common.section}>
-      <h2 className={common.sectionTitle}>Display Links</h2>
+      <div className={common.sectionHeader}>
+        <h2 className={common.sectionTitle}>Displays ({links.length})</h2>
+        <button className={common.primaryButton} onClick={handleCreate} disabled={busy !== null}>
+          {busy === 'create' ? 'Creating…' : '+ New Display'}
+        </button>
+      </div>
       <p className={common.blurb}>
         A link for each warm room screen or OBS stream. Change what it shows here and the screen
         follows. Anyone with a link can see the club's scores.
       </p>
 
-      <form className={styles.createForm} onSubmit={handleCreate}>
-        <input
-          className={common.input}
-          placeholder="Name, e.g. Warm room TV"
-          aria-label="Display link name"
-          maxLength={MAX_LABEL_LENGTH}
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-        <button type="submit" className={common.primaryButton} disabled={busy !== null || label.trim() === ''}>
-          {busy === 'create' ? 'Creating…' : 'Create Link'}
-        </button>
-      </form>
-
       {links.length === 0 ? (
-        <p className={common.empty}>No display links yet.</p>
+        <p className={common.empty}>No displays yet.</p>
       ) : (
         <div className={common.list}>
           {links.map((link) => (
@@ -174,11 +145,13 @@ export function DisplaysSection({ clubId, sheets, bonspiels, onCount }: Props) {
                 <button className={common.ghostButton} onClick={() => setEditing({ link })} disabled={busy !== null}>
                   Edit
                 </button>
-                <button className={common.ghostButton} onClick={() => handleReset(link)} disabled={busy !== null}>
-                  New URL
-                </button>
-                <button className={common.ghostButton} onClick={() => handleRemove(link)} disabled={busy !== null}>
-                  {busy === link.id ? 'Working…' : 'Remove'}
+                <button
+                  className={common.ghostButton}
+                  onClick={() => handleCopy(link)}
+                  disabled={!link.token}
+                  title={link.token ? undefined : 'Made before its URL was kept. Open Edit to give it a new one.'}
+                >
+                  {copiedId === link.id ? 'Copied' : 'Copy URL'}
                 </button>
               </div>
             </div>
@@ -259,9 +232,13 @@ interface DialogProps {
  *  URL to copy. */
 function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: DialogProps) {
   const { link } = editing;
-  // Just made or given a new URL, rather than opened from the list.
-  const fresh = editing.token !== undefined;
-  const token = editing.token ?? link.token;
+  // Just made, rather than opened from the list.
+  const created = editing.token !== undefined && !link.createdAt;
+  // A URL made in this dialog, on creating the link or with New URL.
+  const [newToken, setNewToken] = useState(editing.token);
+  const fresh = newToken !== undefined;
+  const token = newToken ?? link.token;
+  const [busy, setBusy] = useState<'reset' | 'remove' | null>(null);
   // What is stored, kept here since the dialog stays open after saving
   // while a new link's URL is on screen.
   const [saved, setSaved] = useState({ label: link.label, settings: link.settings ?? DEFAULT_SETTINGS });
@@ -325,6 +302,36 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
     }
   }
 
+  async function handleReset() {
+    if (!confirm(`Give "${saved.label}" a new URL? Screens using the current one stop within the hour.`)) return;
+    setBusy('reset');
+    setError('');
+    try {
+      const result = await httpsCallable<{ clubId: string; linkId: string }, LinkResult>(
+        functions, 'resetDisplayLink',
+      )({ clubId, linkId: link.id });
+      setNewToken(result.data.token);
+      setCopied(false);
+    } catch (err) {
+      setError(errorMessage(err, 'Could not give the link a new URL.'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRemove() {
+    if (!confirm(`Remove "${saved.label}"? A screen using it stops updating within the hour.`)) return;
+    setBusy('remove');
+    setError('');
+    try {
+      await httpsCallable(functions, 'revokeDisplayLink')({ clubId, linkId: link.id });
+      onClose();
+    } catch (err) {
+      setError(errorMessage(err, 'Could not remove the link.'));
+      setBusy(null);
+    }
+  }
+
   function handleClose() {
     if (changed && !confirm('Close without saving your changes?')) return;
     onClose();
@@ -333,7 +340,7 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
   return (
     <div className={common.modal}>
       <div className={`${common.modalCard} ${common.wideModalCard}`}>
-        <h2 className={common.modalTitle}>{fresh && !link.createdAt ? 'New display link' : link.label}</h2>
+        <h2 className={common.modalTitle}>{created ? 'New display' : saved.label}</h2>
         <div className={common.form}>
           {url ? (
             <div className={styles.field}>
@@ -363,7 +370,7 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
           ) : (
             <p className={common.muted}>
               This link was made before its URL was kept, so it can't be shown here. Use New URL
-              in the list to get one that can; screens on the current URL then need the new one.
+              below to get one that can; screens on the current URL then need the new one.
             </p>
           )}
 
@@ -373,6 +380,9 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
               className={common.input}
               maxLength={MAX_LABEL_LENGTH}
               value={label}
+              // A new display opens on its name, selected, to type over.
+              autoFocus={created}
+              onFocus={(e) => { if (created) e.target.select(); }}
               onChange={(e) => setLabel(e.target.value)}
             />
           </label>
@@ -546,6 +556,14 @@ function DisplayLinkDialog({ clubId, sheets, bonspiels, editing, onClose }: Dial
 
           {error && <p className={common.error}>{error}</p>}
           <div className={common.modalActions}>
+            <span className={styles.manage}>
+              <button className={common.ghostButton} onClick={handleReset} disabled={busy !== null || saving}>
+                {busy === 'reset' ? 'Working…' : 'New URL'}
+              </button>
+              <button className={common.ghostButton} onClick={handleRemove} disabled={busy !== null || saving}>
+                {busy === 'remove' ? 'Removing…' : 'Remove'}
+              </button>
+            </span>
             <button className={common.ghostButton} onClick={handleClose}>{fresh ? 'Done' : 'Cancel'}</button>
             <button
               className={common.primaryButton}

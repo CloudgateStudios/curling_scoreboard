@@ -291,13 +291,18 @@ service cloud.firestore {
 
       // The club's time zone, which the functions need to read a league's
       // or bonspiel's local times, as the scoreboards do with their own
-      // clock. Removing it leaves the club without one.
+      // clock, and whether its times are shown on a 12 or 24 hour clock.
+      // Bonspiel admins and displays read it to show times the club's way.
+      // Removing a field leaves the club without it.
       match /config/club {
+        allow read: if isBonspielAdmin(clubId) || isClubDisplay(clubId);
         allow write: if isClubAdmin(clubId)
-            && request.resource.data.keys().hasOnly(['timeZone'])
+            && request.resource.data.keys().hasOnly(['timeZone', 'clock'])
             && (!('timeZone' in request.resource.data)
                 || (request.resource.data.timeZone is string
-                    && request.resource.data.timeZone.matches('^[A-Za-z0-9_+/-]{1,64}$')));
+                    && request.resource.data.timeZone.matches('^[A-Za-z0-9_+/-]{1,64}$')))
+            && (!('clock' in request.resource.data)
+                || request.resource.data.clock in ['12h', '24h']);
       }
 
       // The club's own stream titles and descriptions. Removing them puts
