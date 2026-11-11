@@ -64,7 +64,8 @@ with a new code, or leave it disconnected if the other device replaced it.
 
 ## Checking on every scoreboard
 
-**Devices** lists every scoreboard and screen with what it last reported:
-whether it is online, its version, whether an update is waiting, and the
-last time it failed to save something. When you ask for help, press **Copy
-report** and paste what it copies into your message.
+**Sheets** shows each scoreboard with what it last reported: whether it is
+online, its version, whether an update is waiting, and the last time it
+failed to save something. **Displays** does the same for each screen. When
+you ask for help, press **Copy report** on **Sheets** and paste what it
+copies into your message. It covers every scoreboard, screen and service.

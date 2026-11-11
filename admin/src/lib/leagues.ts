@@ -1,4 +1,5 @@
 import type { League, LeagueDraw, LeagueTeam } from '../types';
+import { formatHm, type Clock } from './clock.ts';
 
 export const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -12,13 +13,13 @@ function weekIndex(day: number): number {
 }
 
 /** "Mon 18:30–20:30, Thu 19:00–21:00", or a note that there is no schedule. */
-export function formatDraws(draws: LeagueDraw[]): string {
+export function formatDraws(draws: LeagueDraw[], clock: Clock): string {
   if (draws.length === 0) return 'No schedule';
-  return sortDraws(draws).map(formatDraw).join(', ');
+  return sortDraws(draws).map((d) => formatDraw(d, clock)).join(', ');
 }
 
-function formatDraw(d: LeagueDraw): string {
-  return `${DAY_NAMES[d.day - 1].slice(0, 3)} ${d.start}–${d.end}`;
+function formatDraw(d: LeagueDraw, clock: Clock): string {
+  return `${DAY_NAMES[d.day - 1].slice(0, 3)} ${formatHm(d.start, clock)}–${formatHm(d.end, clock)}`;
 }
 
 export function sortDraws(draws: LeagueDraw[]): LeagueDraw[] {
@@ -142,7 +143,7 @@ export function drawConflicts(leagues: League[]): DrawConflict[] {
 }
 
 /** "Monday Mixed and Monday Late overlap on Mon 19:00–20:30". */
-export function formatConflict({ a, b }: DrawConflict): string {
+export function formatConflict({ a, b }: DrawConflict, clock: Clock): string {
   const day = DAY_NAMES[a.draw.day - 1].slice(0, 3);
   const start = a.draw.start > b.draw.start ? a.draw.start : b.draw.start;
   const end = a.draw.end < b.draw.end ? a.draw.end : b.draw.end;
@@ -150,7 +151,7 @@ export function formatConflict({ a, b }: DrawConflict): string {
     a.league.id === b.league.id
       ? `${a.league.name} has two draws that overlap`
       : `${a.league.name} and ${b.league.name} overlap`;
-  return `${who} on ${day} ${start}–${end}`;
+  return `${who} on ${day} ${formatHm(start, clock)}–${formatHm(end, clock)}`;
 }
 
 export function newTeamId(): string {

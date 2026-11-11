@@ -23,7 +23,6 @@ export const SECTIONS: readonly SectionInfo[] = [
   { id: 'leagues', label: 'Leagues', title: 'Leagues', group: 'club', guide: 'set-up-leagues', bonspielAdmin: false },
   { id: 'bonspiels', label: 'Bonspiels', title: 'Bonspiels', group: 'club', guide: 'run-a-bonspiel', bonspielAdmin: true },
   { id: 'displays', label: 'Displays', title: 'Displays', group: 'club', guide: 'set-up-a-display', bonspielAdmin: false },
-  { id: 'devices', label: 'Devices', title: 'Devices', group: 'club', guide: 'connect-a-scoreboard', bonspielAdmin: false },
   { id: 'settings/club', label: 'Club', title: 'Club settings', group: 'settings', guide: null, bonspielAdmin: false },
   { id: 'settings/scoreboards', label: 'Scoreboards', title: 'Scoreboard settings', group: 'settings', guide: 'connect-a-scoreboard', bonspielAdmin: false },
   { id: 'settings/public-page', label: 'Public page', title: 'Public scores page', group: 'settings', guide: 'share-scores-with-members', bonspielAdmin: false },

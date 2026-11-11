@@ -102,17 +102,20 @@ address for each page, so a link sent for help opens the same page. It follows
 the computer's light or dark mode. While any setting is unsaved, a bar at
 the bottom says which and saves or discards them all.
 
-- **Overview.** Where a club admin starts: whether every scoreboard is
-  well, the league or bonspiel draw on now with each sheet's live score,
-  the draws coming up this week, the latest results, and a checklist of
-  what is left to set up, each step linked to the page that does it.
+- **Overview.** Where a club admin starts: a checklist of what is left to
+  set up, each step linked to the page that does it, which goes away once
+  every step is done; then whether every scoreboard is well, the league or
+  bonspiel draw on now with each sheet's live score, the draws coming up
+  this week, and the latest results.
   Bonspiel admins start on the bonspiel on now instead.
 - **Sheets and scoreboards.** Each sheet shows the game on it now, live, and
   whether its scoreboard is online, which version it runs, and whether it is
   waiting to update. A pairing code connects a new scoreboard to a sheet.
-- **Game history.** Every finished game, end by end, for the last week or a
-  sheet's whole history, fifty at a time, with a CSV export for keeping standings in a
-  spreadsheet.
+  **Copy report** copies a summary of every scoreboard, screen and service
+  to paste in when asking for help.
+- **Game history.** Every finished game, end by end, newest first, from
+  every sheet or filtered to one, with more loaded as asked and a CSV export
+  for keeping standings in a spreadsheet.
 - **Leagues.** Each league's season, weekly draw times and teams, entered by
   hand or imported from a spreadsheet. Re-importing keeps teams matched to
   their past games, and the portal shows what will change before it saves.
@@ -122,11 +125,10 @@ the bottom says which and saves or discards them all.
   and the admin PIN that scoreboards ask for before they disconnect.
 - **Displays.** Links for the club's screens, and the warm room screen's
   title and logo.
-- **Devices.** Every scoreboard and screen with what it last reported, and
-  whether the API, public page and webhook are working, with a report to
-  copy when asking for help.
-- **Club settings.** The club's name and time zone, and who can sign in for
-  the club.
+- **Club settings.** The club's name and time zone, whether times are
+  shown on a 12 or 24 hour clock, in the portal, on the club's screens and
+  scoreboards, on the public scores page and in webhook posts and stream
+  titles, and who can sign in for the club.
 - **Public page.** The switch for the public scores page, and its address.
 - **Integrations.** The club's API key, a switch to turn the club's API off
   without changing the key, where to post finished games, and what streams

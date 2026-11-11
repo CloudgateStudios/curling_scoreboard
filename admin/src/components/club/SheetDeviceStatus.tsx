@@ -3,6 +3,7 @@ import { formatAgo } from '../../lib/format';
 import type { Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import { DeviceDetails } from './DeviceDetails';
+import { useClubClock } from '../../hooks/useClubClock';
 
 interface Props {
   sheet: Sheet;
@@ -13,6 +14,7 @@ interface Props {
 
 /** The app version, check-in state and device details of a paired sheet's scoreboard. */
 export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
+  const clock = useClubClock();
   const device = sheet.device;
   const health = deviceHealth(device, deployedBuildId, now.getTime());
 
@@ -37,7 +39,7 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
   const details: [string, string | null | undefined][] = [
     ['Build', device.buildId ? shortBuild(device.buildId) : 'Local build'],
     ['Waiting to load', device.updateTargetBuildId && shortBuild(device.updateTargetBuildId)],
-    ['Last update reload', formatTime(device.lastReloadAttemptAt)],
+    ['Last update reload', formatTime(device.lastReloadAttemptAt, clock)],
     ['Platform', [device.platform, device.renderer].filter(Boolean).join(' · ')],
     ['Browser', device.userAgent],
     ['Screen', device.screen && `${device.screen.width} × ${device.screen.height} @${device.screen.pixelRatio}x`],
@@ -48,10 +50,10 @@ export function SheetDeviceStatus({ sheet, deployedBuildId, now }: Props) {
         .join(' · '),
     ],
     ['Device clock', skew],
-    ['Running since', formatTime(device.sessionStartedAt)],
-    ['Last seen', formatTime(device.lastSeenAt)],
-    ['Paired', formatTime(sheet.pairedAt)],
-    ['Last sync error', syncError && `${syncError.operation}: ${syncError.message} (${formatTime(syncError.at)})`],
+    ['Running since', formatTime(device.sessionStartedAt, clock)],
+    ['Last seen', formatTime(device.lastSeenAt, clock)],
+    ['Paired', formatTime(sheet.pairedAt, clock)],
+    ['Last sync error', syncError && `${syncError.operation}: ${syncError.message} (${formatTime(syncError.at, clock)})`],
   ];
 
   return (

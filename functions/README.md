@@ -42,6 +42,7 @@ firebase deploy --only functions --project curling-scoreboard-dev
 | `src/webhook.ts`             | The completed game webhook trigger, the test post, and the checks on where it may post                          |
 | `src/webhookMessage.ts`      | Filling in a club's webhook message; matches `admin/src/lib/webhookMessage.ts`                                  |
 | `src/liveGame.ts`            | How long a live game counts as live without a write                                                             |
+| `src/clock.ts`               | The club's 12 or 24 hour clock, for webhook posts and stream titles; matches the portal's and the displays' |
 | `src/apiKeys.ts`, `src/scoreboardPin.ts` | Where the API key and the scoreboard PIN are kept                                                   |
 | `src/middleware/apiKey.ts`   | Checks `X-API-Key` for the REST API                                                                             |
 | `src/routes/`                | The REST API's routes: a club, its sheets and their games, leagues, bonspiels                                   |
@@ -66,6 +67,7 @@ directly.
 | `display.js`                         | Shared by the signed in pages: sign-in, listeners, retries, `sheetView`, status reports, reloading |
 | `game-view.js`                       | What every page, the public one included, shows about a game: the end, Final, text colors, the end by end grid |
 | `update-model.js`                    | When a page should reload onto a new build                                               |
+| `clock.js`                           | The club's 12 or 24 hour clock, for the warm room, bonspiel and public pages; matches the portal's `src/lib/clock.ts` |
 | `link.js`, `link.css`                | A display link's own URL, which moves on to the page its settings name                   |
 | `bug.js`, `bug.css`                  | The score bug                                                                            |
 | `linescore.js`, `linescore.css`      | A sheet's linescore, for streams between ends                                            |

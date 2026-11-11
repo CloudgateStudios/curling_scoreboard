@@ -148,3 +148,46 @@
   align-items: center;
   gap: 0.75rem;
 }
+
+/* The sheet filter on the left, the count and export on the right. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.filterOn,
+.filterOff {
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.filterOff:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filterOn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.loadMore {
+  margin-top: 1rem;
+}

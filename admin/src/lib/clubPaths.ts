@@ -8,7 +8,6 @@ export type ClubSection =
   | 'leagues'
   | 'bonspiels'
   | 'displays'
-  | 'devices'
   | 'settings/club'
   | 'settings/scoreboards'
   | 'settings/public-page'
@@ -19,8 +18,9 @@ export function clubPath(clubId: string, section?: ClubSection): string {
   return section ? `/clubs/${clubId}/${section}` : `/clubs/${clubId}`;
 }
 
+/** The Games page filtered to one sheet. */
 export const sheetGamesPath = (clubId: string, sheetId: string) =>
-  `/clubs/${clubId}/sheets/${sheetId}/games`;
+  `/clubs/${clubId}/games?sheet=${encodeURIComponent(sheetId)}`;
 
 export const leaguePath = (clubId: string, leagueId: string) =>
   `/clubs/${clubId}/leagues/${leagueId}`;

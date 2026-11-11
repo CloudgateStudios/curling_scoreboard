@@ -55,6 +55,7 @@ dart run translations_cleaner list-unused-terms --abort-on-unused
 | `SyncService`           | Writes `liveGame`, completed games and status reports to the paired sheet, fire and forget              |
 | `DeviceStatusService`   | Builds the status report and decides when to send it                                                     |
 | `RockColorsService`     | Follows the club's rock colors                                                                           |
+| `ClubClockService`      | Follows the club's 12 or 24 hour clock, for the bonspiel bar's draw times                                |
 | `LeagueService`         | Follows the club's active leagues                                                                        |
 | `BonspielService`       | Follows the club's active bonspiels and their state                                                      |
 | `UpdateService`         | Web only: notices a new deploy, so the app can reload between games                                      |

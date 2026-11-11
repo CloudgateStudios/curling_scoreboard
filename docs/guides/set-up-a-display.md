@@ -7,9 +7,10 @@ shows from the portal, and the screen follows within seconds.
 
 ## Make a link
 
-1. Open **Displays**. Under **Display Links**, type a name such as "Warm room
-   TV" and press **Create Link**.
-2. In the dialog, choose what it **Shows**: the warm room, a score bug, a
+1. Open **Displays** and press **+ New Display**. The dialog opens on its
+   name, "Display 1" or the next number free; type over it with something
+   like "Warm room TV".
+2. Choose what it **Shows**: the warm room, a score bug, a
    linescore or a bonspiel screen. A score bug or linescore also asks for its
    **Sheet**, and a bonspiel screen for its **Bonspiel**. Pick its options
    (below), then **Save**.
@@ -74,10 +75,12 @@ them in turn.
 
 ## Change or retire a link
 
-- **Edit** changes its name or what it shows, even mid-stream.
-- **New URL** gives it a new address, for one that got out. Screens on the
-  old one stop within the hour.
-- **Remove** deletes it. A screen using it stops within the hour.
+- **Copy URL** copies its address, to put on another screen or in OBS.
+- **Edit** changes its name or what it shows, even mid-stream. The dialog
+  also has:
+  - **New URL**, which gives it a new address, for one that got out.
+    Screens on the old one stop within the hour.
+  - **Remove**, which deletes it. A screen using it stops within the hour.
 
 Each link shows whether its screen is open and on the latest version.
 Screens update themselves after a new release.

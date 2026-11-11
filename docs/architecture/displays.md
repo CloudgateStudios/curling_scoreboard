@@ -114,8 +114,8 @@ need reloading by hand once.
 
 A display, a warm room screen or an OBS browser source, has nobody to sign
 in, so it signs in with a link instead. A club admin makes one per screen on
-the portal's Displays tab, through
-`createDisplayLink`. Its token is `<linkId>.<secret>`, the secret being 128
+the portal's Displays tab with **+ New Display**, through
+`createDisplayLink`, then names it in the dialog that opens. Its token is `<linkId>.<secret>`, the secret being 128
 random bits in hex. The portal shows it built into the link's own URL,
 whenever a club admin opens the link:
 
@@ -312,7 +312,10 @@ a mouse left by a TV does not sit over the scores.
 A club can give the screen its own title in place of "Live Scores", and a
 logo beside it, on the portal's Displays tab. Both are kept in `private/displayBranding`, which the page listens to
 alongside the summary: one more read when it starts, and one when the club
-changes them. The portal shrinks the logo in the browser to fit 800 by 200
+changes them. The warm room and bonspiel screens also listen to
+`config/club` for the club's 12 or 24 hour clock, chosen beside its time
+zone, which their clock and draw times use (`assets/clock.js`, which changes
+with the portal's `src/lib/clock.ts`). The portal shrinks the logo in the browser to fit 800 by 200
 pixels and keeps it as a PNG, or WebP when a PNG would be too large, in a
 data URL. Keeping it in Firestore rather than Cloud Storage means the page
 needs nothing but Firestore, and the CSP already allows `data:` images. Any
@@ -421,7 +424,7 @@ CDN caches, so only a cache miss reaches the function and Firestore
 
 | Path, under `/display/{clubId}/scores/` | What | Cache-Control |
 |---|---|---|
-| `live.json` | each sheet and what it shows now, about a kilobyte, and versions of the other two | `public, max-age=15, s-maxage=30` |
+| `live.json` | each sheet and what it shows now, about a kilobyte, the club's clock, and versions of the other two | `public, max-age=15, s-maxage=30` |
 | `results.json` | the day's finished games | `public, max-age=60, s-maxage=300` |
 | `logo?v=` | the club's logo as an image | a year, `immutable`, at its own version |
 
@@ -434,8 +437,9 @@ keeps a copy per full URL, so `live.json?x=1` would otherwise skip the cache
 and reach Firestore every time. The page never adds one.
 Express gives each response an ETag and answers a matching `If-None-Match`
 with a 304, so a poll that finds nothing new costs only headers. A cache miss
-reads the summary. Each function instance keeps the switch for 30 seconds
-and the branding, which holds the logo, for five minutes, so a request that
+reads the summary. Each function instance keeps the switch for 30 seconds,
+and the branding, which holds the logo, and the club's settings, which hold
+its clock, for five minutes, so a request that
 skips the CDN, or one for a club without the page, does not read them each
 time.
 

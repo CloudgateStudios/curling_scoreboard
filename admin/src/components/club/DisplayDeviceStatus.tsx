@@ -3,6 +3,7 @@ import { formatAgo } from '../../lib/format';
 import type { DisplayStatus } from '../../types';
 import common from '../../styles/common.module.css';
 import { DeviceDetails } from './DeviceDetails';
+import { useClubClock } from '../../hooks/useClubClock';
 
 interface Props {
   device: DisplayStatus | undefined;
@@ -24,6 +25,7 @@ const PAGE_NAMES: Record<NonNullable<DisplayStatus['page']>, string> = {
 /** The version, check-in state and details of the screen on a display link.
  *  Mirrors SheetDeviceStatus for a scoreboard. */
 export function DisplayDeviceStatus({ device, deployedBuildId, sheetName, now }: Props) {
+  const clock = useClubClock();
   const health = deviceHealth(device, deployedBuildId, now.getTime());
 
   if (!device || !health) {
@@ -47,7 +49,7 @@ export function DisplayDeviceStatus({ device, deployedBuildId, sheetName, now }:
   const details: [string, string | null | undefined][] = [
     ['Build', device.buildId ? shortBuild(device.buildId) : 'Local build'],
     ['Waiting to load', device.updateTargetBuildId && shortBuild(device.updateTargetBuildId)],
-    ['Last update reload', formatTime(device.lastReloadAttemptAt)],
+    ['Last update reload', formatTime(device.lastReloadAttemptAt, clock)],
     ['Showing', [page, device.sheetId && (sheetName(device.sheetId) ?? 'a removed sheet')].filter(Boolean).join(' · ')],
     ['Browser', device.userAgent],
     ['Screen', device.screen && `${device.screen.width} × ${device.screen.height} @${device.screen.pixelRatio}x`],
@@ -58,8 +60,8 @@ export function DisplayDeviceStatus({ device, deployedBuildId, sheetName, now }:
         .join(' · '),
     ],
     ['Device clock', skew],
-    ['Running since', formatTime(device.sessionStartedAt)],
-    ['Last seen', formatTime(device.lastSeenAt)],
+    ['Running since', formatTime(device.sessionStartedAt, clock)],
+    ['Last seen', formatTime(device.lastSeenAt, clock)],
   ];
 
   return (

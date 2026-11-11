@@ -1,5 +1,5 @@
 // How every club's scoreboards and screens are doing, for the super admin's
-// overview, and the plain text report a club's Devices page copies.
+// overview, and the plain text report copied from a club's Sheets page.
 
 import { clockSkew, deviceHealth, shortBuild } from './deviceHealth.ts';
 import { activeLiveGame } from './liveGame.ts';

@@ -3,13 +3,14 @@ import { addDoc, collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { sheetsHealth } from '../../lib/deviceHealth';
 import { errorMessage } from '../../lib/format';
-import type { Sheet } from '../../types';
+import type { Club, Sheet } from '../../types';
+import { CopyReport } from './CopyReport';
 import { SheetRow } from './SheetRow';
 import common from '../../styles/common.module.css';
 import styles from './SheetsSection.module.css';
 
 interface Props {
-  clubId: string;
+  club: Club;
   sheets: Sheet[];
   /** Super admins add and delete sheets; club admins rename and unpair them. */
   canManageSheets: boolean;
@@ -19,8 +20,10 @@ interface Props {
 }
 
 /** How the club's scoreboards are doing, then each sheet's live game,
- *  pairing state, scoreboard status and pairing code. */
-export function SheetsSection({ clubId, sheets, canManageSheets, readOnly, onViewGames }: Props) {
+ *  pairing state, scoreboard status and pairing code. A report of every
+ *  device can be copied from here for an issue or a message. */
+export function SheetsSection({ club, sheets, canManageSheets, readOnly, onViewGames }: Props) {
+  const clubId = club.id;
   const [adding, setAdding] = useState(false);
   const [newSheetName, setNewSheetName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -63,11 +66,15 @@ export function SheetsSection({ clubId, sheets, canManageSheets, readOnly, onVie
     <div className={common.section}>
       <div className={common.sectionHeader}>
         <h2 className={common.sectionTitle}>Sheets ({sheets.length})</h2>
-        {canManageSheets && (
-          <button className={common.primaryButton} onClick={() => setAdding(true)}>
-            + Add Sheet
-          </button>
-        )}
+        <span className={styles.headerActions}>
+          {/* Bonspiel admins cannot read what the report needs. */}
+          {!readOnly && <CopyReport club={club} sheets={sheets} />}
+          {canManageSheets && (
+            <button className={common.primaryButton} onClick={() => setAdding(true)}>
+              + Add Sheet
+            </button>
+          )}
+        </span>
       </div>
 
       {sheets.length > 0 && <HealthSummary sheets={sheets} deployedBuildId={deployedBuildId} now={now} />}

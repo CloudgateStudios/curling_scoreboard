@@ -313,6 +313,25 @@ await check('attack: time zone that is not a zone name', 'deny', () =>
 await check('attack: club admin stores other settings with the time zone', 'deny', () =>
   setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago', extra: true }));
 
+// --- the club's 12 or 24 hour clock ---
+await check('club admin: set their club clock with the time zone', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { timeZone: 'America/Chicago', clock: '24h' }));
+
+await check('club admin: go back to the default clock', 'allow', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { clock: deleteField() }, { merge: true }));
+
+await check('attack: clock that is not 12h or 24h', 'deny', () =>
+  setDoc(doc(adminA, 'clubs/club-a/config/club'), { clock: '25h' }, { merge: true }));
+
+await check('bonspiel admin: read their club settings, for its clock', 'allow', () =>
+  getDoc(doc(bonspielA, 'clubs/club-a/config/club')));
+
+await check('attack: bonspiel admin sets their club clock', 'deny', () =>
+  setDoc(doc(bonspielA, 'clubs/club-a/config/club'), { clock: '24h' }, { merge: true }));
+
+await check('attack: bonspiel admin reads another club settings', 'deny', () =>
+  getDoc(doc(bonspielA, 'clubs/club-b/config/club')));
+
 // --- the club's stream templates ---
 await check('club admin: set their stream templates', 'allow', () =>
   setDoc(doc(adminA, 'clubs/club-a/config/stream'), {
@@ -557,6 +576,15 @@ await check('attack: display reads a sheet', 'deny', () =>
 
 await check('attack: display reads its club\'s config', 'deny', () =>
   getDoc(doc(displayA, 'clubs/club-a/config/scoreboard')));
+
+await check('display: read its club settings, for its clock', 'allow', () =>
+  getDoc(doc(displayA, 'clubs/club-a/config/club')));
+
+await check('attack: display reads another club settings', 'deny', () =>
+  getDoc(doc(displayA, 'clubs/club-b/config/club')));
+
+await check('attack: display sets its club clock', 'deny', () =>
+  setDoc(doc(displayA, 'clubs/club-a/config/club'), { clock: '24h' }, { merge: true }));
 
 await check('attack: display lists the display links', 'deny', () =>
   getDocs(collection(displayA, 'clubs/club-a/displayLinks')));

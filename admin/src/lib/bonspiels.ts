@@ -1,6 +1,7 @@
 import type {
   Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielSide, BonspielTeam, TeamSlot,
 } from '../types';
+import { timeOptions, type Clock } from './clock.ts';
 
 /** The most ends a game can be set to, as the rules allow. */
 export const MAX_ENDS = 12;
@@ -223,12 +224,12 @@ export function nextDrawStart(bonspiel: Pick<Bonspiel, 'draws' | 'startDate'>): 
   return `${bonspiel.startDate || today()}T09:00`;
 }
 
-/** "Fri, Nov 6, 7:00 PM". */
-export function formatDrawStart(start: string): string {
+/** "Fri, Nov 6, 7:00 PM", or "Fri, Nov 6, 19:00" on the 24 hour clock. */
+export function formatDrawStart(start: string, clock: Clock): string {
   const date = localDate(start);
   if (!date) return 'No time set';
   return date.toLocaleString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    weekday: 'short', month: 'short', day: 'numeric', ...timeOptions(clock),
   });
 }
 

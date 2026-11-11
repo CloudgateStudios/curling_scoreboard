@@ -44,8 +44,15 @@ describe('compareLeagues', () => {
 describe('formatDraws', () => {
   test('lists draws Sunday first', () => {
     assert.equal(
-      formatDraws([draw(1, '18:30', '20:30'), draw(7, '10:00', '12:00')]),
+      formatDraws([draw(1, '18:30', '20:30'), draw(7, '10:00', '12:00')], '24h'),
       'Sun 10:00–12:00, Mon 18:30–20:30',
+    );
+  });
+
+  test('uses the club\'s clock', () => {
+    assert.equal(
+      formatDraws([draw(1, '18:30', '20:30'), draw(7, '10:00', '12:00')], '12h'),
+      'Sun 10:00 AM–12:00 PM, Mon 6:30 PM–8:30 PM',
     );
   });
 });
@@ -68,7 +75,7 @@ describe('drawConflicts', () => {
       league('Tuesday', [draw(2, '19:00', '21:00')]),
     ]);
     assert.equal(conflicts.length, 1);
-    assert.equal(formatConflict(conflicts[0]), 'Early and Late overlap on Mon 19:00–20:00');
+    assert.equal(formatConflict(conflicts[0], '24h'), 'Early and Late overlap on Mon 19:00–20:00');
   });
 
   test('allows draws at the same time on different sheets', () => {
@@ -119,7 +126,7 @@ describe('drawConflicts', () => {
       league('Double', [draw(3, '18:00', '20:00'), draw(3, '19:30', '21:30')]),
     ]);
     assert.equal(
-      formatConflict(conflicts[0]),
+      formatConflict(conflicts[0], '24h'),
       'Double has two draws that overlap on Wed 19:30–20:00',
     );
   });

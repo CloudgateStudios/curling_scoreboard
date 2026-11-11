@@ -174,6 +174,8 @@ Titles. They are kept in `config/stream`, only where they differ from the
 defaults, and filled in by `functions/src/streamMessage.ts`. The portal has
 the same variables and defaults, for its preview, in
 `admin/src/lib/streamMessage.ts`; a test checks the defaults match.
+`{drawTime}` is written on the club's 12 or 24 hour clock, from
+`config/club`, which the route reads already for the time zone.
 
 Variables are in braces, as in the webhook message. A part in square
 brackets that holds a variable is left out when any variable in it is
@@ -235,7 +237,8 @@ reads the first and Discord the second, followed by `event`, `club`, `sheet` and
   game its bonspiel and game ("Fall Spiel A7, Sheet 2: ..."). `{bonspiel}`,
   `{bonspielGame}` and `{event}` come from the bonspiel's plan. Dates and times are
   written in the time zone saved with the template, which the portal
-  defaults to the admin's own. `{date}`, `{shortDate}` and `{weekday}` are
+  defaults to the admin's own, and `{startTime}` and `{finishTime}` on the
+  club's 12 or 24 hour clock from `config/club`. `{date}`, `{shortDate}` and `{weekday}` are
   the day the game started, so a late draw that runs past midnight keeps
   the night it was played; `{finishDate}` is the day it ended. A name in braces that is not a variable is
   posted as written, and the portal warns about it. The portal lists the

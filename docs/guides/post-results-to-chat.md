@@ -25,7 +25,8 @@ Webhook**:
 3. Write the **Message**, or leave the default, such as "Monday Night,
    Sheet 2: Team Smith 7, Team Jones 4". Click a variable to add it, such as
    `{team1}` or `{league}`; the preview shows a sample.
-4. Choose the **Time zone for dates and times**.
+4. Choose the **Time zone for dates and times**. Times are written on the
+   12 or 24 hour clock chosen under **Settings**, **Club**.
 5. Press **Save**, then **Send Test** and check the channel.
 
 Once saved, the URL is shown masked. **Edit** changes it and **Remove**

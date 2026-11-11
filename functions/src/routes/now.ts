@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getFirestore } from 'firebase-admin/firestore';
 import { RecordedResult } from '../bonspiels/state';
+import { clockOf } from '../clock';
 import { dateOf, formatLocalTime, localTimeIn, parseLocalTime, whatIsOn } from '../now';
 import { streamText } from '../streamMessage';
 import { liveGameOf } from './sheets';
@@ -95,6 +96,7 @@ nowRouter.get('/now', async (req: Request, res: Response) => {
       match: answer.match,
       today: dateOf(at),
       scoresUrl: publicScores.get('enabled') === true ? scoresUrlFor(req, clubId) : null,
+      clock: clockOf(clubConfig.get('clock')),
     });
 
     res.json({

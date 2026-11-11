@@ -75,7 +75,7 @@ export function SuperAdminDashboard() {
               <tbody>
                 {found.map((p) => (
                   <tr key={`${p.clubId}-${p.device}-${p.where}-${p.kind}`}>
-                    <td><button className={common.linkButton} onClick={() => navigate(clubPath(p.clubId, 'devices'))}>{clubName(p.clubId)}</button></td>
+                    <td><button className={common.linkButton} onClick={() => navigate(clubPath(p.clubId, p.device === 'screen' ? 'displays' : 'sheets'))}>{clubName(p.clubId)}</button></td>
                     <td>{p.where}{p.device === 'screen' && <span className={styles.muted}> · screen</span>}</td>
                     <td>
                       <span className={PROBLEM_LABELS[p.kind].chip}>{PROBLEM_LABELS[p.kind].label}</span>

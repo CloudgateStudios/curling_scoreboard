@@ -15,6 +15,7 @@ flowchart TB
   DSS["DeviceStatusService<br/>status reports"]
   REG["RegistrationService<br/>pairing, the saved club and sheet"]
   RC["RockColorsService"]
+  CC["ClubClockService"]
   LS["LeagueService"]
   BS["BonspielService"]
   US["UpdateService<br/>web only"]
@@ -27,20 +28,24 @@ flowchart TB
   MAIN --> GC --> SYNC
   MAIN --> DSS --> SYNC
   MAIN --> RC
+  MAIN --> CC
   MAIN --> LS
   MAIN --> BS
   MAIN --> US
   SYNC --> REG
   RC --> REG
+  CC --> REG
   LS --> REG
   BS --> REG
   REG --> FN
   REG --> PREFS
   RC --> PREFS
+  CC --> PREFS
   LS --> PREFS
   BS --> PREFS
   SYNC -- "writes" --> FS
   RC -- "config/scoreboard" --> FS
+  CC -- "config/club" --> FS
   LS -- "leagues" --> FS
   BS -- "bonspiels and state" --> FS
   US -- "appConfig/scoreboard" --> FS
@@ -256,6 +261,18 @@ Colors are read when a game starts and copied onto its teams, so a change
 never lands in the middle of a game. They are written with `liveGame` and the
 completed game as each team's `color`, and the team `name` is the color's
 name ("Blue", "Green"), which is what the REST API returns.
+
+## Club clock
+
+A club chooses a 12 or 24 hour clock beside its time zone, kept as `clock`
+in `clubs/{clubId}/config/club`. `ClubClockService` on a paired scoreboard
+listens to that document and keeps the last clock it saw in shared
+preferences, as the rock colors are kept; an unpaired scoreboard, or a club
+that has not chosen, is on the 12 hour clock. `main.dart` sets Flutter's
+`alwaysUse24HourFormat` from it at the top of the app, so a time written
+with the club's clock follows it wherever it is. The bonspiel bar's draw
+times are the only clock times the scoreboard shows. The portal, the
+display pages, webhook posts and stream titles read the same setting.
 
 ## Scoreboard status
 

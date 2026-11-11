@@ -16,6 +16,7 @@ import {
 import {
   bracketRounds, currentDraw, drawStart, eventsWithGames, gamesIn, isPool, nextDraw, resultOf, sideOf, sortedDraws,
 } from './bonspiel-model.js';
+import { clockOf, DEFAULT_CLOCK, timeOptions } from './clock.js';
 
 const VIEWS = ['now', 'schedule', 'brackets', 'cycle'];
 const params = new URLSearchParams(location.search);
@@ -43,16 +44,18 @@ let plan = undefined;
 let bonspielState = null;
 let summary = null;
 let linkStatus = 'connecting';
+// The club's 12 or 24 hour clock, from its settings.
+let clubClock = DEFAULT_CLOCK;
 // Which of the screens is up, when there are several to take turns.
 let turn = 0;
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-/** "Sat 2:00 PM" */
+/** "Sat 2:00 PM", or "Sat 14:00" on the 24 hour clock. */
 function when(draw) {
   const start = drawStart(draw);
   return start
-    ? start.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    ? start.toLocaleString(undefined, { weekday: 'short', ...timeOptions(clubClock) })
     : '';
 }
 
@@ -268,7 +271,7 @@ function showStatus(message) {
 
 function render() {
   const at = now();
-  clock.textContent = new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  clock.textContent = new Date(at).toLocaleTimeString(undefined, timeOptions(clubClock));
 
   const message = STATUS_MESSAGES[linkStatus];
   if (message) return showStatus(message);
@@ -312,6 +315,7 @@ connect({
       path: ['bonspiels', config.bonspielId, 'state', 'current'],
       on: (next) => { bonspielState = next; render(); },
     },
+    { what: 'club settings', path: ['config', 'club'], on: (next) => { clubClock = clockOf(next?.clock); render(); } },
   ],
   onStatus: (next) => {
     linkStatus = next;

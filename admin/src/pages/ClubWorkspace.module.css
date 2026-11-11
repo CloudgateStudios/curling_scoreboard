@@ -21,34 +21,6 @@
   display: none;
 }
 
-/* Two sections side by side, stacked when the window is narrow. */
-.columns {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 1.5rem;
-  align-items: start;
-}
-
-.columns > * {
-  margin-bottom: 0;
-}
-
-/* Settings pages are forms, which read better not stretched too wide. */
-.narrow {
-  max-width: 52rem;
-}
-
-/* The grid display would otherwise show a hidden page. */
-.columns[hidden] {
-  display: none;
-}
-
-@media (max-width: 1100px) {
-  .columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 800px) {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -91,13 +63,6 @@
     font-weight: 600;
     white-space: nowrap;
   }
-}
-
-/* The buttons that open each sheet's whole history. */
-.sheetLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 /* Super admins only: whose club this is, and seeing it as its admins do. */

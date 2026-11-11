@@ -11,6 +11,8 @@ import type { Bonspiel, Club, League, Sheet } from '../../types';
 import { HealthSummary } from './SheetsSection';
 import common from '../../styles/common.module.css';
 import styles from './ClubOverview.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
+import { formatHm } from '../../lib/clock';
 
 interface Props {
   club: Club;
@@ -34,9 +36,11 @@ const STEP_SECTIONS: Record<SetupStepId, ClubSection> = {
   webhook: 'settings/integrations',
 };
 
-/** The club at a glance: whether its scoreboards are well, what is on the
- *  ice now and next, the latest results, and what is left to set up. */
+/** The club at a glance: what is left to set up, whether its scoreboards
+ *  are well, what is on the ice now and next, and the latest results. The
+ *  setup steps go away once every one is done. */
 export function ClubOverview({ club, sheets, leagues, bonspiels, onOpen, onSection }: Props) {
+  const clock = useClubClock();
   const clubId = club.id;
   const [now, setNow] = useState(() => new Date());
   const [deployedBuildId, setDeployedBuildId] = useState<string | null>(null);
@@ -89,98 +93,86 @@ export function ClubOverview({ club, sheets, leagues, bonspiels, onOpen, onSecti
 
   return (
     <div className={styles.overview}>
+      {stepsKnown && left.length > 0 && (
+        <section className={common.section}>
+          <div className={common.sectionHeader}>
+            <h2 className={common.sectionTitle}>Finish setting up</h2>
+            <span className={styles.muted}>
+              {required.filter((s) => s.done).length} of {required.length}
+            </span>
+          </div>
+          <ul className={styles.steps}>
+            {steps.map((step) => (
+              <li key={step.id} className={step.done ? styles.stepDone : undefined}>
+                <span className={step.done ? styles.tickDone : styles.tick} aria-hidden="true">{step.done ? '✓' : ''}</span>
+                <span className={styles.stepLabel}>
+                  {step.label}
+                  {step.optional && !step.done && <span className={styles.muted}> (optional)</span>}
+                </span>
+                {!step.done && (
+                  <button className={common.linkButton} onClick={() => onSection(STEP_SECTIONS[step.id])}>
+                    Set up
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {sheets.length > 0 && <HealthSummary sheets={sheets} deployedBuildId={deployedBuildId} now={now} />}
 
-      <div className={styles.grid}>
-        <section className={`${common.section} ${styles.onIce}`}>
-          <div className={common.sectionHeader}>
-            <h2 className={common.sectionTitle}>On the ice now</h2>
-            <button className={common.linkButton} onClick={() => onSection('sheets')}>Sheets →</button>
+      <section className={common.section}>
+        <div className={common.sectionHeader}>
+          <h2 className={common.sectionTitle}>On the ice now</h2>
+          <button className={common.linkButton} onClick={() => onSection('sheets')}>Sheets →</button>
+        </div>
+        {onNow.length > 0 ? (
+          <p className={styles.drawLine}>
+            {onNow.map((draw, i) => (
+              <span key={`${draw.kind}-${draw.id}-${draw.start}`}>
+                {i > 0 && ' · '}
+                <button className={common.linkButton} onClick={() => openDraw(draw)}>
+                  {draw.name}{draw.label ? `, ${draw.label}` : ''}
+                </button>
+                <span className={styles.muted}> from {formatHm(timeOf(draw.start), clock)}</span>
+              </span>
+            ))}
+          </p>
+        ) : (
+          <p className={`${styles.muted} ${styles.drawLine}`}>No league or bonspiel draw is on now.</p>
+        )}
+        {sheets.length === 0 ? (
+          <p className={common.empty}>No sheets yet.</p>
+        ) : (
+          <div className={styles.sheets}>
+            {[...sheets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((sheet) => (
+              <SheetNow key={sheet.id} sheet={sheet} now={now} />
+            ))}
           </div>
-          {onNow.length > 0 ? (
-            <p className={styles.drawLine}>
-              {onNow.map((draw, i) => (
-                <span key={`${draw.kind}-${draw.id}-${draw.start}`}>
-                  {i > 0 && ' · '}
-                  <button className={common.linkButton} onClick={() => openDraw(draw)}>
-                    {draw.name}{draw.label ? `, ${draw.label}` : ''}
-                  </button>
-                  <span className={styles.muted}> from {timeOf(draw.start)}</span>
-                </span>
-              ))}
-            </p>
-          ) : (
-            <p className={styles.muted}>No league or bonspiel draw is on now.</p>
-          )}
-          {sheets.length === 0 ? (
-            <p className={common.empty}>No sheets yet.</p>
-          ) : (
-            <div className={styles.sheets}>
-              {[...sheets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((sheet) => (
-                <SheetNow key={sheet.id} sheet={sheet} now={now} />
-              ))}
-            </div>
-          )}
-        </section>
+        )}
+      </section>
 
-        <div className={styles.column}>
-          <section className={common.section}>
-            <h2 className={common.sectionTitle}>Coming up</h2>
-            {comingUp.length === 0 ? (
-              <p className={common.empty}>Nothing in the next week.</p>
-            ) : (
-              <ul className={styles.list}>
-                {comingUp.map((draw) => (
-                  <li key={`${draw.kind}-${draw.id}-${draw.start}`}>
-                    <span className={styles.when}>{dayLabel(draw.start, at)} {timeOf(draw.start)}</span>
-                    <button className={common.linkButton} onClick={() => openDraw(draw)}>
-                      {draw.name}{draw.label ? `, ${draw.label}` : ''}
-                    </button>
-                    {draw.kind === 'bonspiel' && <span className={common.pairedChip}>Bonspiel</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+      <section className={common.section}>
+        <h2 className={common.sectionTitle}>Coming up</h2>
+        {comingUp.length === 0 ? (
+          <p className={common.empty}>Nothing in the next week.</p>
+        ) : (
+          <ul className={styles.list}>
+            {comingUp.map((draw) => (
+              <li key={`${draw.kind}-${draw.id}-${draw.start}`}>
+                <span className={styles.when}>{dayLabel(draw.start, at)} {formatHm(timeOf(draw.start), clock)}</span>
+                <button className={common.linkButton} onClick={() => openDraw(draw)}>
+                  {draw.name}{draw.label ? `, ${draw.label}` : ''}
+                </button>
+                {draw.kind === 'bonspiel' && <span className={common.pairedChip}>Bonspiel</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-          <LatestResults clubId={clubId} sheets={sheets} onAll={() => onSection('games')} />
-        </div>
-
-        <div className={styles.column}>
-          {stepsKnown && (
-            <section className={common.section}>
-              <div className={common.sectionHeader}>
-                <h2 className={common.sectionTitle}>
-                  {left.length === 0 ? 'All set up' : 'Finish setting up'}
-                </h2>
-                <span className={styles.muted}>
-                  {required.filter((s) => s.done).length} of {required.length}
-                </span>
-              </div>
-              {left.length === 0 ? (
-                <p className={styles.muted}>Every step is done. Each one can be changed under its page.</p>
-              ) : (
-                <ul className={styles.steps}>
-                  {steps.map((step) => (
-                    <li key={step.id} className={step.done ? styles.stepDone : undefined}>
-                      <span className={step.done ? styles.tickDone : styles.tick} aria-hidden="true">{step.done ? '✓' : ''}</span>
-                      <span className={styles.stepLabel}>
-                        {step.label}
-                        {step.optional && !step.done && <span className={styles.muted}> (optional)</span>}
-                      </span>
-                      {!step.done && (
-                        <button className={common.linkButton} onClick={() => onSection(STEP_SECTIONS[step.id])}>
-                          Set up
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-        </div>
-      </div>
+      <LatestResults clubId={clubId} sheets={sheets} onAll={() => onSection('games')} />
     </div>
   );
 }

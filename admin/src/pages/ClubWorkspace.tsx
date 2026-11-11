@@ -11,9 +11,9 @@ import { guideFor } from '../lib/guides';
 import type { AuthUser, Bonspiel, Club, League, Sheet } from '../types';
 import { ClubSidebar } from '../components/club/ClubSidebar';
 import { sectionOfPath, sectionsFor, type SectionInfo } from '../components/club/sections';
-import { RecentGames } from '../components/club/RecentGames';
+import { ClubClockProvider } from '../hooks/useClubClock';
+import { GamesSection } from '../components/club/GamesSection';
 import { ClubOverview } from '../components/club/ClubOverview';
-import { DevicesSection } from '../components/club/DevicesSection';
 import { rememberClub } from '../lib/recentClubs';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
@@ -31,7 +31,6 @@ import { BonspielsSection } from '../components/club/BonspielsSection';
 import { ClubNameSection } from '../components/club/ClubNameSection';
 import { PageHeader } from '../components/PageHeader';
 import { SaveBar } from '../components/SaveBar';
-import { GameHistory } from './GameHistory';
 import { LeagueDetail } from './LeagueDetail';
 import { BonspielDetail } from './BonspielDetail';
 import common from '../styles/common.module.css';
@@ -129,55 +128,60 @@ export function ClubWorkspace({ clubId, user }: Props) {
   };
 
   return (
-    <div className={styles.workspace}>
-      <ClubSidebar
-        club={club}
-        sections={sections}
-        current={current?.id}
-        counts={counts}
-        showAllClubs={realRole === 'superadmin'}
-        onDetailPage={!onSectionPage}
-        open={menuOpen}
-        onClose={closeMenu}
-      />
+    <ClubClockProvider clubId={clubId}>
+      <div className={styles.workspace}>
+        <ClubSidebar
+          club={club}
+          sections={sections}
+          current={current?.id}
+          counts={counts}
+          showAllClubs={realRole === 'superadmin'}
+          onDetailPage={!onSectionPage}
+          open={menuOpen}
+          onClose={closeMenu}
+        />
 
-      <div className={styles.content}>
-        {realRole === 'superadmin' && <ViewAsBar viewAs={viewAs} onChange={setViewAs} clubName={club.name} />}
-        {/* Phones: the sidebar is a menu opened from here. */}
-        <button type="button" className={styles.menuBar} aria-expanded={menuOpen} onClick={() => setMenuOpenOn(pathname)}>
-          <span className={styles.menuIcon} aria-hidden="true">☰</span>
-          <span className={styles.menuClub}>{club.name}</span>
-          {current && <span className={styles.menuSection}>{current.label}</span>}
-        </button>
+        <div className={styles.content}>
+          {realRole === 'superadmin' && <ViewAsBar viewAs={viewAs} onChange={setViewAs} clubName={club.name} />}
+          {/* Phones: the sidebar is a menu opened from here. */}
+          <button type="button" className={styles.menuBar} aria-expanded={menuOpen} onClick={() => setMenuOpenOn(pathname)}>
+            <span className={styles.menuIcon} aria-hidden="true">☰</span>
+            <span className={styles.menuClub}>{club.name}</span>
+            {current && <span className={styles.menuSection}>{current.label}</span>}
+          </button>
 
-        <Routes>
-          <Route index element={<ClubIndex clubId={clubId} role={role} bonspiels={bonspiels} />} />
-          <Route path="sheets/:sheetId/games" element={<GameHistory clubId={clubId} />} />
-          {!isBonspielAdmin && <Route path="leagues/:leagueId" element={<LeagueDetail clubId={clubId} />} />}
-          <Route path="bonspiels/:bonspielId" element={<BonspielDetail clubId={clubId} />} />
-          <Route path="settings" element={<Navigate to={clubPath(clubId, 'settings/club')} replace />} />
-          <Route
-            path="*"
-            element={
-              current && onSectionPage ? (
-                <ClubSections
-                  club={club}
-                  role={role}
-                  section={current}
-                  sheets={sheets}
-                  leagues={leagues}
-                  bonspiels={bonspiels}
-                  onDisplayCount={setDisplayLinkCount}
-                />
-              ) : (
-                <Navigate to={clubPath(clubId, landingSection(role))} replace />
-              )
-            }
-          />
-        </Routes>
-        <SaveBar />
+          <Routes>
+            <Route index element={<ClubIndex clubId={clubId} role={role} bonspiels={bonspiels} />} />
+            {/* A sheet's games are the Games page filtered to it. */}
+            <Route path="sheets/:sheetId/games" element={<SheetGames clubId={clubId} />} />
+            {!isBonspielAdmin && <Route path="leagues/:leagueId" element={<LeagueDetail clubId={clubId} />} />}
+            <Route path="bonspiels/:bonspielId" element={<BonspielDetail clubId={clubId} />} />
+            <Route path="settings" element={<Navigate to={clubPath(clubId, 'settings/club')} replace />} />
+            {/* Devices was folded into Sheets and Displays; old links land on Sheets. */}
+            <Route path="devices" element={<Navigate to={clubPath(clubId, 'sheets')} replace />} />
+            <Route
+              path="*"
+              element={
+                current && onSectionPage ? (
+                  <ClubSections
+                    club={club}
+                    role={role}
+                    section={current}
+                    sheets={sheets}
+                    leagues={leagues}
+                    bonspiels={bonspiels}
+                    onDisplayCount={setDisplayLinkCount}
+                  />
+                ) : (
+                  <Navigate to={clubPath(clubId, landingSection(role))} replace />
+                )
+              }
+            />
+          </Routes>
+          <SaveBar />
+        </div>
       </div>
-    </div>
+    </ClubClockProvider>
   );
 }
 
@@ -215,6 +219,12 @@ function ViewAsBar({ viewAs, onChange, clubName }: { viewAs: ViewAs; onChange: (
       </span>
     </div>
   );
+}
+
+/** An old link to one sheet's games opens the Games page filtered to it. */
+function SheetGames({ clubId }: { clubId: string }) {
+  const { sheetId } = useParams<{ sheetId: string }>();
+  return <Navigate to={sheetGamesPath(clubId, sheetId ?? '')} replace />;
 }
 
 /** The club's own address opens the role's first page, or the one an old
@@ -265,7 +275,7 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
 
       <div hidden={!shown('sheets')}>
         <SheetsSection
-          clubId={clubId}
+          club={club}
           sheets={sheets}
           canManageSheets={isSuperAdmin}
           readOnly={isBonspielAdmin}
@@ -273,20 +283,8 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
         />
       </div>
 
-      <div hidden={!shown('games')} className={styles.columns}>
-        <RecentGames clubId={clubId} clubName={club.name} sheets={sheets} />
-        <div className={common.section}>
-          <h2 className={common.sectionTitle}>Each sheet's games</h2>
-          <p className={common.blurb}>Every game a sheet has finished, fifty at a time, with a CSV export.</p>
-          <div className={styles.sheetLinks}>
-            {[...sheets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((sheet) => (
-              <button key={sheet.id} className={common.ghostButton} onClick={() => open(sheetGamesPath(clubId, sheet.id))}>
-                {sheet.name}
-              </button>
-            ))}
-            {sheets.length === 0 && <p className={common.empty}>No sheets yet.</p>}
-          </div>
-        </div>
+      <div hidden={!shown('games')}>
+        <GamesSection clubId={clubId} clubName={club.name} sheets={sheets} />
       </div>
 
       <div hidden={!shown('bonspiels')}>
@@ -312,39 +310,35 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
             <LeaguesSection clubId={clubId} leagues={leagues} sheets={sheets} onOpenLeague={(id) => open(leaguePath(clubId, id))} />
           </div>
 
-          <div hidden={!shown('displays')} className={styles.columns}>
+          <div hidden={!shown('displays')}>
             <DisplaysSection clubId={clubId} sheets={sheets} bonspiels={bonspiels} onCount={onDisplayCount} />
             <DisplayBrandingSection clubId={clubId} clubName={club.name} />
           </div>
 
-          <div hidden={!shown('devices')}>
-            <DevicesSection club={club} sheets={sheets} />
-          </div>
-
-          <div hidden={!shown('settings/club')} className={styles.narrow}>
+          <div hidden={!shown('settings/club')}>
             <ClubNameSection club={club} canRename={isSuperAdmin} />
             <TimeZoneSection clubId={clubId} />
             {/* Super admins manage these under Users. */}
             {!isSuperAdmin && <AdminsSection clubId={clubId} clubName={club.name} readOnly />}
           </div>
 
-          <div hidden={!shown('settings/scoreboards')} className={styles.narrow}>
+          <div hidden={!shown('settings/scoreboards')}>
             <RockColorsSection clubId={clubId} />
             <ScoreboardPinSection clubId={clubId} />
           </div>
 
-          <div hidden={!shown('settings/public-page')} className={styles.narrow}>
+          <div hidden={!shown('settings/public-page')}>
             <PublicScoresSection clubId={clubId} />
           </div>
 
-          <div hidden={!shown('settings/integrations')} className={styles.narrow}>
+          <div hidden={!shown('settings/integrations')}>
             <ApiKeySection clubId={clubId} canRegenerate={isSuperAdmin} />
             <WebhookSection clubId={clubId} />
             <StreamsSection clubId={clubId} />
           </div>
 
           {isSuperAdmin && (
-            <div hidden={!shown('users')} className={styles.narrow}>
+            <div hidden={!shown('users')}>
               <AdminsSection clubId={clubId} clubName={club.name} />
             </div>
           )}

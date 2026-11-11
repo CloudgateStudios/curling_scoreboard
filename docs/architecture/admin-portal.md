@@ -29,13 +29,14 @@ flowchart LR
   bonspiels. Bonspiel admins cannot read the club's time zone, so "today" is
   the browser's date. A club path for any other club goes back to `/`.
 - Inside a club, `/clubs/:clubId/` and then:
-  - `overview`, `sheets`, `games`, `leagues`, `bonspiels`, `displays`,
-    `devices`: the club's pages.
+  - `overview`, `sheets`, `games`, `leagues`, `bonspiels`, `displays`: the
+    club's pages. The old `devices` path opens `sheets`.
   - `settings/club`, `settings/scoreboards`, `settings/public-page`,
     `settings/integrations`: its settings.
   - `users`: super admins only.
-  - `sheets/:sheetId/games`, `leagues/:leagueId`, `bonspiels/:bonspielId`: a
-    sheet's game history, a league and a bonspiel.
+  - `leagues/:leagueId`, `bonspiels/:bonspielId`: a league and a bonspiel.
+  - `games?sheet=:sheetId`: the Games page filtered to one sheet. The older
+    `sheets/:sheetId/games` redirects to it.
 - Links from before the shared paths still work: the club admin's
   `/sheets/:sheetId/games`, `/leagues/:leagueId` and `/bonspiels/:bonspielId`,
   and the old `?tab=` and `?section=` query, redirect to the new paths.
@@ -81,20 +82,29 @@ and their own pages, marked in purple, at the bottom. Bonspiel admins only
 get Sheets, with nothing to change and no pairing codes, Games, and
 Bonspiels; the other pages are not mounted for them at all.
 
-- **Overview**: the club at a glance. The scoreboards' health in one line,
-  then what is on the ice now: the league or bonspiel draw on, and each
-  sheet's live score. Beside it, the draws coming up in the next week, the
-  last five finished games, and a setup checklist: sheets, a scoreboard on
+- **Overview**: the club at a glance, in one full-width column. A setup
+  checklist comes first while any step is left: sheets, a scoreboard on
   every sheet, the time zone, the scoreboard PIN, a league or bonspiel, and,
   optional, the public scores page and posting results to chat. Each step
-  opens the page that does it. What is on now is worked out in
+  opens the page that does it, and the checklist goes away once every step
+  is done. Then the scoreboards' health in one line,
+  what is on the ice now (the league or bonspiel draw on, and each sheet's
+  live score), the draws coming up in the next week, and the last five
+  finished games. What is on now is worked out in
   `src/lib/clubNow.ts`, in the club's time zone, with the same lead time as
   the scoreboard and the API.
 - **Sheets**: a card for each sheet with its live game, scoreboard status
-  and pairing code, the code large enough to read from the sheet. Each
-  sheet opens its full game history.
-- **Games**: the games from the last seven days, and a button for each
-  sheet's full history. Both export as CSV, a row a game with each team's
+  (version, build, platform, clock, last sync error) and pairing code, the
+  code large enough to read from the sheet. Each sheet opens Games filtered
+  to it. **Copy report** puts a plain text summary of every scoreboard,
+  screen and service, with times in UTC, on the clipboard for an issue or a
+  message. It reads what it needs once, when pressed. Club admins and super
+  admins only.
+- **Games**: every finished game, newest first and grouped by day, 25 at a
+  time with **Load 25 more**. A row of sheet buttons filters it to one
+  sheet, kept in the address so a link opens the same sheet. To fill a page
+  it asks each sheet for as many games as are shown and keeps the newest.
+  **Export CSV** exports the games shown, a row a game with each team's
   total and points by end, for keeping league standings.
 - **Leagues**: the club's leagues, with a week laid out as a calendar of
   their draws that flags active leagues whose draws overlap. Each league opens on its
@@ -121,21 +131,23 @@ Bonspiels; the other pages are not mounted for them at all.
   or results, to run it again. The knockout and pools templates fill a
   bonspiel in from a list of teams; see [Bonspiels](bonspiels.md#templates).
 - **Displays**: the display links, and the warm room screen's title and
-  logo. A link can show the warm room, a sheet's score bug or one of the
+  logo. **+ New Display** makes a link at once, named "Display 1" or the
+  next number free, and opens it to rename and set up. Each link in the
+  list has **Edit** and **Copy URL**; **New URL** and **Remove** are in the
+  dialog Edit opens. A link can show the warm room, a sheet's score bug or one of the
   club's bonspiels.
 - **Settings**, a page each:
-  - Club: the club's name, which only super admins can change, and its time
-    zone.
+  - Club: the club's name, which only super admins can change, its time
+    zone, and whether times are shown on a 12 or 24 hour clock. The clock
+    is read once for the whole club (`src/hooks/useClubClock.tsx`) and used
+    for every time the portal shows, the webhook and stream title previews
+    included. The displays, the scoreboards, the public scores page,
+    webhook posts and stream titles read it too. It is 12 hour until a club chooses.
   - Scoreboards: the rock colors and the scoreboard admin PIN.
   - Public page: the switch for the public scores page, with its address.
   - Integrations: the API key with the club's API switch, the completed
     game webhook, which once saved is shown in short until it is edited, and
     the stream titles.
-- **Devices**: every scoreboard and display screen with all it last
-  reported (version, build, platform, clock, last sync error), and whether
-  the club's API, public page and webhook are working. **Copy report** puts
-  a plain text summary, with times in UTC, on the clipboard for an issue or
-  a message. Read only, for club admins and super admins.
 - **Users**: super admins only. Adds, edits and removes the club's club and
   bonspiel admins. Club admins see the same list, read only, under Club
   settings.
@@ -176,7 +188,7 @@ service switches. The rules let super admins read all of it.
   paired but offline, sync errors today, games on now), then **Needs a
   look**, each scoreboard with a sync error, offline, behind or with its
   clock out, and each open screen that is behind, worst first, each linked
-  to its club's Devices. A closed screen is no problem, since screens are
+  to its club's Sheets or Displays. A closed screen is no problem, since screens are
   switched off between events. Below, every club with its sheets, scoreboard
   health, games on now and screens open, clubs with problems first.
   `src/lib/systemHealth.ts` works these out.
@@ -194,7 +206,7 @@ service switches. The rules let super admins read all of it.
   page.
 - **Club switcher**: in the top bar, or ⌘K (Ctrl K). Type part of a club's
   name or ID; each club shows its health, and the best match offers its
-  Devices, Users, Sheets, Bonspiels and Settings.
+  Users, Sheets, Bonspiels and Settings.
 - The sidebar on these pages lists the three clubs opened last, kept in the
   browser's local storage.
 

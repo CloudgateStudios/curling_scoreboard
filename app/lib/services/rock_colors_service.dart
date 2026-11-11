@@ -7,7 +7,7 @@ import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Watches a club's `config/scoreboard` document, emitting its data, or null
+/// Watches one of a club's `config` documents, emitting its data, or null
 /// while it does not exist.
 typedef ClubConfigWatcher =
     Stream<Map<String, dynamic>?> Function(String clubId);

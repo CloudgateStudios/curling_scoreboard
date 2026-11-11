@@ -8,7 +8,7 @@ import { Kept } from '../kept';
 import { KEPT_MS, MAX_INSTANCES } from '../limits';
 import { switches } from '../switches';
 import { currentProjectId, webConfig } from './firebaseConfig';
-import { ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
+import { ClubSettings, ScoresBranding, decodeLogo, scoresLive, scoresResults, versionOf } from './scores';
 import { DisplaySummary, FINAL_SHOWN_MS } from './state';
 
 // Serves the display pages on the scoreboard's hosting site, under
@@ -261,12 +261,21 @@ const OFF_CACHE = 'public, max-age=60, s-maxage=60';
 const BRANDING_KEPT_MS = 5 * 60 * 1000;
 
 const keptBranding = new Kept<ScoresBranding | null>(BRANDING_KEPT_MS);
+// The club's settings change as rarely, so they are kept as long.
+const keptSettings = new Kept<ClubSettings | null>(BRANDING_KEPT_MS);
 const keptSwitches = new Kept<boolean>(KEPT_MS.scoresSwitch);
 
 function brandingOf(clubId: string): Promise<ScoresBranding | null> {
   return keptBranding.get(clubId, async () => {
     const snap = await getFirestore().doc(`clubs/${clubId}/private/displayBranding`).get();
     return (snap.data() as ScoresBranding | undefined) ?? null;
+  });
+}
+
+function settingsOf(clubId: string): Promise<ClubSettings | null> {
+  return keptSettings.get(clubId, async () => {
+    const snap = await getFirestore().doc(`clubs/${clubId}/config/club`).get();
+    return (snap.data() as ClubSettings | undefined) ?? null;
   });
 }
 
@@ -347,8 +356,8 @@ app.get('/display/:clubId/scores', (req: Request, res: Response) => {
 });
 
 app.get('/display/:clubId/scores/live.json', scoresRoute(async (clubId, _req, res) => {
-  const [summary, branding] = await Promise.all([summaryOf(clubId), brandingOf(clubId)]);
-  res.set('Cache-Control', LIVE_CACHE).json(scoresLive(summary, branding, Date.now()));
+  const [summary, branding, settings] = await Promise.all([summaryOf(clubId), brandingOf(clubId), settingsOf(clubId)]);
+  res.set('Cache-Control', LIVE_CACHE).json(scoresLive(summary, branding, Date.now(), settings));
 }));
 
 app.get('/display/:clubId/scores/results.json', scoresRoute(async (clubId, _req, res) => {

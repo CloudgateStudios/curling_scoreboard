@@ -2,10 +2,20 @@
 // them in for each game in functions/src/webhookMessage.ts: keep the two in
 // step. The samples here are only for the preview.
 
+import { DEFAULT_CLOCK, formatHm, type Clock } from './clock.ts';
+
 export interface MessageVariable {
   name: string;
   description: string;
+  /** On the 12 hour clock, for a time. */
   sample: string;
+  /** For a time, the sample's 'HH:mm', to show it on the club's clock. */
+  time?: string;
+}
+
+/** A variable's sample, with a time on the club's clock. */
+export function sampleOf(variable: { sample: string; time?: string }, clock: Clock): string {
+  return variable.time ? formatHm(variable.time, clock) : variable.sample;
 }
 
 export interface MessageVariableGroup {
@@ -60,22 +70,22 @@ export const MESSAGE_VARIABLES: MessageVariableGroup[] = [
       { name: 'shortDate', description: 'Day the game started, in numbers', sample: '10/8/2026' },
       { name: 'weekday', description: 'Day of the week the game started', sample: 'Thursday' },
       { name: 'finishDate', description: 'Day the game finished', sample: 'October 8, 2026' },
-      { name: 'startTime', description: 'When the game started', sample: '6:30 PM' },
-      { name: 'finishTime', description: 'When the game finished', sample: '8:25 PM' },
+      { name: 'startTime', description: 'When the game started', sample: '6:30 PM', time: '18:30' },
+      { name: 'finishTime', description: 'When the game finished', sample: '8:25 PM', time: '20:25' },
       { name: 'duration', description: 'How long the game took', sample: '1h 55m' },
     ],
   },
 ];
 
-const SAMPLES: Record<string, string> = Object.fromEntries(
-  MESSAGE_VARIABLES.flatMap((group) => group.variables.map((v) => [v.name, v.sample])),
-);
+const VARIABLES = MESSAGE_VARIABLES.flatMap((group) => group.variables);
+const SAMPLES: Record<string, string> = Object.fromEntries(VARIABLES.map((v) => [v.name, v.sample]));
 
 /** The template filled in with the sample game, the way the functions leave
- *  anything they don't know in braces. */
-export function previewTemplate(template: string): string {
+ *  anything they don't know in braces, with times on the club's clock. */
+export function previewTemplate(template: string, clock: Clock = DEFAULT_CLOCK): string {
+  const samples = Object.fromEntries(VARIABLES.map((v) => [v.name, sampleOf(v, clock)]));
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(SAMPLES, name) ? SAMPLES[name] : match);
+    Object.prototype.hasOwnProperty.call(samples, name) ? samples[name] : match);
 }
 
 /** Names in braces that are not variables, most likely misspelled. */

@@ -10,6 +10,7 @@ import { formatDraws, leagueData, newTeamId } from '../../lib/leagues';
 import type { League, Sheet } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './LeagueImportDialog.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
 
 const SAMPLE_CSV_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(`${CSV_EXAMPLE}\n`)}`;
 
@@ -24,6 +25,7 @@ interface Props {
 /** Imports leagues and teams from a CSV file, showing what will change
  *  before anything is written. */
 export function LeagueImportDialog({ clubId, leagues, sheets, onClose }: Props) {
+  const clock = useClubClock();
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mode, setMode] = useState<ImportMode>('merge');
@@ -126,7 +128,7 @@ export function LeagueImportDialog({ clubId, leagues, sheets, onClose }: Props) 
                     </span>
                   </div>
                   <div className={common.muted}>
-                    {formatDraws(plan.league.draws)} · {plan.league.teams.length} team
+                    {formatDraws(plan.league.draws, clock)} · {plan.league.teams.length} team
                     {plan.league.teams.length !== 1 ? 's' : ''} after import
                   </div>
                   <ul className={styles.importChanges}>

@@ -3,6 +3,7 @@ import { BlockList, isIP } from 'net';
 import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { clockOf } from './clock';
 import { MAX_INSTANCES } from './limits';
 import { buildGameResponse } from './routes/games';
 import { BonspielGameNames, gameMessage, validTimeZone } from './webhookMessage';
@@ -246,15 +247,16 @@ export const sendCompletedGameWebhook = onDocumentCreated(
     if (!claimed) return;
 
     const clubRef = db.collection('clubs').doc(clubId);
-    const [clubSnap, sheetSnap, bonspielGame] = await Promise.all([
+    const [clubSnap, clubConfig, sheetSnap, bonspielGame] = await Promise.all([
       clubRef.get(),
+      clubRef.collection('config').doc('club').get(),
       clubRef.collection('sheets').doc(sheetId).get(),
       bonspielGameOf(clubId, game),
     ]);
     const sheetName = (sheetSnap.get('name') as string | undefined) ?? sheetId;
     const clubName = (clubSnap.get('name') as string | undefined) ?? clubId;
     const text = gameMessage(settings.template, {
-      clubName, sheetName, game, timeZone: settings.timeZone, bonspielGame,
+      clubName, sheetName, game, timeZone: settings.timeZone, clock: clockOf(clubConfig.get('clock')), bonspielGame,
     });
 
     const result = await deliver(settings.url, withMessage(text, {
@@ -299,10 +301,11 @@ export const sendTestWebhook = onCall(async (request) => {
     throw new HttpsError('failed-precondition', 'Save a webhook URL first.');
   }
 
-  const clubSnap = await getFirestore().collection('clubs').doc(clubId).get();
+  const clubRef = getFirestore().collection('clubs').doc(clubId);
+  const [clubSnap, clubConfig] = await Promise.all([clubRef.get(), clubRef.collection('config').doc('club').get()]);
   const clubName = (clubSnap.get('name') as string | undefined) ?? clubId;
   const sample = gameMessage(settings.template, {
-    clubName, sheetName: 'Sheet 1', game: sampleGame(), timeZone: settings.timeZone,
+    clubName, sheetName: 'Sheet 1', game: sampleGame(), timeZone: settings.timeZone, clock: clockOf(clubConfig.get('clock')),
   });
   const result = await deliver(settings.url, withMessage(
     `Test from Curling Scoreboard for ${clubName}. Completed games will be posted here, like this:\n${sample}`,

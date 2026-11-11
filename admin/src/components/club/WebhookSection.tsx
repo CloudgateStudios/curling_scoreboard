@@ -6,11 +6,13 @@ import { errorMessage } from '../../lib/format';
 import { BROWSER_TIME_ZONE, timeZoneChoices } from '../../lib/timeZones';
 import { useUnsavedChanges } from '../../lib/unsavedChanges';
 import {
-  DEFAULT_TEMPLATE, MAX_TEMPLATE_LENGTH, MESSAGE_VARIABLES, previewTemplate, unknownVariables,
+  DEFAULT_TEMPLATE, MAX_TEMPLATE_LENGTH, MESSAGE_VARIABLES, previewTemplate, sampleOf, unknownVariables,
 } from '../../lib/webhookMessage';
 import type { WebhookGames, WebhookStatus } from '../../types';
 import common from '../../styles/common.module.css';
 import styles from './WebhookSection.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
+import { timeOptions, type Clock } from '../../lib/clock';
 
 interface Props {
   clubId: string;
@@ -56,16 +58,17 @@ function templateToSave(template: string): string | undefined {
   return template.trim() === '' || template === DEFAULT_TEMPLATE ? undefined : template;
 }
 
-function describeStatus(status: WebhookStatus): string {
+function describeStatus(status: WebhookStatus, clock: Clock): string {
   const what = status.kind === 'test' ? 'Test message' : 'Last game';
   const outcome = status.ok ? 'delivered' : `failed: ${status.error ?? 'unknown error'}`;
-  const when = status.at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = status.at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', hourCycle: timeOptions(clock).hourCycle });
   return `${what} ${outcome} (${when})`;
 }
 
 /** Where the club's completed games are posted, usually a Slack or Discord
  *  incoming webhook. */
 export function WebhookSection({ clubId }: Props) {
+  const clock = useClubClock();
   const [saved, setSaved] = useState<Saved | null>(null);
   const [status, setStatus] = useState<WebhookStatus | null>(null);
   const [url, setUrl] = useState('');
@@ -301,7 +304,7 @@ export function WebhookSection({ clubId }: Props) {
                       key={variable.name}
                       type="button"
                       className={styles.variableChip}
-                      title={`${variable.description}, e.g. ${variable.sample}`}
+                      title={`${variable.description}, e.g. ${sampleOf(variable, clock)}`}
                       onClick={() => insertVariable(variable.name)}
                     >
                       {`{${variable.name}}`}
@@ -324,7 +327,7 @@ export function WebhookSection({ clubId }: Props) {
           <div className={styles.preview}>
             <span className={styles.previewLabel}>Preview</span>
             <p className={styles.previewText}>
-              {template.trim() === '' ? previewTemplate(DEFAULT_TEMPLATE) : previewTemplate(template)}
+              {template.trim() === '' ? previewTemplate(DEFAULT_TEMPLATE, clock) : previewTemplate(template, clock)}
             </p>
           </div>
 
@@ -376,7 +379,7 @@ export function WebhookSection({ clubId }: Props) {
         ? <p className={common.success}>Test message delivered. Check the channel for it.</p>
         : <p className={common.error}>Test message failed. {testResult.error}</p>)}
       {saved && status && !testResult && (
-        <p className={styles.status}>{describeStatus(status)}</p>
+        <p className={styles.status}>{describeStatus(status, clock)}</p>
       )}
     </div>
   );

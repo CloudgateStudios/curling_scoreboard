@@ -3,6 +3,7 @@ import type { Bonspiel, BonspielDraw, BonspielGame, BonspielState, Sheet } from 
 import common from '../../styles/common.module.css';
 import { GameCard } from './GameCard';
 import styles from './DrawBoard.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
 
 interface Props {
   bonspiel: Bonspiel;
@@ -23,6 +24,7 @@ interface Props {
 export function DrawBoard({
   bonspiel, draws, sheets, state, onEditDraw, onRemoveDraw, onOpenGame, onAddGame,
 }: Props) {
+  const clock = useClubClock();
   if (draws.length === 0) {
     return <p className={common.empty}>No draws yet. Add the first one to start placing games.</p>;
   }
@@ -64,7 +66,7 @@ export function DrawBoard({
                     value={draw.start}
                     onChange={(e) => onEditDraw(draw.id, { start: e.target.value })}
                   />
-                  <span className={styles.drawWhen}>{formatDrawStart(draw.start)}</span>
+                  <span className={styles.drawWhen}>{formatDrawStart(draw.start, clock)}</span>
                   <button className={styles.removeDraw} onClick={() => onRemoveDraw(draw)}>Remove draw</button>
                 </div>
               </th>

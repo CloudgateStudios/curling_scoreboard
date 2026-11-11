@@ -60,10 +60,12 @@
   margin-bottom: 0;
 }
 
+/* Kept to a readable line length now that pages run the full width. */
 .blurb {
   margin: 0 0 1rem;
   font-size: 0.9rem;
   color: var(--text-2);
+  max-width: 48rem;
 }
 
 .blurb a {
@@ -290,10 +292,12 @@
   margin-bottom: 1.5rem;
 }
 
+/* Pages run the full width; a form stays narrow enough to read. */
 .form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  max-width: 48rem;
 }
 
 .label {

@@ -43,6 +43,12 @@ describe('previewStream', () => {
     );
   });
 
+  test('shows the draw time on the club\'s clock', () => {
+    const template = { title: '{drawTime}', description: '' };
+    assert.equal(previewStream('league', template, false).title, '6:30 PM');
+    assert.equal(previewStream('league', template, false, '24h').title, '18:30');
+  });
+
   test('uses the default for a blank template', () => {
     assert.equal(previewStream('none', { title: ' ', description: '' }, false).title, 'Windy City Curling · Sheet 2 · November 3, 2026');
   });

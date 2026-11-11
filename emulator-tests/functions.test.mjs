@@ -32,6 +32,7 @@ import {
 } from '../functions/lib/display/assets/update-model.js';
 import { firstUnplayedEnd } from '../functions/lib/display/assets/game-view.js';
 import { decodeLogo, scoresLive, scoresResults, versionOf } from '../functions/lib/display/scores.js';
+import { clockOf, timeOptions } from '../functions/lib/display/assets/clock.js';
 import { Kept } from '../functions/lib/kept.js';
 import { KEPT_MS, PIN_LOCKOUT, RATE_LIMITS } from '../functions/lib/limits.js';
 import { Buckets, callerAddresses } from '../functions/lib/rateLimit.js';
@@ -1116,6 +1117,7 @@ describe('what is on a sheet now', () => {
     });
     const own = { league: { title: '{leagueShort} {drawTime}[ {matchup}]' } };
     assert.equal(streamText(own, context).title, 'Tuesday 6:30 PM');
+    assert.equal(streamText(own, { ...context, clock: '24h' }).title, 'Tuesday 18:30', 'on the club\'s 24 hour clock');
     const none = streamText(undefined, { ...context, match: null, scoresUrl: 'https://example.com/s' });
     assert.equal(none.title, 'Windy City · Sheet 2 · November 3, 2026');
     assert.equal(none.description, 'Curling on Sheet 2 at Windy City.\nLive scores: https://example.com/s');
@@ -1651,6 +1653,13 @@ describe('completed game webhook', () => {
       template: '{club} {league}: {result} on {weekday}, {date} at {finishTime} ({duration}, {endsPlayed} of {scheduledEnds} ends) {unknown}',
       timeZone: 'America/Chicago',
     });
+    await db.doc('clubs/hook-clock/private/webhook').set({
+      url: `${hookUrl}/clock`,
+      games: 'all',
+      template: '{startTime} to {finishTime}',
+      timeZone: 'America/Chicago',
+    });
+    await db.doc('clubs/hook-clock/config/club').set({ timeZone: 'America/Chicago', clock: '24h' });
   });
 
   after(() => new Promise((resolve) => receiver.close(resolve)));
@@ -1733,6 +1742,13 @@ describe('completed game webhook', () => {
     );
     assert.equal(post.body.content, post.body.text);
     assert.equal(post.body.game.id, 'league-1');
+  });
+
+  test('writes times on the club\'s 24 hour clock when it chose one', async () => {
+    await db.doc('clubs/hook-clock/sheets/s1/games/open-1').set(openGame);
+
+    const [post] = await waitFor('the post', () => postsTo('/clock').length && postsTo('/clock'));
+    assert.equal(post.body.text, '13:30 to 15:25');
   });
 
   test('dates a game that runs past midnight by the night it started', async () => {
@@ -2616,6 +2632,24 @@ describe('the public scores page', () => {
     await db.doc(`${club}/private/displayState`).set(summary);
     await db.doc(`${club}/private/displayBranding`).set({ title: 'Scores Club', logo: LOGO });
     await db.doc(`${club}/private/publicScores`).set({ enabled: true });
+    await db.doc(`${club}/config/club`).set({ timeZone: 'America/Chicago', clock: '24h' });
+  });
+
+  test('sends the club\'s clock, the 12 hour one unless it chose 24', () => {
+    assert.equal(scoresLive(summary, {}, now, { clock: '24h' }).clock, '24h');
+    assert.equal(scoresLive(summary, {}, now, { clock: '12h' }).clock, '12h');
+    assert.equal(scoresLive(summary, {}, now, null).clock, '12h');
+    assert.equal(scoresLive(summary, {}, now).clock, '12h');
+    assert.equal(scoresLive(summary, {}, now, { clock: '<b>' }).clock, '12h');
+  });
+
+  test('display pages show times on the club\'s clock', () => {
+    assert.equal(clockOf('24h'), '24h');
+    assert.equal(clockOf(undefined), '12h');
+    const at = new Date(Date.UTC(2026, 10, 11, 18, 15));
+    const show = (clock) => at.toLocaleTimeString('en-US', { ...timeOptions(clock), timeZone: 'UTC' });
+    assert.equal(show('24h'), '18:15');
+    assert.match(show('12h'), /^6:15\sPM$/);
   });
 
   test('shows every sheet in name order, with any kind of game', () => {
@@ -2641,8 +2675,8 @@ describe('the public scores page', () => {
   });
 
   test('leaves out what the phone does not show', () => {
-    const json = JSON.stringify(scoresLive(summary, {}, now));
-    for (const left of ['updatedAt', 'hadLastStoneFirstEnd', 'gameId', '"fall"', 'draws', 'startedAt', 'base64']) {
+    const json = JSON.stringify(scoresLive(summary, {}, now, { timeZone: 'America/Chicago', clock: '24h' }));
+    for (const left of ['updatedAt', 'hadLastStoneFirstEnd', 'gameId', '"fall"', 'draws', 'startedAt', 'base64', 'America']) {
       assert.ok(!json.includes(left), left);
     }
     assert.equal(scoresLive(summary, {}, now).title, null);
@@ -2692,6 +2726,7 @@ describe('the public scores page', () => {
     const body = await res.text();
     const live = JSON.parse(body);
     assert.equal(live.title, 'Scores Club');
+    assert.equal(live.clock, '24h', 'with the clock from the club\'s settings');
     assert.equal(live.sheets.length, 5);
 
     // The same data always makes the same body, and so the same ETag.

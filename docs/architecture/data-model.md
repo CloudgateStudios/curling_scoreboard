@@ -193,6 +193,8 @@ clubs/{clubId}/config/scoreboard     // club settings the scoreboards read
 clubs/{clubId}/config/club          // club settings the functions need
   timeZone?: string          // IANA zone the club's league and bonspiel times are in;
                              // absent until a club admin sets it
+  clock?: '12h' | '24h'      // how the portal, displays, scoreboards, webhook posts
+                             // and stream titles show times; absent means 12 hour
 
 clubs/{clubId}/config/stream         // the club's stream titles; absent for the defaults
   templates?: {              // for each kind of answer from the API's /now, only

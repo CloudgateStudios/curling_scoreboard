@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase-admin/firestore';
+import { Clock, timeOptions } from './clock';
 
 // The text of a completed game's webhook post, written from a template the
 // club can change in the admin portal. Variables are written in braces, like
@@ -18,6 +19,8 @@ export interface MessageContext {
   game: FirebaseFirestore.DocumentData;
   /** IANA time zone the dates and times are written in. */
   timeZone: string;
+  /** The club's 12 or 24 hour clock for the times; 12 hour if not given. */
+  clock?: Clock;
   /** A bonspiel game's name and event, from the bonspiel's plan. */
   bonspielGame?: BonspielGameNames;
 }
@@ -59,7 +62,7 @@ function formatDuration(start: Date | null, end: Date | null): string {
 }
 
 /** Every variable a template can use and its value for this game. */
-export function messageVariables({ clubName, sheetName, game, timeZone, bonspielGame }: MessageContext): Record<string, string> {
+export function messageVariables({ clubName, sheetName, game, timeZone, clock = '12h', bonspielGame }: MessageContext): Record<string, string> {
   const team = (t: FirebaseFirestore.DocumentData | undefined) => ({
     name: String(t?.['name'] ?? 'Unknown'),
     score: Number(t?.['totalScore'] ?? 0),
@@ -107,8 +110,8 @@ export function messageVariables({ clubName, sheetName, game, timeZone, bonspiel
     shortDate: formatDate(started, timeZone, { year: 'numeric', month: 'numeric', day: 'numeric' }),
     weekday: formatDate(started, timeZone, { weekday: 'long' }),
     finishDate: formatDate(finished, timeZone, { year: 'numeric', month: 'long', day: 'numeric' }),
-    startTime: formatDate(started, timeZone, { hour: 'numeric', minute: '2-digit' }),
-    finishTime: formatDate(finished, timeZone, { hour: 'numeric', minute: '2-digit' }),
+    startTime: formatDate(started, timeZone, timeOptions(clock)),
+    finishTime: formatDate(finished, timeZone, timeOptions(clock)),
     duration: formatDuration(started, finished),
   };
 }

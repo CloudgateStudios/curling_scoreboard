@@ -7,6 +7,7 @@ import type { League, Sheet } from '../../types';
 import { LeagueImportDialog } from './LeagueImportDialog';
 import { LeagueWeek } from './LeagueWeek';
 import common from '../../styles/common.module.css';
+import { useClubClock } from '../../hooks/useClubClock';
 
 interface Props {
   clubId: string;
@@ -19,6 +20,7 @@ interface Props {
 
 /** The club's leagues, whose teams scoreboards offer for league games. */
 export function LeaguesSection({ clubId, leagues, sheets, onOpenLeague }: Props) {
+  const clock = useClubClock();
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [newName, setNewName] = useState('');
@@ -97,7 +99,7 @@ export function LeaguesSection({ clubId, leagues, sheets, onOpenLeague }: Props)
                 <span className={common.versionChip}>
                   {league.teams.length} team{league.teams.length !== 1 ? 's' : ''}
                 </span>
-                <span className={common.muted}>{formatDraws(league.draws)}</span>
+                <span className={common.muted}>{formatDraws(league.draws, clock)}</span>
               </div>
             </div>
             <div className={common.rowActions}>
