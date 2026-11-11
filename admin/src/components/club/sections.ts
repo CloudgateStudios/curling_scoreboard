@@ -17,7 +17,9 @@ export interface SectionInfo {
 }
 
 export const SECTIONS: readonly SectionInfo[] = [
-  { id: 'sheets', label: 'Sheets & Games', title: 'Sheets & Games', group: 'club', guide: 'connect-a-scoreboard', bonspielAdmin: true },
+  { id: 'overview', label: 'Overview', title: 'Overview', group: 'club', guide: null, bonspielAdmin: false },
+  { id: 'sheets', label: 'Sheets', title: 'Sheets', group: 'club', guide: 'connect-a-scoreboard', bonspielAdmin: true },
+  { id: 'games', label: 'Games', title: 'Games', group: 'club', guide: null, bonspielAdmin: true },
   { id: 'leagues', label: 'Leagues', title: 'Leagues', group: 'club', guide: 'set-up-leagues', bonspielAdmin: false },
   { id: 'bonspiels', label: 'Bonspiels', title: 'Bonspiels', group: 'club', guide: 'run-a-bonspiel', bonspielAdmin: true },
   { id: 'displays', label: 'Displays', title: 'Displays', group: 'club', guide: 'set-up-a-display', bonspielAdmin: false },

@@ -26,7 +26,7 @@ From a club admin, before Part 4:
 - `CLUB_ID` and `SHEET_ID` of a test sheet with no real scoreboard paired to
   it. Part 4 pairs a script with the sheet, which takes it away from any
   scoreboard already there.
-- A fresh pairing code for that sheet (portal: Sheets & Games, Generate
+- A fresh pairing code for that sheet (portal: Sheets, Generate
   Pairing Code) and the club's admin PIN (Settings, Scoreboards).
 - The club's API key (Settings, Integrations), for the REST checks.
 - Whether the club's public scores page is on (Displays tab).
@@ -107,8 +107,8 @@ Anything other than the expected result is a finding.
 | Callable, bad link | `curl -s -w ' %{http_code}\n' -X POST $FUNCTIONS/startDisplaySession -H 'Content-Type: application/json' -d '{"data":{"clubId":"'$CLUB_ID'","token":"bogus"}}'` | 403, status `PERMISSION_DENIED`, "This display link is not valid…" |
 
 Then open the admin portal, <https://curling-scoreboard-admin-dev.web.app>,
-sign in, and check the club page loads: Sheets & Games lists the sheets, and
-the Displays tab lists its links. This is the portal built on the new
+sign in, and check the club loads: Overview shows each sheet, Sheets lists
+them, and Displays lists its links. This is the portal built on the new
 toolchain.
 
 ## Part 3: the script on the emulators
@@ -163,7 +163,7 @@ code and run it again, which takes the sheet back and disconnects properly.
 
 Then check by eye:
 
-- Portal, Sheets & Games: the sheet showed `smoke-test` as its scoreboard
+- Portal, Sheets: the sheet showed `smoke-test` as its scoreboard
   version while paired, the game is in the last seven days with Red 2,
   Yellow 1, and, with a webhook, no failure marked on it.
 - The webhook's channel got the message, if there is one.

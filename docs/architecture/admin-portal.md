@@ -15,17 +15,20 @@ flowchart LR
   LOGIN["/ sign in<br/>email and password"] --> ROLE{"role claim"}
   ROLE -- "superadmin" --> SA["/<br/>every club, new club,<br/>service switches"]
   SA --> CLUB["/clubs/:clubId/…<br/>any club"]
-  ROLE -- "clubadmin" --> CA["/clubs/:clubId/sheets<br/>their club"]
-  ROLE -- "bonspieladmin" --> BA["/clubs/:clubId/bonspiels<br/>their club"]
+  ROLE -- "clubadmin" --> CA["/clubs/:clubId/overview<br/>their club"]
+  ROLE -- "bonspieladmin" --> BA["/clubs/:clubId/bonspiels/:id<br/>the bonspiel on now"]
 ```
 
 - Super admin: `/` lists every club and creates new ones, with the service
   switches and blocked addresses below the list. They can open any club.
-- Club admin and bonspiel admin: `/` goes to their own club, Sheets & Games
-  for club admins and Bonspiels for bonspiel admins. A club path for any
-  other club goes back to `/`.
+- Club admin and bonspiel admin: `/` goes to their own club. Club admins,
+  and super admins opening a club, land on its Overview. Bonspiel admins land
+  on the bonspiel on today, or else the next to start, or else the list of
+  bonspiels. Bonspiel admins cannot read the club's time zone, so "today" is
+  the browser's date. A club path for any other club goes back to `/`.
 - Inside a club, `/clubs/:clubId/` and then:
-  - `sheets`, `leagues`, `bonspiels`, `displays`: the club's pages.
+  - `overview`, `sheets`, `games`, `leagues`, `bonspiels`, `displays`: the
+    club's pages.
   - `settings/club`, `settings/scoreboards`, `settings/public-page`,
     `settings/integrations`: its settings.
   - `users`: super admins only.
@@ -43,14 +46,17 @@ flowchart LR
 ```mermaid
 flowchart TB
   SIDE["Club sidebar"]
-  SIDE --> T1["Sheets & Games"]
+  SIDE --> OV["Overview"]
+  SIDE --> T1["Sheets"]
+  SIDE --> GM["Games"]
   SIDE --> T2["Leagues"]
   SIDE --> T3["Bonspiels"]
   SIDE --> T4["Displays"]
   SIDE --> SET["Settings"]
   SIDE --> U["Users<br/>super admins only"]
-  T1 --> T1a["Sheets: live game, scoreboard<br/>status, pairing codes"]
-  T1 --> T1b["Last seven days' games,<br/>Export CSV"]
+  OV --> OVa["Health, on the ice now,<br/>coming up, latest results,<br/>setup checklist"]
+  T1 --> T1a["Live game, scoreboard<br/>status, pairing codes"]
+  GM --> T1b["Last seven days' games,<br/>each sheet's history, CSV"]
   T2 --> T2a["Week of draws"]
   T2 --> T2b["League pages,<br/>CSV import"]
   T3 --> T3a["Bonspiel pages: details, teams,<br/>draw board, brackets, templates"]
@@ -61,22 +67,32 @@ flowchart TB
   SET --> S4["Public page:<br/>switch and address"]
   SET --> S2["Integrations: API key,<br/>webhook, stream titles"]
   classDef bonspiel fill:#dcfce7,stroke:#15803d,color:#14532d
-  class T1,T3 bonspiel
+  class T1,GM,T3 bonspiel
 ```
 
-Bonspiel admins see only the two green pages.
+Bonspiel admins see only the three green pages.
 
 A club's pages are listed in a sidebar beside the page open. On a window
 narrower than 800 pixels the sidebar is a menu, opened from a bar at the top
 of the page. Super admins get a link back to every club at the top of it,
 and their own pages, marked in purple, at the bottom. Bonspiel admins only
-get Sheets & Games, with nothing to change and no pairing codes, and
+get Sheets, with nothing to change and no pairing codes, Games, and
 Bonspiels; the other pages are not mounted for them at all.
 
-- **Sheets & Games**: sheets with their live games, scoreboard status and
-  pairing codes, beside the games from the last seven days. Each sheet opens
-  its full game history. Both lists export as CSV, a row a game with each
-  team's total and points by end, for keeping league standings.
+- **Overview**: the club at a glance. The scoreboards' health in one line,
+  then what is on the ice now: the league or bonspiel draw on, and each
+  sheet's live score. Beside it, the draws coming up in the next week, the
+  last five finished games, and a setup checklist: sheets, a scoreboard on
+  every sheet, the time zone, the scoreboard PIN, a league or bonspiel, and,
+  optional, the public scores page and posting results to chat. Each step
+  opens the page that does it. What is on now is worked out in
+  `src/lib/clubNow.ts`, in the club's time zone, with the same lead time as
+  the scoreboard and the API.
+- **Sheets**: sheets with their live games, scoreboard status and pairing
+  codes. Each sheet opens its full game history.
+- **Games**: the games from the last seven days, and a button for each
+  sheet's full history. Both export as CSV, a row a game with each team's
+  total and points by end, for keeping league standings.
 - **Leagues**: the club's leagues, with a week laid out as a calendar of
   their draws that flags active leagues whose draws overlap. Each league opens on its
   own page: its season, draws and teams, by hand or by

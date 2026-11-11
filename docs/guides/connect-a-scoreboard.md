@@ -10,7 +10,7 @@ if a sheet is missing.
 
 ## Connect it
 
-1. In the admin portal, open **Sheets & Games** and find the sheet.
+1. In the admin portal, open **Sheets** and find the sheet.
 2. Press **Generate Pairing Code**. A six character code appears beside the
    sheet.
 3. On the scoreboard, on the game setup screen, press **Connection** in the
@@ -42,7 +42,7 @@ club's admin PIN:
 After five wrong PINs in a row, that scoreboard cannot be disconnected for 15
 minutes, even with the right PIN. Wait, or unpair it from the portal.
 
-Or, from the portal: on **Sheets & Games**, press **Edit** on the sheet, then
+Or, from the portal: on **Sheets**, press **Edit** on the sheet, then
 **Unpair Scoreboard**.
 
 ## Set the admin PIN

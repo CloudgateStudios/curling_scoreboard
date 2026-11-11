@@ -1,0 +1,187 @@
+.overview {
+  display: flex;
+  flex-direction: column;
+}
+
+/* What is on now across the top, then the rest in two columns. */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.grid > * {
+  margin-bottom: 0;
+}
+
+.onIce {
+  grid-column: 1 / -1;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.column > * {
+  margin-bottom: 0;
+}
+
+.muted {
+  color: #777;
+  font-size: 0.88rem;
+}
+
+.drawLine {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.drawLine .muted {
+  font-size: 0.85rem;
+}
+
+/* A tile a sheet, laid out like the sheets across the ice. */
+.sheets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.sheet {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.sheetTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.sheetTop > span:last-child {
+  white-space: nowrap;
+}
+
+.sheetName {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.15rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.team {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.points {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.list li:last-child {
+  border-bottom: none;
+}
+
+.when {
+  min-width: 7.5rem;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+.result {
+  flex: 1;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.winner {
+  font-weight: 700;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.stepLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+.stepDone .stepLabel {
+  color: #888;
+}
+
+.tick,
+.tickDone {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 4px;
+  border: 1.5px solid #ccc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.tickDone {
+  border-color: #137333;
+  background: #137333;
+  color: white;
+}
+
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

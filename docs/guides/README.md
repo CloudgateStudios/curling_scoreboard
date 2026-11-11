@@ -14,7 +14,8 @@ feature does is in [FEATURES](../FEATURES.md).
 | [Name your streams](name-your-streams.md)                   | A title for each sheet's stream, from what is on it                        |
 
 In the admin portal, the club's pages are in a menu down the left side, or
-behind **☰** on a phone: **Sheets & Games**, **Leagues**, **Bonspiels** and
+behind **☰** on a phone: **Overview**, **Sheets**, **Games**, **Leagues**, **Bonspiels** and
 **Displays**, then under **Settings**: **Club**, **Scoreboards**, **Public
 page** and **Integrations**. Super admins also get **Users**. A bonspiel
-admin sees only Sheets & Games and Bonspiels.
+admin sees only Sheets, Games and Bonspiels, and opens on the bonspiel on
+now.

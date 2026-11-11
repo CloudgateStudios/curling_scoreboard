@@ -100,6 +100,11 @@ Club admins run their club from the admin portal in a browser. The club's
 pages are in a sidebar, a menu on a phone, and every role uses the same
 address for each page, so a link sent for help opens the same page.
 
+- **Overview.** Where a club admin starts: whether every scoreboard is
+  well, the league or bonspiel draw on now with each sheet's live score,
+  the draws coming up this week, the latest results, and a checklist of
+  what is left to set up, each step linked to the page that does it.
+  Bonspiel admins start on the bonspiel on now instead.
 - **Sheets and scoreboards.** Each sheet shows the game on it now, live, and
   whether its scoreboard is online, which version it runs, and whether it is
   waiting to update. A pairing code connects a new scoreboard to a sheet.

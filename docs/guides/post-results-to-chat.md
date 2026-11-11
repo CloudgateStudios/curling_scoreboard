@@ -33,7 +33,7 @@ turns posting off.
 
 ## Checking it worked
 
-Under **Sheets & Games**, a finished game whose post failed is marked, and
+Under **Games**, a finished game whose post failed is marked, and
 expanding it shows why. The settings show how the last post went.
 
 A game is posted once, when it finishes. A scoreboard that was offline posts
