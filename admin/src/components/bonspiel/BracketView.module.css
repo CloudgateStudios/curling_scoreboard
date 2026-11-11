@@ -15,7 +15,7 @@
 
 .winner {
   font-size: 0.85rem;
-  color: #137333;
+  color: var(--good);
 }
 
 .scroller {
@@ -41,7 +41,7 @@
 .roundName {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #666;
+  color: var(--text-muted);
   margin-bottom: 0.4rem;
 }
 
@@ -64,12 +64,12 @@
 .standings td {
   padding: 0.35rem 0.6rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .standings th {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-muted);
   font-weight: 600;
 }
 

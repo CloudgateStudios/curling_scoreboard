@@ -44,6 +44,7 @@ themselves and check every link between them.
 | `src/hooks/useAuth.ts`        | The signed in user and their role claims                                                                       |
 | `src/hooks/useSystemData.tsx` | Super admins only: every club, sheet and display link, and the service switches, shared by their pages        |
 | `src/types/index.ts`          | Firestore document types                                                                                       |
+| `src/styles/tokens.css`       | Every color, light and dark; stylesheets use these and never a literal color                                   |
 | `src/styles/common.module.css`| Shared styles; each component has its own CSS module                                                           |
 
 ### What is in `src/lib/`

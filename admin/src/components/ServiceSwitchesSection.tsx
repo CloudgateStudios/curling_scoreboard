@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { arrayRemove, arrayUnion, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { errorMessage } from '../lib/format';
+import { PageHeader } from './PageHeader';
 import common from '../styles/common.module.css';
 import styles from './ServiceSwitchesSection.module.css';
 
@@ -91,13 +92,10 @@ export function ServiceSwitchesSection() {
 
   return (
     <section className={styles.area} aria-labelledby="service-heading">
-      <div className={styles.areaHeader}>
-        <h1 id="service-heading" className={styles.areaTitle}>Service controls</h1>
-        <p className={styles.areaSubtitle}>
-          For when something is being flooded or misused. Changes reach every club within half a
-          minute. Scoring on the sheets always carries on.
-        </p>
-      </div>
+      <PageHeader
+        title={<span id="service-heading">Service controls</span>}
+        subtitle="For when something is being flooded or misused. Changes reach every club within half a minute. Scoring on the sheets always carries on."
+      />
 
       <div className={styles.grid}>
         <div className={`${common.section} ${styles.card}`}>

@@ -232,7 +232,7 @@ function BonspielPage({ clubId }: Props) {
       </div>
     );
   }
-  if (!bonspiel) return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
+  if (!bonspiel) return <p style={{ color: 'var(--text-muted)', padding: '2rem 0' }}>Loading…</p>;
 
   const draws = sortedDraws(bonspiel.draws);
   const hasToday = bonspielDay(bonspiel, localMinutes(undefined, openedAt)).length > 0;

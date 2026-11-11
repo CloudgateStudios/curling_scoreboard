@@ -142,7 +142,16 @@ Bonspiels; the other pages are not mounted for them at all.
 
 Every one of these pages stays mounted while another is shown, so a half-made
 change survives moving between them. Opening a sheet's games, a league or a
-bonspiel leaves them, so the portal asks first if anything is unsaved. Only
+bonspiel leaves them, so the portal asks first if anything is unsaved.
+While any setting has unsaved changes, a save bar is pinned to the bottom of
+the club's pages, naming each one (the time zone, the rock colors, the
+webhook, the stream titles, the warm room title and logo), even from a page
+moved away from, with one **Save** and one **Discard** for them all. Each
+section keeps its own Save too. A setting that cannot be saved yet, such as
+a webhook with a bad URL, is left alone and named. Editors join the bar by
+passing their save and discard to `useUnsavedChanges` in
+`src/lib/unsavedChanges.ts`; a league and a bonspiel keep their own sticky
+save header instead. Only
 super admins can add sheets, rename the club, rotate the key or add club
 admins, and the portal tags what only they see. (The rules would let a club
 admin write their club's sheets; the portal just doesn't offer it.)
@@ -188,6 +197,19 @@ service switches. The rules let super admins read all of it.
   Devices, Users, Sheets, Bonspiels and Settings.
 - The sidebar on these pages lists the three clubs opened last, kept in the
   browser's local storage.
+
+## Look
+
+Every color is a token in `src/styles/tokens.css`, with a dark value used
+when the computer is set to dark mode; there is no switch in the portal.
+Stylesheets use the tokens and never a literal color, apart from the top
+bar and the sign in page, which are dark in both, and previews of a real
+screen or rock. The meanings hold in both: green is well, amber needs a
+look, red is broken, and purple is for super admins only.
+
+Every page opens with the same header, `src/components/PageHeader.tsx`: its
+title, a line under it when there is one, its guide, and the buttons for
+the page as a whole.
 
 ## Help
 

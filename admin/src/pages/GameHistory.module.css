@@ -5,7 +5,7 @@
 .backButton {
   background: none;
   border: none;
-  color: #1a73e8;
+  color: var(--accent);
   font-size: 0.9rem;
   cursor: pointer;
   padding: 0;
@@ -15,26 +15,6 @@
   text-decoration: underline;
 }
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.subtitle {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
 .gameList {
   display: flex;
   flex-direction: column;
@@ -42,8 +22,8 @@
 }
 
 .gameCard {
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -63,7 +43,7 @@
 }
 
 .gameHeader:hover {
-  background: #f9f9f9;
+  background: var(--surface-muted);
 }
 
 .gameScore {
@@ -75,24 +55,24 @@
 
 .winnerName {
   font-weight: 700;
-  color: #137333;
+  color: var(--good);
 }
 
 .loserName {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .scoreDisplay {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .gameMeta {
   display: flex;
   gap: 1rem;
   font-size: 0.85rem;
-  color: #888;
+  color: var(--text-faint);
   align-items: center;
 }
 
@@ -101,7 +81,7 @@
 }
 
 .endsTable {
-  border-top: 1px solid #efefef;
+  border-top: 1px solid var(--border);
   overflow-x: auto;
   padding: 0.75rem 1.25rem 1rem;
 }
@@ -121,9 +101,9 @@
 
 .endsTable th {
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
   font-weight: 600;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--border);
 }
 
 .teamLabel {
@@ -133,19 +113,19 @@
 }
 
 .scoringEnd {
-  background: #e6f4ea;
+  background: var(--good-soft);
   font-weight: 700;
-  color: #137333;
+  color: var(--good);
   border-radius: 4px;
 }
 
 .totalCell {
   font-weight: 700;
-  border-left: 1px solid #efefef;
+  border-left: 1px solid var(--border);
 }
 
 .empty {
-  color: #999;
+  color: var(--text-faint);
   padding: 2rem 0;
   font-size: 0.9rem;
 }

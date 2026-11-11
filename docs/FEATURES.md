@@ -98,7 +98,9 @@ How it works: [Scoreboard app](architecture/scoreboard.md),
 
 Club admins run their club from the admin portal in a browser. The club's
 pages are in a sidebar, a menu on a phone, and every role uses the same
-address for each page, so a link sent for help opens the same page.
+address for each page, so a link sent for help opens the same page. It follows
+the computer's light or dark mode. While any setting is unsaved, a bar at
+the bottom says which and saves or discards them all.
 
 - **Overview.** Where a club admin starts: whether every scoreboard is
   well, the league or bonspiel draw on now with each sheet's live score,

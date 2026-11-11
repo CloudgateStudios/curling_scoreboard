@@ -6,9 +6,9 @@
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.6rem 0.7rem;
-  border: 1px solid #dfe3ea;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  background: #fbfcfe;
+  background: var(--surface-muted);
   text-align: left;
   font: inherit;
   color: inherit;
@@ -16,13 +16,13 @@
 }
 
 .gameFinal {
-  background: white;
-  border-color: #c7d7c9;
+  background: var(--surface);
+  border-color: var(--border-strong);
 }
 
 .game:hover,
 .gameFinal:hover {
-  border-color: #1a73e8;
+  border-color: var(--accent);
 }
 
 .gameHeading {
@@ -37,7 +37,7 @@
 }
 
 .gameEvent {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .side,
@@ -60,11 +60,11 @@
 .sideFrom {
   font-size: 0.7rem;
   font-weight: 400;
-  color: #888;
+  color: var(--text-faint);
 }
 
 .unknown {
-  color: #888;
+  color: var(--text-faint);
   font-style: italic;
 }
 

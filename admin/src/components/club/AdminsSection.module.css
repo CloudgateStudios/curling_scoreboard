@@ -10,20 +10,20 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 0.85rem;
-  background: #fafafa;
-  border: 1px solid #efefef;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
 .adminName {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .adminEmail {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .clubRole,
@@ -35,13 +35,13 @@
 }
 
 .clubRole {
-  background: #e8f0fe;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .bonspielRole {
-  background: #fef7e0;
-  color: #b06000;
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .rowActions {
@@ -51,7 +51,7 @@
 }
 
 .adminRow .removeButton {
-  color: #c5221f;
+  color: var(--bad);
 }
 
 .roles {
@@ -68,14 +68,14 @@
   align-items: flex-start;
   gap: 0.6rem;
   padding: 0.6rem 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   cursor: pointer;
 }
 
 .roleOption:has(input:checked) {
-  border-color: #1a73e8;
-  background: #f4f8fe;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .roleOption input {
@@ -86,19 +86,19 @@
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .roleDescription {
   display: block;
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .note {
   margin: 0;
   font-size: 0.85rem;
-  color: #b06000;
+  color: var(--warn);
 }
 
 /* The message for someone just added, shown in full to copy. */
@@ -114,8 +114,8 @@
   margin: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: #f6f8fa;
-  border: 1px solid #e8e8e8;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
   font-size: 0.82rem;

@@ -64,6 +64,9 @@ Every change to `firestore.rules` or to a function's behavior needs a case in
 - **Scoreboard text** goes in `app/lib/l10n/app_en.arb` with an `@key`
   description, read through `context.l10n`; commit the regenerated
   `app_localizations*.dart` too.
+- **Admin portal colors** come from `admin/src/styles/tokens.css`, which
+  has a dark value for each. Use a token, never a literal color, so dark
+  mode keeps working.
 - **Spelling.** Add real words to `.github/.cspell/curling_dictionary.txt` or
   `dev_dictionary.txt`, kept sorted; use `// cspell:ignore` for one-off
   strings.

@@ -3,23 +3,6 @@
   margin: 0;
 }
 
-.areaHeader {
-  margin-bottom: 1.25rem;
-}
-
-.areaTitle {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1a1a2e;
-}
-
-.areaSubtitle {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.25rem;
-  max-width: 48rem;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
@@ -42,12 +25,12 @@
 .cardTitle {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .cardBlurb {
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-2);
   margin-bottom: 0.75rem;
 }
 
@@ -65,7 +48,7 @@
   padding: 0.85rem 0.75rem;
   margin: 0 -0.75rem;
   border-radius: 8px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border);
 }
 
 .switchRow:first-child {
@@ -73,7 +56,7 @@
 }
 
 .switchRowOff {
-  background: #fce8e6;
+  background: var(--bad-soft);
   border-top-color: transparent;
 }
 
@@ -91,17 +74,17 @@
 .switchLabel {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a2e;
+  color: var(--text);
   cursor: pointer;
 }
 
 .switchDetail {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .switchRowOff .switchDetail {
-  color: #a50e0e;
+  color: var(--bad);
 }
 
 /* A checkbox drawn as an on/off switch. */
@@ -112,7 +95,7 @@
   width: 2.75rem;
   height: 1.5rem;
   border-radius: 999px;
-  background: #c4c7cc;
+  background: var(--border-strong);
   cursor: pointer;
   transition: background 0.15s;
   margin: 0;
@@ -126,13 +109,14 @@
   width: 1.125rem;
   height: 1.125rem;
   border-radius: 50%;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /* A white knob in both themes, as switches are drawn everywhere. */
+  background: #fff;
+  box-shadow: 0 1px 3px var(--shadow);
   transition: transform 0.15s;
 }
 
 .toggle:checked {
-  background: #1e8e3e;
+  background: var(--good);
 }
 
 .toggle:checked::after {
@@ -140,11 +124,11 @@
 }
 
 .switchRowOff .toggle {
-  background: #d93025;
+  background: var(--bad);
 }
 
 .toggle:focus-visible {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -164,20 +148,20 @@
 
 .hint {
   font-size: 0.8rem;
-  color: #777;
+  color: var(--text-muted);
   margin-top: 0.5rem;
 }
 
 .hint code {
   font-size: 0.78rem;
-  background: #f4f6f9;
+  background: var(--surface-muted);
   border-radius: 4px;
   padding: 0.05rem 0.3rem;
 }
 
 .emptyList {
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-faint);
   margin-top: 1rem;
 }
 
@@ -185,7 +169,7 @@
   list-style: none;
   padding: 0;
   margin: 1rem 0 0;
-  border: 1px solid #efefef;
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
@@ -195,7 +179,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.55rem 0.85rem;
-  border-top: 1px solid #efefef;
+  border-top: 1px solid var(--border);
 }
 
 .blockedRow:first-child {

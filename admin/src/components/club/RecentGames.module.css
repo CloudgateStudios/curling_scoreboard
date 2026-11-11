@@ -1,6 +1,6 @@
 .gameCount {
   font-size: 0.85rem;
-  color: #888;
+  color: var(--text-faint);
   font-weight: 400;
 }
 
@@ -17,10 +17,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #888;
+  color: var(--text-faint);
   margin-bottom: 0.5rem;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .gameList {
@@ -30,8 +30,8 @@
 }
 
 .gameCard {
-  background: #fafafa;
-  border: 1px solid #efefef;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -51,7 +51,7 @@
 }
 
 .gameHeader:hover {
-  background: #f2f2f2;
+  background: var(--surface-muted);
 }
 
 .gameScore {
@@ -63,17 +63,17 @@
 
 .winnerName {
   font-weight: 700;
-  color: #137333;
+  color: var(--good);
 }
 
 .loserName {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .scoreDisplay {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .gameMeta {
@@ -81,13 +81,13 @@
   align-items: center;
   gap: 0.75rem;
   font-size: 0.82rem;
-  color: #888;
+  color: var(--text-faint);
   flex-wrap: wrap;
 }
 
 .sheetChip {
-  background: #e8f0fe;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   border-radius: 4px;
   padding: 0.1rem 0.45rem;
   font-size: 0.75rem;
@@ -96,11 +96,11 @@
 
 .expandIcon {
   font-size: 0.65rem;
-  color: #aaa;
+  color: var(--text-faint);
 }
 
 .endsTable {
-  border-top: 1px solid #efefef;
+  border-top: 1px solid var(--border);
   overflow-x: auto;
   padding: 0.75rem 1rem 0.9rem;
 }
@@ -120,9 +120,9 @@
 
 .endsTable th {
   font-size: 0.72rem;
-  color: #999;
+  color: var(--text-faint);
   font-weight: 600;
-  border-bottom: 1px solid #efefef;
+  border-bottom: 1px solid var(--border);
 }
 
 .teamLabel {
@@ -132,15 +132,15 @@
 }
 
 .scoringEnd {
-  background: #e6f4ea;
+  background: var(--good-soft);
   font-weight: 700;
-  color: #137333;
+  color: var(--good);
   border-radius: 4px;
 }
 
 .totalCell {
   font-weight: 700;
-  border-left: 1px solid #efefef;
+  border-left: 1px solid var(--border);
 }
 
 .headerActions {

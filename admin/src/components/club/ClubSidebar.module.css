@@ -11,7 +11,7 @@
 }
 
 .allClubs {
-  color: #1a73e8;
+  color: var(--accent);
   font-size: 0.85rem;
   text-decoration: none;
 }
@@ -31,14 +31,14 @@
 .clubName {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
 .clubId {
   font-family: monospace;
   font-size: 0.75rem;
-  color: #999;
+  color: var(--text-faint);
 }
 
 .group {
@@ -54,11 +54,11 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #888;
+  color: var(--text-faint);
 }
 
 .groupLabelSuper {
-  color: #7b1fa2;
+  color: var(--super);
 }
 
 .link,
@@ -72,30 +72,30 @@
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #555;
+  color: var(--text-2);
   text-decoration: none;
 }
 
 .link:hover,
 .linkSuper:hover {
-  background: #f1f3f6;
-  color: #1a1a2e;
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .linkSuper {
-  color: #7b1fa2;
+  color: var(--super);
 }
 
 .linkSelected {
-  background: #e8f0fe;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .link:focus-visible,
 .linkSuper:focus-visible,
 .linkSelected:focus-visible,
 .allClubs:focus-visible {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -103,15 +103,15 @@
   min-width: 1.4rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  background: #eef0f4;
-  color: #666;
+  background: var(--surface-muted);
+  color: var(--text-muted);
   font-size: 0.75rem;
   text-align: center;
 }
 
 .linkSelected .count {
-  background: #d2e3fc;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 .backdrop {
@@ -131,8 +131,8 @@
     width: min(18rem, 85vw);
     max-height: none;
     padding: 1.25rem 0.75rem;
-    background: white;
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18);
+    background: var(--surface);
+    box-shadow: 4px 0 16px var(--shadow);
     transform: translateX(-105%);
     /* Hidden once it has slid away, so its links are not tabbed to. */
     visibility: hidden;
@@ -151,7 +151,7 @@
     inset: 0;
     z-index: 200;
     border: none;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--overlay);
   }
 }
 
@@ -166,8 +166,8 @@
 .countAlert {
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
-  background: #fce8e6;
-  color: #c5221f;
+  background: var(--bad-soft);
+  color: var(--bad);
   font-size: 0.75rem;
   white-space: nowrap;
 }

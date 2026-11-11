@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SystemShell } from '../components/SystemShell';
+import { PageHeader } from '../components/PageHeader';
 import { useSystemData } from '../hooks/useSystemData';
 import { clubPath } from '../lib/clubPaths';
 import { formatAgo } from '../lib/format';
@@ -44,15 +45,11 @@ export function SuperAdminDashboard() {
 
   return (
     <SystemShell>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Overview</h1>
-          <p className={styles.subtitle}>Every club, updated live</p>
-        </div>
-        <button className={styles.primaryButton} onClick={() => navigate('/new-club')}>
-          + New Club
-        </button>
-      </div>
+      <PageHeader
+        title="Overview"
+        subtitle="Every club, updated live"
+        actions={<button className={common.primaryButton} onClick={() => navigate('/new-club')}>+ New Club</button>}
+      />
 
       <div className={styles.kpis}>
         <Kpi value={clubs.length} label={clubs.length === 1 ? 'club' : 'clubs'} />

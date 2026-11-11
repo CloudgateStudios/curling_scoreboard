@@ -114,7 +114,7 @@ export function LeagueDetail({ clubId }: Props) {
       </div>
     );
   }
-  if (!league) return <p style={{ color: '#666', padding: '2rem 0' }}>Loading…</p>;
+  if (!league) return <p style={{ color: 'var(--text-muted)', padding: '2rem 0' }}>Loading…</p>;
 
   return (
     <div>

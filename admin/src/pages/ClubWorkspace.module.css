@@ -11,7 +11,7 @@
 }
 
 .loading {
-  color: #666;
+  color: var(--text-muted);
   padding: 2rem 0;
   font-size: 0.9rem;
 }
@@ -19,27 +19,6 @@
 /* Shown only on narrow windows, where the sidebar is a menu. */
 .menuBar {
   display: none;
-}
-
-/* The page's title, with its guide at the other end. The guide opens in a
-   new tab, like Help in the top bar, so a half-made change is not lost. */
-.pageHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.guideLink {
-  font-size: 0.85rem;
-  color: #1a73e8;
-  text-decoration: none;
-}
-
-.guideLink:hover {
-  text-decoration: underline;
 }
 
 /* Two sections side by side, stacked when the window is narrow. */
@@ -83,9 +62,9 @@
     width: 100%;
     margin-bottom: 1rem;
     padding: 0.6rem 0.75rem;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: white;
+    background: var(--surface);
     font-size: 0.9rem;
     text-align: left;
     cursor: pointer;
@@ -94,12 +73,12 @@
   .menuIcon {
     font-size: 1.1rem;
     line-height: 1;
-    color: #1a1a2e;
+    color: var(--text);
   }
 
   .menuClub {
     font-weight: 700;
-    color: #1a1a2e;
+    color: var(--text);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -108,7 +87,7 @@
 
   .menuSection {
     margin-left: auto;
-    color: #1967d2;
+    color: var(--accent-strong);
     font-weight: 600;
     white-space: nowrap;
   }
@@ -131,8 +110,8 @@
   margin-bottom: 1.25rem;
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
-  background: #f3e8fd;
-  color: #7b1fa2;
+  background: var(--super-soft);
+  color: var(--super);
   font-size: 0.85rem;
 }
 
@@ -154,7 +133,7 @@
 
 .viewAsOn,
 .viewAsOff {
-  border: 1px solid #7b1fa2;
+  border: 1px solid var(--super);
   border-radius: 999px;
   padding: 0.15rem 0.6rem;
   font-size: 0.8rem;
@@ -162,11 +141,11 @@
 }
 
 .viewAsOn {
-  background: #7b1fa2;
-  color: white;
+  background: var(--super);
+  color: var(--on-accent);
 }
 
 .viewAsOff {
   background: transparent;
-  color: #7b1fa2;
+  color: var(--super);
 }

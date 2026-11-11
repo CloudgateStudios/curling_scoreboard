@@ -5,7 +5,7 @@
 .backButton {
   background: none;
   border: none;
-  color: #1a73e8;
+  color: var(--accent);
   font-size: 0.9rem;
   cursor: pointer;
   padding: 0;
@@ -25,19 +25,19 @@
 .title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--text);
 }
 
 .subtitle {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-faint);
   font-family: monospace;
   margin-top: 0.25rem;
 }
 
 .section {
-  background: white;
-  border: 1px solid #e8e8e8;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -63,11 +63,11 @@
 .blurb {
   margin: 0 0 1rem;
   font-size: 0.9rem;
-  color: #555;
+  color: var(--text-2);
 }
 
 .blurb a {
-  color: #1a73e8;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -83,7 +83,7 @@
 }
 
 .row {
-  border: 1px solid #efefef;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -111,8 +111,8 @@
 }
 
 .liveChip {
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--good-soft);
+  color: var(--good);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
@@ -120,56 +120,56 @@
 }
 
 .idleChip {
-  background: #f4f6f9;
-  color: #999;
+  background: var(--surface-muted);
+  color: var(--text-faint);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .pairedChip {
-  background: #e8f0fe;
-  color: #1967d2;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .unpairedChip {
-  background: #fef7e0;
-  color: #b06000;
+  background: var(--warn-soft);
+  color: var(--warn);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .onlineChip {
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--good-soft);
+  color: var(--good);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .warningChip {
-  background: #fef7e0;
-  color: #b06000;
+  background: var(--warn-soft);
+  color: var(--warn);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .errorChip {
-  background: #fce8e6;
-  color: #c5221f;
+  background: var(--bad-soft);
+  color: var(--bad);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
 }
 
 .versionChip {
-  background: #f4f6f9;
-  color: #444;
+  background: var(--surface-muted);
+  color: var(--text-2);
   border-radius: 4px;
   padding: 0.15rem 0.5rem;
   font-size: 0.78rem;
@@ -193,7 +193,7 @@
 
 .input {
   padding: 0.6rem 0.85rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 0.95rem;
   outline: none;
@@ -203,12 +203,12 @@
 }
 
 .input:focus {
-  border-color: #1a73e8;
+  border-color: var(--accent);
 }
 
 .primaryButton {
-  background: #1a73e8;
-  color: white;
+  background: var(--accent);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 0.6rem 1.25rem;
@@ -220,7 +220,7 @@
 }
 
 .primaryButton:hover:not(:disabled) {
-  background: #1557b0;
+  background: var(--accent-hover);
 }
 
 .primaryButton:disabled {
@@ -230,8 +230,8 @@
 
 .ghostButton {
   background: transparent;
-  color: #444;
-  border: 1px solid #ddd;
+  color: var(--text-2);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 0.5rem 0.9rem;
   font-size: 0.85rem;
@@ -242,13 +242,13 @@
 }
 
 .ghostButton:hover {
-  border-color: #aaa;
+  border-color: var(--border-strong);
 }
 
 .linkButton {
   background: none;
   border: none;
-  color: #1a73e8;
+  color: var(--accent);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
@@ -260,7 +260,7 @@
 }
 
 .empty {
-  color: #999;
+  color: var(--text-faint);
   padding: 1rem 0;
   font-size: 0.9rem;
 }
@@ -268,7 +268,7 @@
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,12 +276,12 @@
 }
 
 .modalCard {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 2rem;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px var(--shadow);
 }
 
 .modalTitle {
@@ -302,7 +302,7 @@
   gap: 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text-2);
 }
 
 .modalActions {
@@ -314,16 +314,16 @@
 
 .error {
   font-size: 0.85rem;
-  color: #d93025;
-  background: #fce8e6;
+  color: var(--bad);
+  background: var(--bad-soft);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
 }
 
 .warning {
   font-size: 0.85rem;
-  color: #b06000;
-  background: #fef7e0;
+  color: var(--warn);
+  background: var(--warn-soft);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   margin-top: 0.75rem;
@@ -331,15 +331,15 @@
 
 .success {
   font-size: 0.85rem;
-  color: #137333;
-  background: #e6f4ea;
+  color: var(--good);
+  background: var(--good-soft);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
 }
 
 .muted {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .wideModalCard {
@@ -353,7 +353,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #444;
+  color: var(--text-2);
 }
 
 /* Marks what only super admins see, so they can tell what club admins don't. */
@@ -361,8 +361,8 @@
   display: inline-block;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: #f3e8fd;
-  color: #7b1fa2;
+  background: var(--super-soft);
+  color: var(--super);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.02em;

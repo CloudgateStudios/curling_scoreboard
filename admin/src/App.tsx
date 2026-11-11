@@ -29,7 +29,7 @@ function Portal({ user, loading }: ReturnType<typeof useAuth>) {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <span style={{ color: '#666', fontSize: '0.9rem' }}>Loading…</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading…</span>
       </div>
     );
   }
@@ -39,7 +39,7 @@ function Portal({ user, loading }: ReturnType<typeof useAuth>) {
   if (user.role === null) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <p style={{ color: '#d93025' }}>Your account has not been assigned to a club. Contact your administrator.</p>
+        <p style={{ color: 'var(--bad)' }}>Your account has not been assigned to a club. Contact your administrator.</p>
       </div>
     );
   }

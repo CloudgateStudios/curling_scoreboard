@@ -1,5 +1,5 @@
 .csvExample {
-  background: #f6f8fa;
+  background: var(--surface-muted);
   border-radius: 6px;
   padding: 0.75rem;
   font-size: 0.8rem;
@@ -8,7 +8,7 @@
 }
 
 .importMode {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   margin: 1rem 0;
@@ -20,7 +20,7 @@
 .importMode legend {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #444;
+  color: var(--text-2);
   padding: 0 0.4rem;
 }
 
@@ -38,7 +38,7 @@
 }
 
 .importLeague {
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
 }
