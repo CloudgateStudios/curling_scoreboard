@@ -1,6 +1,8 @@
 Changelog
 
 
+## [0.8.2](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.8.1...0.8.2) (2026-11-11)
+
 ## [0.8.1](https://github.com/CloudgateStudios/curling_scoreboard/compare/0.8.0...0.8.1) (2026-11-11)
 
 ### Features
