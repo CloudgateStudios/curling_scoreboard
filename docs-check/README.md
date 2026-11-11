@@ -2,8 +2,8 @@
 
 Checks the repo's Markdown the way GitHub shows it:
 
-- every ` ```mermaid ` diagram renders, with the version of Mermaid pinned in
-  `package.json`, in headless Chromium
+- every ` ```mermaid ` diagram parses, with the version of Mermaid pinned in
+  `package.json`
 - every relative link reaches a file, and the heading it names after `#`, if
   any, is there
 
@@ -13,11 +13,16 @@ heading that was renamed goes nowhere, so neither is noticed in review. The
 `docs/CHANGELOG.md` and `docs/RELEASE_NOTES.md` are skipped: the release
 workflow writes them.
 
+Diagrams are parsed, not drawn. Parsing catches the mistakes that break a
+diagram, such as a missing bracket or quote. A rare error that only shows up
+while drawing would get through, but the check needs no browser, so it runs
+in seconds. Mermaid only needs a window for its HTML sanitizer, which jsdom
+provides.
+
 ## Running
 
 ```bash
 npm install
-npx playwright install chromium   # once, for the browser
 npm run check                     # every Markdown file in the repo
 npm run check -- docs/FEATURES.md # just these, relative to the repo root
 ```
