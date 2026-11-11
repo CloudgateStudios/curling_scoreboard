@@ -1,0 +1,105 @@
+.page {
+  max-width: 38rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.muted {
+  color: #777;
+  font-size: 0.88rem;
+}
+
+.hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #666;
+}
+
+.mono {
+  font-family: monospace;
+  color: #666;
+}
+
+/* Where the person is in the three steps. */
+.steps {
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.step,
+.stepOn,
+.stepDone {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  color: #888;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stepOn {
+  border-color: #1a73e8;
+  color: #1967d2;
+  font-weight: 600;
+}
+
+.stepDone {
+  color: #137333;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.review {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.5rem 1.25rem;
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.review dt {
+  color: #666;
+  font-weight: 600;
+}
+
+.review dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The message to send, shown in full so it can be read before copying. */
+.message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f6f8fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+
+@media (max-width: 640px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

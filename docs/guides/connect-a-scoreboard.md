@@ -11,8 +11,9 @@ if a sheet is missing.
 ## Connect it
 
 1. In the admin portal, open **Sheets** and find the sheet.
-2. Press **Generate Pairing Code**. A six character code appears beside the
-   sheet.
+2. Press **Get a pairing code** on the sheet's card (**New pairing code**
+   on a sheet that already has a scoreboard). A six character code appears
+   on the card, large enough to read from the sheet.
 3. On the scoreboard, on the game setup screen, press **Connection** in the
    bottom corner.
 4. Type the code under **Pairing Code** and press **Connect**.

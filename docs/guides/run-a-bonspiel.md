@@ -54,9 +54,17 @@ winner and loser show up in their next games.
 To show it in the club, make a display link for the bonspiel; see
 [Set up a screen or stream](set-up-a-display.md#a-bonspiel-screen).
 
+## On the day
+
+On each of the bonspiel's days it opens on **Today**, at the top of the
+page: today's draws in order, the one on now marked, and each game's score
+as its scoreboard plays it. **Needs a hand** lists anything to step in for:
+a tied game that needs a winner, or a game on a sheet with no scoreboard,
+whose result you enter yourself. **Draws** and **Brackets** are beside it.
+
 ## 5. Fix results and ties
 
-Tap a game on the draw board. Under **Result**, choose who won, with the
+Tap a game on the draw board, or on **Today**. Under **Result**, choose who won, with the
 scores if you like, and press **Done**, then **Save Changes**. Your result
 wins over the scoreboard's.
 

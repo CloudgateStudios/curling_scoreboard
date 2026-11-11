@@ -2,7 +2,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  bonspielToOpen, dateOf, drawsComingUp, drawsOnNow, localMinutes, parseLocalTime, setupSteps, timeOf,
+  bonspielDay, bonspielToOpen, dateOf, drawsComingUp, drawsOnNow, localMinutes, parseLocalTime, setupSteps, timeOf,
 } from './clubNow.ts';
 
 // Tuesday 11 November 2026, on the club's clock.
@@ -148,5 +148,31 @@ describe('setupSteps', () => {
 
   test('sharing scores and posting results are optional', () => {
     assert.deepEqual(setupSteps(facts()).filter((s) => s.optional).map((s) => s.id), ['publicPage', 'webhook']);
+  });
+});
+
+describe('bonspielDay', () => {
+  const three = bonspiel({
+    draws: [
+      { id: 'd1', label: 'Draw 1', start: '2026-11-11T09:00' },
+      { id: 'd2', label: 'Draw 2', start: '2026-11-11T11:30' },
+      { id: 'd3', label: 'Draw 3', start: '2026-11-11T14:00' },
+      { id: 'd4', label: 'Draw 4', start: '2026-11-12T09:00' },
+    ],
+  });
+  const statuses = (minutes) => bonspielDay(three, minutes).map((d) => `${d.drawId}:${d.status}`);
+
+  test('lists only the day asked for', () => {
+    assert.deepEqual(statuses(at('08:00', '2026-11-12')), ['d4:next']);
+  });
+
+  test('marks the draws done, on, next and later', () => {
+    assert.deepEqual(statuses(at('08:00')), ['d1:next', 'd2:later', 'd3:later']);
+    assert.deepEqual(statuses(at('12:00')), ['d1:done', 'd2:on', 'd3:next']);
+    assert.deepEqual(statuses(at('18:00')), ['d1:done', 'd2:done', 'd3:done']);
+  });
+
+  test('counts an inactive bonspiel too', () => {
+    assert.equal(bonspielDay({ ...three, active: false }, at('12:00')).length, 3);
   });
 });

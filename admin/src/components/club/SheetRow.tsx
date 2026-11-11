@@ -98,9 +98,11 @@ export function SheetRow({ clubId, sheet, canDelete, readOnly, deployedBuildId, 
     await run(() => updateDoc(sheetRef, { pairingCode: deleteField() }), 'Could not clear the pairing code.');
   }
 
+  // One card a sheet, as they sit across the ice: what is on it and its
+  // scoreboard, then pairing, then the sheet's own actions.
   return (
-    <div className={common.row}>
-      <div className={common.rowInfo}>
+    <div className={styles.card}>
+      <div className={styles.cardTop}>
         {editing ? (
           <form onSubmit={handleRename} className={styles.renameForm}>
             <input
@@ -120,63 +122,69 @@ export function SheetRow({ clubId, sheet, canDelete, readOnly, deployedBuildId, 
             </button>
           </form>
         ) : (
-          <span className={common.rowName}>{sheet.name}</span>
+          <span className={styles.cardName}>{sheet.name}</span>
         )}
-        <div className={common.rowMeta}>
-          {liveGame ? (
-            <span className={common.liveChip}>
-              LIVE — End {liveGame.currentEnd} &nbsp;
-              {liveGame.team1.name} {liveGame.team1.score}–{liveGame.team2.score} {liveGame.team2.name}
-            </span>
-          ) : (
-            <span className={common.idleChip}>Idle</span>
-          )}
-          {sheet.scoreboardUid ? (
-            <span className={common.pairedChip}>Paired</span>
-          ) : (
-            <span className={common.unpairedChip}>Unpaired</span>
-          )}
-        </div>
-        {sheet.scoreboardUid && (
-          <SheetDeviceStatus sheet={sheet} deployedBuildId={deployedBuildId} now={now} />
-        )}
-        {editing && (
-          <div className={styles.dangerActions}>
-            {sheet.scoreboardUid && (
-              <button className={common.ghostButton} onClick={handleUnpair} disabled={busy}>
-                Unpair Scoreboard
-              </button>
-            )}
-            {canDelete && (
-              <button className={styles.dangerButton} onClick={handleDelete} disabled={busy}>
-                Delete Sheet
-              </button>
-            )}
-          </div>
-        )}
-        {error && <p className={common.error}>{error}</p>}
+        {!editing && (sheet.scoreboardUid ? (
+          <span className={common.pairedChip}>Paired</span>
+        ) : (
+          <span className={common.unpairedChip}>No scoreboard</span>
+        ))}
       </div>
-      <div className={common.rowActions}>
-        {readOnly ? null : sheet.pairingCode ? (
-          <div className={styles.pairingCodeRow}>
+
+      {liveGame ? (
+        <div className={styles.live}>
+          <span className={common.liveChip}>Live · End {liveGame.currentEnd}</span>
+          <span className={styles.liveScore}>
+            {liveGame.team1.name} {liveGame.team1.score}–{liveGame.team2.score} {liveGame.team2.name}
+          </span>
+        </div>
+      ) : (
+        <span className={styles.idle}>No game on</span>
+      )}
+
+      {sheet.scoreboardUid && (
+        <SheetDeviceStatus sheet={sheet} deployedBuildId={deployedBuildId} now={now} />
+      )}
+
+      {!readOnly && (
+        sheet.pairingCode ? (
+          <div className={styles.pairing}>
+            <span className={styles.pairingLabel}>Pairing code</span>
             <code className={styles.pairingCode}>{sheet.pairingCode}</code>
-            <button className={common.ghostButton} onClick={handleClearPairingCode}>
-              Clear
-            </button>
+            <button className={common.linkButton} onClick={handleClearPairingCode}>Clear</button>
           </div>
         ) : (
-          <button className={common.ghostButton} onClick={handleGeneratePairingCode}>
-            Generate Pairing Code
+          <button className={`${common.ghostButton} ${styles.pairButton}`} onClick={handleGeneratePairingCode}>
+            {sheet.scoreboardUid ? 'New pairing code' : 'Get a pairing code'}
           </button>
-        )}
+        )
+      )}
+
+      {editing && (
+        <div className={styles.dangerActions}>
+          {sheet.scoreboardUid && (
+            <button className={common.ghostButton} onClick={handleUnpair} disabled={busy}>
+              Unpair Scoreboard
+            </button>
+          )}
+          {canDelete && (
+            <button className={styles.dangerButton} onClick={handleDelete} disabled={busy}>
+              Delete Sheet
+            </button>
+          )}
+        </div>
+      )}
+      {error && <p className={common.error}>{error}</p>}
+
+      <div className={styles.cardActions}>
+        <button className={common.linkButton} onClick={() => onViewGames(sheet.id)}>
+          Games →
+        </button>
         {!editing && !readOnly && (
           <button className={common.linkButton} onClick={openEditor}>
             Edit
           </button>
         )}
-        <button className={common.linkButton} onClick={() => onViewGames(sheet.id)}>
-          View Games →
-        </button>
       </div>
     </div>
   );

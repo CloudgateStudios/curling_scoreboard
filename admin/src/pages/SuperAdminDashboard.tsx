@@ -1,23 +1,12 @@
 import { useEffect, useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
 import { useNavigate } from 'react-router-dom';
 import { SystemShell } from '../components/SystemShell';
 import { useSystemData } from '../hooks/useSystemData';
 import { clubPath } from '../lib/clubPaths';
-import { functions } from '../lib/firebase';
 import { formatAgo } from '../lib/format';
 import { matchClubs, problems, systemHealth, type ClubHealth, type ProblemKind } from '../lib/systemHealth';
 import common from '../styles/common.module.css';
 import styles from './SuperAdminDashboard.module.css';
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
 
 const PROBLEM_LABELS: Record<ProblemKind, { label: string; chip: string }> = {
   syncError: { label: 'Sync error', chip: common.errorChip },
@@ -36,16 +25,6 @@ export function SuperAdminDashboard() {
   const system = useSystemData();
   const clubs = system?.clubs ?? [];
   const [now, setNow] = useState(() => new Date());
-  const [showCreateClub, setShowCreateClub] = useState(false);
-  const [newClubName, setNewClubName] = useState('');
-  const [clubId, setClubId] = useState('');
-  const [clubIdEdited, setClubIdEdited] = useState(false);
-  const [adminName, setAdminName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [scoreboardPin, setScoreboardPin] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
   const [search, setSearch] = useState('');
 
   // Keeps "seen 5m ago" and the online counts moving.
@@ -63,47 +42,6 @@ export function SuperAdminDashboard() {
   const shownClubs = matchClubs(clubs, search)
     .sort((a, b) => (search.trim() ? 0 : attention(byClub.get(b.id)) - attention(byClub.get(a.id))));
 
-  function handleClubNameChange(name: string) {
-    setNewClubName(name);
-    if (!clubIdEdited) {
-      setClubId(toSlug(name));
-    }
-  }
-
-  function handleClubIdChange(id: string) {
-    setClubId(id);
-    setClubIdEdited(id !== toSlug(newClubName));
-  }
-
-  async function handleCreateClub(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true);
-    setCreateError('');
-    try {
-      const provisionClub = httpsCallable(functions, 'provisionClub');
-      await provisionClub({
-        clubName: newClubName,
-        clubId: clubId || undefined,
-        adminName,
-        adminEmail,
-        adminPassword,
-        scoreboardPin,
-      });
-      setNewClubName('');
-      setClubId('');
-      setClubIdEdited(false);
-      setAdminName('');
-      setAdminEmail('');
-      setAdminPassword('');
-      setScoreboardPin('');
-      setShowCreateClub(false);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create club.');
-    } finally {
-      setCreating(false);
-    }
-  }
-
   return (
     <SystemShell>
       <div className={styles.header}>
@@ -111,97 +49,10 @@ export function SuperAdminDashboard() {
           <h1 className={styles.title}>Overview</h1>
           <p className={styles.subtitle}>Every club, updated live</p>
         </div>
-        <button className={styles.primaryButton} onClick={() => setShowCreateClub(true)}>
+        <button className={styles.primaryButton} onClick={() => navigate('/new-club')}>
           + New Club
         </button>
       </div>
-
-      {showCreateClub && (
-        <div className={styles.modal}>
-          <div className={styles.modalCard}>
-            <h2 className={styles.modalTitle}>Create New Club</h2>
-            <form onSubmit={handleCreateClub} className={styles.form}>
-              <label className={styles.label}>
-                Club Name
-                <input
-                  className={styles.input}
-                  value={newClubName}
-                  onChange={(e) => handleClubNameChange(e.target.value)}
-                  required
-                />
-              </label>
-              <label className={styles.label}>
-                Club ID
-                <input
-                  className={styles.input}
-                  value={clubId}
-                  onChange={(e) => handleClubIdChange(e.target.value)}
-                  pattern="[a-z0-9-]+"
-                  title="Lowercase letters, numbers, and hyphens only"
-                  required
-                />
-              </label>
-              <label className={styles.label}>
-                Admin Name
-                <input
-                  className={styles.input}
-                  value={adminName}
-                  onChange={(e) => setAdminName(e.target.value)}
-                  maxLength={80}
-                  required
-                />
-              </label>
-              <label className={styles.label}>
-                Admin Email
-                <input
-                  type="email"
-                  className={styles.input}
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  required
-                />
-              </label>
-              <label className={styles.label}>
-                Admin Password
-                <input
-                  type="password"
-                  className={styles.input}
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                  minLength={8}
-                />
-              </label>
-              <label className={styles.label}>
-                Scoreboard Admin PIN
-                <input
-                  className={styles.input}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={scoreboardPin}
-                  onChange={(e) => setScoreboardPin(e.target.value.replace(/\D/g, ''))}
-                  pattern="[0-9]{4,8}"
-                  maxLength={8}
-                  title="4 to 8 digits"
-                  required
-                />
-                <span className={styles.hint}>
-                  Entered on a scoreboard to disconnect it. The club's admins can change it later.
-                </span>
-              </label>
-              {createError && <p className={styles.error}>{createError}</p>}
-              <div className={styles.modalActions}>
-                <button type="button" className={styles.ghostButton} onClick={() => setShowCreateClub(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className={styles.primaryButton} disabled={creating}>
-                  {creating ? 'Creating…' : 'Create Club'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <div className={styles.kpis}>
         <Kpi value={clubs.length} label={clubs.length === 1 ? 'club' : 'clubs'} />
