@@ -2,27 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
+import { clubPath } from '../lib/clubPaths';
 import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
 import { compareNatural } from '../lib/bonspiels';
 import {
   DAY_NAMES, leagueData, leagueFrom, leagueProblem, newTeamId, sortTeams, toggleDrawSheet,
 } from '../lib/leagues';
-import type { AuthUser, League, LeagueDraw, LeagueTeam, Sheet } from '../types';
+import type { League, LeagueDraw, LeagueTeam, Sheet } from '../types';
 import { ShortNameSuggestion } from '../components/ShortNameSuggestion';
 import common from '../styles/common.module.css';
 import styles from './LeagueDetail.module.css';
 
 interface Props {
-  user: AuthUser;
+  clubId: string;
 }
 
 /** One league: its name, when it plays and the teams in it. */
-export function LeagueDetail({ user }: Props) {
-  // Super admin route: /clubs/:clubId/leagues/:leagueId
-  // Club admin route:  /leagues/:leagueId, in the club from their sign in
-  const { clubId: routeClubId, leagueId } = useParams<{ clubId?: string; leagueId: string }>();
-  const clubId = routeClubId ?? user.clubId;
+export function LeagueDetail({ clubId }: Props) {
+  const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
 
   const [league, setLeague] = useState<League | null>(null);
@@ -41,8 +39,8 @@ export function LeagueDetail({ user }: Props) {
   const [error, setError] = useState('');
   useUnsavedChanges(dirty);
 
-  // Back to the club's Leagues tab, which is where the league was opened from.
-  const backTo = `${routeClubId ? `/clubs/${routeClubId}` : '/'}?tab=leagues`;
+  // Back to the club's leagues, which is where the league was opened from.
+  const backTo = clubPath(clubId, 'leagues');
 
   useEffect(() => {
     if (!clubId || !leagueId) return;

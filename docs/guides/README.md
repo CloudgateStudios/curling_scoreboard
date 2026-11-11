@@ -13,7 +13,8 @@ feature does is in [FEATURES](../FEATURES.md).
 | [Share scores with members](share-scores-with-members.md)   | The public scores page for members' phones                                 |
 | [Name your streams](name-your-streams.md)                   | A title for each sheet's stream, from what is on it                        |
 
-The admin portal's club page has five tabs: **Sheets & Games**, **Leagues**,
-**Bonspiels**, **Displays** and **Settings**. Settings has three groups:
-**Scoreboards**, **Integrations** and, for super admins, **Users**. A
-bonspiel admin sees only Sheets & Games and Bonspiels.
+In the admin portal, the club's pages are in a menu down the left side, or
+behind **☰** on a phone: **Sheets & Games**, **Leagues**, **Bonspiels** and
+**Displays**, then under **Settings**: **Club**, **Scoreboards**, **Public
+page** and **Integrations**. Super admins also get **Users**. A bonspiel
+admin sees only Sheets & Games and Bonspiels.

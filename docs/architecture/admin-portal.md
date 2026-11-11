@@ -6,46 +6,49 @@ The React app club staff and super admins manage everything in. Part of the
 
 ## Routes
 
-Routes depend on the signed in role:
+Every role uses the same paths for a club's pages, so a link a club admin
+sends opens the same page for a super admin. The role decides where `/`
+goes and which of a club's pages it can open:
 
 ```mermaid
 flowchart LR
   LOGIN["/ sign in<br/>email and password"] --> ROLE{"role claim"}
-  ROLE -- "superadmin" --> SA["/<br/>every club, new club"]
-  SA --> SA_CLUB["/clubs/:clubId"]
-  SA_CLUB --> SAG["…/sheets/:sheetId/games"]
-  SA_CLUB --> SAL["…/leagues/:leagueId"]
-  SA_CLUB --> SAB["…/bonspiels/:bonspielId"]
-  ROLE -- "clubadmin" --> CA["/<br/>their club"]
-  CA --> CAG["/sheets/:sheetId/games"]
-  CA --> CAL["/leagues/:leagueId"]
-  CA --> CAB["/bonspiels/:bonspielId"]
-  ROLE -- "bonspieladmin" --> BA["/<br/>their club, two tabs"]
-  BA --> BAG["/sheets/:sheetId/games"]
-  BA --> BAB["/bonspiels/:bonspielId"]
+  ROLE -- "superadmin" --> SA["/<br/>every club, new club,<br/>service switches"]
+  SA --> CLUB["/clubs/:clubId/…<br/>any club"]
+  ROLE -- "clubadmin" --> CA["/clubs/:clubId/sheets<br/>their club"]
+  ROLE -- "bonspieladmin" --> BA["/clubs/:clubId/bonspiels<br/>their club"]
 ```
 
 - Super admin: `/` lists every club and creates new ones, with the service
-  switches and blocked addresses below the list; `/clubs/:clubId`
-  shows a club; `/clubs/:clubId/sheets/:sheetId/games` its game history;
-  `/clubs/:clubId/leagues/:leagueId` a league;
-  `/clubs/:clubId/bonspiels/:bonspielId` a bonspiel.
-- Club admin: `/` is their club; `/sheets/:sheetId/games` a sheet's history;
-  `/leagues/:leagueId` a league; `/bonspiels/:bonspielId` a bonspiel.
-- Bonspiel admin: the club admin's routes without the league page.
+  switches and blocked addresses below the list. They can open any club.
+- Club admin and bonspiel admin: `/` goes to their own club, Sheets & Games
+  for club admins and Bonspiels for bonspiel admins. A club path for any
+  other club goes back to `/`.
+- Inside a club, `/clubs/:clubId/` and then:
+  - `sheets`, `leagues`, `bonspiels`, `displays`: the club's pages.
+  - `settings/club`, `settings/scoreboards`, `settings/public-page`,
+    `settings/integrations`: its settings.
+  - `users`: super admins only.
+  - `sheets/:sheetId/games`, `leagues/:leagueId`, `bonspiels/:bonspielId`: a
+    sheet's game history, a league and a bonspiel.
+- Links from before the shared paths still work: the club admin's
+  `/sheets/:sheetId/games`, `/leagues/:leagueId` and `/bonspiels/:bonspielId`,
+  and the old `?tab=` and `?section=` query, redirect to the new paths.
+  `src/lib/clubPaths.ts` holds the paths and the redirects.
 - Anyone, signed in or not: `/help` lists the guides for club admins and
   `/help/:guide` shows one. See [Help](#help).
 
-## The club page
+## The club's pages
 
 ```mermaid
 flowchart TB
-  CLUB["Club page<br/>?tab="]
-  CLUB --> T1["Sheets & Games"]
-  CLUB --> T2["Leagues"]
-  CLUB --> T3["Bonspiels"]
-  CLUB --> T4["Displays"]
-  CLUB --> T5["Settings<br/>?section="]
+  SIDE["Club sidebar"]
+  SIDE --> T1["Sheets & Games"]
+  SIDE --> T2["Leagues"]
+  SIDE --> T3["Bonspiels"]
+  SIDE --> T4["Displays"]
+  SIDE --> SET["Settings"]
+  SIDE --> U["Users<br/>super admins only"]
   T1 --> T1a["Sheets: live game, scoreboard<br/>status, pairing codes"]
   T1 --> T1b["Last seven days' games,<br/>Export CSV"]
   T2 --> T2a["Week of draws"]
@@ -53,19 +56,22 @@ flowchart TB
   T3 --> T3a["Bonspiel pages: details, teams,<br/>draw board, brackets, templates"]
   T4 --> T4a["Display links"]
   T4 --> T4b["Warm room<br/>title and logo"]
-  T4 --> T4c["Public scores<br/>switch"]
-  T5 --> S1["Scoreboards: rock colors,<br/>admin PIN"]
-  T5 --> S2["Integrations: API key,<br/>webhook"]
-  T5 --> S3["Users<br/>super admins only"]
+  SET --> S0["Club: name,<br/>time zone"]
+  SET --> S1["Scoreboards: rock colors,<br/>admin PIN"]
+  SET --> S4["Public page:<br/>switch and address"]
+  SET --> S2["Integrations: API key,<br/>webhook, stream titles"]
   classDef bonspiel fill:#dcfce7,stroke:#15803d,color:#14532d
   class T1,T3 bonspiel
 ```
 
-Bonspiel admins see only the two green tabs.
+Bonspiel admins see only the two green pages.
 
-The club page has five tabs, the one open kept in the URL (`?tab=`). Bonspiel
-admins only get Sheets & Games, with nothing to change and no pairing codes,
-and Bonspiels; the other tabs are not mounted for them at all.
+A club's pages are listed in a sidebar beside the page open. On a window
+narrower than 800 pixels the sidebar is a menu, opened from a bar at the top
+of the page. Super admins get a link back to every club at the top of it,
+and their own pages, marked in purple, at the bottom. Bonspiel admins only
+get Sheets & Games, with nothing to change and no pairing codes, and
+Bonspiels; the other pages are not mounted for them at all.
 
 - **Sheets & Games**: sheets with their live games, scoreboard status and
   pairing codes, beside the games from the last seven days. Each sheet opens
@@ -89,26 +95,29 @@ and Bonspiels; the other tabs are not mounted for them at all.
   copies a bonspiel's events, draws and games to new dates, without its teams
   or results, to run it again. The knockout and pools templates fill a
   bonspiel in from a list of teams; see [Bonspiels](bonspiels.md#templates).
-- **Displays**: the display links, the warm room screen's title and logo, and
-  the switch for the public scores page, with its address. A link can show the
-  warm room, a sheet's score bug or one of the club's bonspiels.
-- **Settings**, one group at a time, also kept in the URL (`?section=`), with
-  a list of groups beside it, or a dropdown on a narrow window:
+- **Displays**: the display links, and the warm room screen's title and
+  logo. A link can show the warm room, a sheet's score bug or one of the
+  club's bonspiels.
+- **Settings**, a page each:
+  - Club: the club's name, which only super admins can change, and its time
+    zone.
   - Scoreboards: the rock colors and the scoreboard admin PIN.
-  - Integrations: the API key with the club's API switch, and the completed
-    game webhook, which once saved is shown in short until it is edited.
-  - Users: super admins only. Adds, edits and removes the club's club and
-    bonspiel admins.
+  - Public page: the switch for the public scores page, with its address.
+  - Integrations: the API key with the club's API switch, the completed
+    game webhook, which once saved is shown in short until it is edited, and
+    the stream titles.
+- **Users**: super admins only. Adds, edits and removes the club's club and
+  bonspiel admins.
 
-Every tab and group stays mounted while hidden, so a half-made change
-survives moving between them. Only super admins can add sheets, rotate the
-key or add club admins, and the portal tags what only they see. (The rules
-would let a club admin write their club's sheets; the portal just doesn't
-offer it.)
+Every one of these pages stays mounted while another is shown, so a half-made
+change survives moving between them. Opening a sheet's games, a league or a
+bonspiel leaves them, so the portal asks first if anything is unsaved. Only
+super admins can add sheets, rename the club, rotate the key or add club
+admins, and the portal tags what only they see. (The rules would let a club
+admin write their club's sheets; the portal just doesn't offer it.)
 
-Each tab, and each Settings group, links to its guide at the end of the tab
-bar. The link opens in a new tab, like Help in the top bar, so a half-made
-change is not lost.
+Each page links to its guide beside its title. The link opens in a new tab,
+like Help in the top bar, so a half-made change is not lost.
 
 ## Help
 

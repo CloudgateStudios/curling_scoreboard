@@ -1,0 +1,163 @@
+/* Down the side of the club's pages, staying in view below the top bar. */
+.sidebar,
+.sidebarOpen {
+  position: sticky;
+  top: calc(56px + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: calc(100vh - 56px - 2rem);
+  overflow-y: auto;
+}
+
+.allClubs {
+  color: #1a73e8;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.allClubs:hover {
+  text-decoration: underline;
+}
+
+.club {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 0.75rem;
+  min-width: 0;
+}
+
+.clubName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  overflow-wrap: anywhere;
+}
+
+.clubId {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.groupLabel,
+.groupLabelSuper {
+  padding: 0 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #888;
+}
+
+.groupLabelSuper {
+  color: #7b1fa2;
+}
+
+.link,
+.linkSuper,
+.linkSelected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  text-decoration: none;
+}
+
+.link:hover,
+.linkSuper:hover {
+  background: #f1f3f6;
+  color: #1a1a2e;
+}
+
+.linkSuper {
+  color: #7b1fa2;
+}
+
+.linkSelected {
+  background: #e8f0fe;
+  color: #1967d2;
+}
+
+.link:focus-visible,
+.linkSuper:focus-visible,
+.linkSelected:focus-visible,
+.allClubs:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}
+
+.count {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: #eef0f4;
+  color: #666;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.linkSelected .count {
+  background: #d2e3fc;
+  color: #1967d2;
+}
+
+.backdrop {
+  display: none;
+}
+
+/* Narrow windows and phones: the sidebar becomes a menu that slides in from
+   the left, opened from the bar at the top of the page. */
+@media (max-width: 800px) {
+  .sidebar,
+  .sidebarOpen {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 201;
+    width: min(18rem, 85vw);
+    max-height: none;
+    padding: 1.25rem 0.75rem;
+    background: white;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18);
+    transform: translateX(-105%);
+    /* Hidden once it has slid away, so its links are not tabbed to. */
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s 0.2s;
+  }
+
+  .sidebarOpen {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    border: none;
+    background: rgba(0, 0, 0, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebarOpen {
+    transition: none;
+  }
+}

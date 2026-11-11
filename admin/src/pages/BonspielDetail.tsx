@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
+import { bonspielPath, clubPath } from '../lib/clubPaths';
 import { errorMessage } from '../lib/format';
 import { confirmLeave, useUnsavedChanges } from '../lib/unsavedChanges';
 import {
@@ -10,7 +11,7 @@ import {
   sortedDraws, suggestedGameLabel, withoutGames, withoutTeam,
 } from '../lib/bonspiels';
 import type {
-  AuthUser, Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielState, BonspielTeam, Sheet,
+  Bonspiel, BonspielDraw, BonspielEvent, BonspielGame, BonspielState, BonspielTeam, Sheet,
 } from '../types';
 import { BracketView } from '../components/bonspiel/BracketView';
 import { DrawBoard } from '../components/bonspiel/DrawBoard';
@@ -21,25 +22,22 @@ import common from '../styles/common.module.css';
 import styles from './BonspielDetail.module.css';
 
 interface Props {
-  user: AuthUser;
+  clubId: string;
 }
 
 const ENDS = Array.from({ length: MAX_ENDS }, (_, i) => i + 1);
 
 /** One bonspiel: its details, events and teams, and the draw board its games
  *  are planned on. */
-export function BonspielDetail({ user }: Props) {
+export function BonspielDetail({ clubId }: Props) {
   // Starts afresh for each bonspiel, such as one just duplicated from this
   // one, rather than carrying the last one's edits over.
-  const { clubId, bonspielId } = useParams<{ clubId?: string; bonspielId: string }>();
-  return <BonspielPage key={`${clubId}/${bonspielId}`} user={user} />;
+  const { bonspielId } = useParams<{ bonspielId: string }>();
+  return <BonspielPage key={`${clubId}/${bonspielId}`} clubId={clubId} />;
 }
 
-function BonspielPage({ user }: Props) {
-  // Super admin route: /clubs/:clubId/bonspiels/:bonspielId
-  // Club and bonspiel admin route: /bonspiels/:bonspielId, in the club from their sign in
-  const { clubId: routeClubId, bonspielId } = useParams<{ clubId?: string; bonspielId: string }>();
-  const clubId = routeClubId ?? user.clubId;
+function BonspielPage({ clubId }: Props) {
+  const { bonspielId } = useParams<{ bonspielId: string }>();
   const navigate = useNavigate();
 
   const [bonspiel, setBonspiel] = useState<Bonspiel | null>(null);
@@ -69,9 +67,8 @@ function BonspielPage({ user }: Props) {
     setDirty(value);
   }
 
-  const bonspielPath = (id: string) => (routeClubId ? `/clubs/${routeClubId}/bonspiels/${id}` : `/bonspiels/${id}`);
-  // Back to the club's Bonspiels tab, which is where the bonspiel was opened from.
-  const backTo = `${routeClubId ? `/clubs/${routeClubId}` : '/'}?tab=bonspiels`;
+  // Back to the club's bonspiels, which is where the bonspiel was opened from.
+  const backTo = clubPath(clubId, 'bonspiels');
 
   useEffect(() => {
     if (!clubId || !bonspielId) return;
@@ -523,7 +520,7 @@ function BonspielPage({ user }: Props) {
               bonspielData(duplicateBonspiel(bonspiel, name, startDate)),
             );
             setDuplicating(false);
-            navigate(bonspielPath(ref.id));
+            navigate(bonspielPath(clubId, ref.id));
           }}
           onClose={() => setDuplicating(false)}
         />

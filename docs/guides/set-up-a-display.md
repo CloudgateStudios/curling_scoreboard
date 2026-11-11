@@ -31,7 +31,7 @@ Under **Shows**, choose **Warm room screen, every sheet**. Then:
 Open the URL in the TV's browser, full screen. It fills any screen, either
 way round, and hides the mouse pointer when it is still.
 
-**Warm Room Screen**, further down the Displays tab, sets the title at the
+**Warm Room Screen**, beside the links on **Displays**, sets the title at the
 top (in place of "Live Scores") and adds your club's logo. Press **Save**.
 
 ## A score bug in OBS

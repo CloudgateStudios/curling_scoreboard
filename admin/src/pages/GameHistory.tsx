@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot, orderBy, query, limit, getDoc } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
+import { clubPath } from '../lib/clubPaths';
 import { downloadCsv, gamesCsv, gamesCsvFilename } from '../lib/gamesCsv';
 import type { Game } from '../types';
 import { GameCard } from '../components/GameCard';
@@ -11,14 +12,15 @@ import styles from './GameHistory.module.css';
 /** Games loaded at first, and added each time more are asked for. */
 const PAGE_SIZE = 50;
 
-export function GameHistory() {
-  // Super admin route: /clubs/:clubId/sheets/:sheetId/games
-  // Club admin route:  /sheets/:sheetId/games (clubId comes from auth token, but we
-  //                    still need it for the Firestore path — fetch it from the sheet)
-  const { clubId: routeClubId, sheetId } = useParams<{ clubId?: string; sheetId: string }>();
+interface Props {
+  clubId: string;
+}
+
+/** Every finished game on one sheet, newest first. */
+export function GameHistory({ clubId }: Props) {
+  const { sheetId } = useParams<{ sheetId: string }>();
   const navigate = useNavigate();
 
-  const [clubId, setClubId] = useState<string | null>(routeClubId ?? null);
   const [clubName, setClubName] = useState('');
   const [sheetName, setSheetName] = useState('');
   const [games, setGames] = useState<Game[]>([]);
@@ -26,18 +28,6 @@ export function GameHistory() {
   const [gameLimit, setGameLimit] = useState(PAGE_SIZE);
   // A full page means there may be more; anything short of it is everything.
   const mayHaveMore = games.length >= gameLimit;
-
-  // For club admin routes the clubId isn't in the URL — resolve it via the sheet doc
-  useEffect(() => {
-    if (routeClubId || !sheetId) return;
-    // collectionGroup query isn't available client-side without indexes, so we stored
-    // clubId on the auth token. Read it from the current user's token claims instead.
-    import('../lib/firebase').then(async ({ auth }) => {
-      const token = await auth.currentUser?.getIdTokenResult();
-      const cid = token?.claims['clubId'] as string | undefined;
-      if (cid) setClubId(cid);
-    });
-  }, [routeClubId, sheetId]);
 
   // Fetch club and sheet names for display
   useEffect(() => {
@@ -84,7 +74,7 @@ export function GameHistory() {
   return (
     <div>
       <div className={styles.breadcrumb}>
-        <button className={styles.backButton} onClick={() => navigate(-1)}>
+        <button className={styles.backButton} onClick={() => navigate(clubPath(clubId, 'sheets'))}>
           ← {clubName || 'Back'}
         </button>
       </div>

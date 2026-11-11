@@ -58,5 +58,5 @@ press **Edit →** on it:
 
 Press **Save Changes**.
 
-The Leagues tab shows a week of every league's draws, and flags any that
+The Leagues page shows a week of every league's draws, and flags any that
 overlap on the same sheet.

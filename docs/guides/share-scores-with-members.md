@@ -4,7 +4,7 @@ The public scores page shows every sheet's game, end by end, and the day's
 results, on members' phones. No app and no sign-in.
 [How it works](../architecture/displays.md#public-scores-page).
 
-1. Open **Displays**, and under **Public Scores Page** tick **Turn on the
+1. Open **Settings**, then **Public page**, and tick **Turn on the
    public scores page**.
 2. **Copy** the address and share it: in your newsletter, on your website, or
    as a QR code on the warm room wall. **Open** shows it.
