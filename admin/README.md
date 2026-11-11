@@ -51,6 +51,7 @@ themselves and check every link between them.
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `firebase.ts`           | Firebase setup for dev and prod, and the scoreboard site's address                                 |
 | `clubPaths.ts`          | The path of each page in a club, and where old `?tab=` links go                                    |
+| `clubNow.ts`            | What is on the ice now and next, the bonspiel a bonspiel admin opens on, and the setup checklist; the lead time matches `functions/src/now.ts` |
 | `leagues.ts`            | League checks, draw times and overlaps                                                             |
 | `leagueCsv.ts`          | Parsing a league CSV and working out what an import changes                                        |
 | `bonspiels.ts`          | Bonspiel plans: checking them before they save, draws, sides, brackets and duplicating            |

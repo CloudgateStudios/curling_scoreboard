@@ -3,7 +3,8 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { compareLeagues, leagueFrom } from '../lib/leagues';
-import { bonspielFrom } from '../lib/bonspiels';
+import { bonspielFrom, today } from '../lib/bonspiels';
+import { bonspielToOpen } from '../lib/clubNow';
 import { bonspielPath, clubPath, landingSection, leaguePath, sectionFromOldQuery, sheetGamesPath, type ClubSection } from '../lib/clubPaths';
 import { confirmLeave } from '../lib/unsavedChanges';
 import { guideFor } from '../lib/guides';
@@ -11,6 +12,7 @@ import type { AuthUser, Bonspiel, Club, League, Sheet } from '../types';
 import { ClubSidebar } from '../components/club/ClubSidebar';
 import { sectionOfPath, sectionsFor, type SectionInfo } from '../components/club/sections';
 import { RecentGames } from '../components/club/RecentGames';
+import { ClubOverview } from '../components/club/ClubOverview';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
@@ -53,7 +55,7 @@ export function ClubWorkspace({ clubId, user }: Props) {
   const [missing, setMissing] = useState(false);
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [bonspiels, setBonspiels] = useState<Bonspiel[]>([]);
+  const [bonspiels, setBonspiels] = useState<Bonspiel[] | null>(null);
   // Reported by the Displays page, which holds the list, for its count.
   const [displayLinkCount, setDisplayLinkCount] = useState<number | undefined>(undefined);
   // The page the phone menu was opened on, so opening another page closes it.
@@ -87,19 +89,24 @@ export function ClubWorkspace({ clubId, user }: Props) {
     });
   }, [clubId, isBonspielAdmin]);
 
-  // Newest first.
+  // Newest first. The club waits for them, so a bonspiel admin can open on
+  // the one on now; one that cannot be read leaves the list empty.
   useEffect(() => {
-    return onSnapshot(collection(db, 'clubs', clubId, 'bonspiels'), (snap) => {
-      setBonspiels(
-        snap.docs
-          .map((d) => bonspielFrom(d.id, d.data()))
-          .sort((a, b) => b.startDate.localeCompare(a.startDate) || a.name.localeCompare(b.name)),
-      );
-    });
+    return onSnapshot(
+      collection(db, 'clubs', clubId, 'bonspiels'),
+      (snap) => {
+        setBonspiels(
+          snap.docs
+            .map((d) => bonspielFrom(d.id, d.data()))
+            .sort((a, b) => b.startDate.localeCompare(a.startDate) || a.name.localeCompare(b.name)),
+        );
+      },
+      () => setBonspiels([]),
+    );
   }, [clubId]);
 
   if (missing) return <p className={common.error}>Club not found. Contact your administrator.</p>;
-  if (!club) return <p className={styles.loading}>Loading…</p>;
+  if (!club || !bonspiels) return <p className={styles.loading}>Loading…</p>;
 
   const counts: Partial<Record<ClubSection, number>> = {
     sheets: sheets.length,
@@ -130,7 +137,7 @@ export function ClubWorkspace({ clubId, user }: Props) {
         </button>
 
         <Routes>
-          <Route index element={<ClubIndex clubId={clubId} role={role} />} />
+          <Route index element={<ClubIndex clubId={clubId} role={role} bonspiels={bonspiels} />} />
           <Route path="sheets/:sheetId/games" element={<GameHistory clubId={clubId} />} />
           {!isBonspielAdmin && <Route path="leagues/:leagueId" element={<LeagueDetail clubId={clubId} />} />}
           <Route path="bonspiels/:bonspielId" element={<BonspielDetail clubId={clubId} />} />
@@ -160,10 +167,16 @@ export function ClubWorkspace({ clubId, user }: Props) {
 }
 
 /** The club's own address opens the role's first page, or the one an old
- *  `?tab=` link named. */
-function ClubIndex({ clubId, role }: { clubId: string; role: string }) {
+ *  `?tab=` link named. Bonspiel admins go straight to the bonspiel on now,
+ *  or the next one; bonspiel dates are the club's, and the browser's date
+ *  stands in for them, as bonspiel admins cannot read the club's zone. */
+function ClubIndex({ clubId, role, bonspiels }: { clubId: string; role: string; bonspiels: Bonspiel[] }) {
   const { search } = useLocation();
-  return <Navigate to={clubPath(clubId, sectionFromOldQuery(search) ?? landingSection(role))} replace />;
+  const old = sectionFromOldQuery(search);
+  if (old) return <Navigate to={clubPath(clubId, old)} replace />;
+  const bonspiel = role === 'bonspieladmin' ? bonspielToOpen(bonspiels, today()) : null;
+  if (bonspiel) return <Navigate to={bonspielPath(clubId, bonspiel.id)} replace />;
+  return <Navigate to={clubPath(clubId, landingSection(role))} replace />;
 }
 
 interface SectionsProps {
@@ -192,6 +205,9 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
     if (confirmLeave()) navigate(path);
   }
 
+  // Every page stays mounted, so moving between them loses nothing.
+  const openSection = (next: ClubSection) => navigate(clubPath(clubId, next));
+
   return (
     <>
       <div className={styles.pageHeader}>
@@ -203,7 +219,7 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
         )}
       </div>
 
-      <div hidden={!shown('sheets')} className={styles.columns}>
+      <div hidden={!shown('sheets')} className={styles.narrow}>
         <SheetsSection
           clubId={clubId}
           sheets={sheets}
@@ -211,7 +227,22 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
           readOnly={isBonspielAdmin}
           onViewGames={(sheetId) => open(sheetGamesPath(clubId, sheetId))}
         />
+      </div>
+
+      <div hidden={!shown('games')} className={styles.columns}>
         <RecentGames clubId={clubId} clubName={club.name} sheets={sheets} />
+        <div className={common.section}>
+          <h2 className={common.sectionTitle}>Each sheet's games</h2>
+          <p className={common.blurb}>Every game a sheet has finished, fifty at a time, with a CSV export.</p>
+          <div className={styles.sheetLinks}>
+            {[...sheets].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((sheet) => (
+              <button key={sheet.id} className={common.ghostButton} onClick={() => open(sheetGamesPath(clubId, sheet.id))}>
+                {sheet.name}
+              </button>
+            ))}
+            {sheets.length === 0 && <p className={common.empty}>No sheets yet.</p>}
+          </div>
+        </div>
       </div>
 
       <div hidden={!shown('bonspiels')}>
@@ -222,6 +253,17 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
           keep from reading it. */}
       {!isBonspielAdmin && (
         <>
+          <div hidden={!shown('overview')}>
+            <ClubOverview
+              club={club}
+              sheets={sheets}
+              leagues={leagues}
+              bonspiels={bonspiels}
+              onOpen={open}
+              onSection={openSection}
+            />
+          </div>
+
           <div hidden={!shown('leagues')}>
             <LeaguesSection clubId={clubId} leagues={leagues} sheets={sheets} onOpenLeague={(id) => open(leaguePath(clubId, id))} />
           </div>

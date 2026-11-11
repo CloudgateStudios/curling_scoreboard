@@ -8,7 +8,8 @@
 // clock, as if it were UTC, so plain arithmetic works across midnight and
 // month ends. The scoreboard works out the league playing now in
 // app/lib/models/league.dart and the bonspiel draw on now in
-// app/lib/models/bonspiel.dart: keep the lead time in step with them.
+// app/lib/models/bonspiel.dart, and the admin portal's overview both in
+// admin/src/lib/clubNow.ts: keep the lead time in step with them.
 //
 // Nothing here imports Firebase, so it can be tested on its own.
 

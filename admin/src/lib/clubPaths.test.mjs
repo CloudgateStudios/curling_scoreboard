@@ -18,9 +18,9 @@ describe('landingSection', () => {
     assert.equal(landingSection('bonspieladmin'), 'bonspiels');
   });
 
-  test('opens everyone else on sheets', () => {
-    assert.equal(landingSection('clubadmin'), 'sheets');
-    assert.equal(landingSection('superadmin'), 'sheets');
+  test('opens everyone else on the overview', () => {
+    assert.equal(landingSection('clubadmin'), 'overview');
+    assert.equal(landingSection('superadmin'), 'overview');
   });
 });
 

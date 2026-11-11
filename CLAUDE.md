@@ -79,8 +79,9 @@ Every change to `firestore.rules` or to a function's behavior needs a case in
   now and where each side comes from, in `assets/bonspiel-model.js`,
   `admin/src/lib/bonspiels.ts` and `app/lib/models/bonspiel.dart`; and the
   league playing now, with its lead time and sheets, in
-  `app/lib/models/league.dart` and `functions/src/now.ts`, which also has
-  the bonspiel draw on now.
+  `app/lib/models/league.dart`, `functions/src/now.ts` and
+  `admin/src/lib/clubNow.ts`, the last two of which also have the bonspiel
+  draw on now.
 
 ## Keep the docs current
 

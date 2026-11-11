@@ -2,7 +2,9 @@
  *  link a club admin sends opens the same page for a super admin. */
 
 export type ClubSection =
+  | 'overview'
   | 'sheets'
+  | 'games'
   | 'leagues'
   | 'bonspiels'
   | 'displays'
@@ -25,9 +27,10 @@ export const leaguePath = (clubId: string, leagueId: string) =>
 export const bonspielPath = (clubId: string, bonspielId: string) =>
   `/clubs/${clubId}/bonspiels/${bonspielId}`;
 
-/** The section a club opens on: bonspiel admins have only bonspiels to run. */
+/** The section a club opens on: bonspiel admins have only bonspiels to run,
+ *  and open on the one on now when there is one; see bonspielToOpen. */
 export function landingSection(role: string | null): ClubSection {
-  return role === 'bonspieladmin' ? 'bonspiels' : 'sheets';
+  return role === 'bonspieladmin' ? 'bonspiels' : 'overview';
 }
 
 // The club page used to keep its tab, and its settings group, in the query.

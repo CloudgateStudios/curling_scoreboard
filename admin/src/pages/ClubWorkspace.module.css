@@ -113,3 +113,10 @@
     white-space: nowrap;
   }
 }
+
+/* The buttons that open each sheet's whole history. */
+.sheetLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

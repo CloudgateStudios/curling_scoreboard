@@ -113,7 +113,7 @@ export function SheetsSection({ clubId, sheets, canManageSheets, readOnly, onVie
 }
 
 /** One line that says whether anything needs looking at before a draw. */
-function HealthSummary({ sheets, deployedBuildId, now }: { sheets: Sheet[]; deployedBuildId: string | null; now: Date }) {
+export function HealthSummary({ sheets, deployedBuildId, now }: { sheets: Sheet[]; deployedBuildId: string | null; now: Date }) {
   const health = sheetsHealth(sheets, deployedBuildId, now.getTime());
   const paired = sheets.length - health.unpaired;
   const problems = health.offline + health.updatePending + health.syncErrors;
