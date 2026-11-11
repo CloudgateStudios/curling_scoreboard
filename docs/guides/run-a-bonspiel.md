@@ -5,7 +5,7 @@ its game, and results move teams on through the brackets by themselves.
 [How it works](../architecture/bonspiels.md).
 
 Club admins and bonspiel admins can do all of this. A super admin can make
-someone a bonspiel admin under **Settings**, **Users**.
+someone a bonspiel admin under **Users**, at the bottom of the club's menu.
 
 ## 1. Create it
 

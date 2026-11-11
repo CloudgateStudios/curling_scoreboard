@@ -37,8 +37,8 @@ themselves and check every link between them.
 | Path                          | What is in it                                                                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `src/App.tsx`                 | Sign-in and the routes for each role                                                                           |
-| `src/pages/`                  | One file a route: the super admin's club list, a club, a sheet's game history, a league, a bonspiel, sign-in, help |
-| `src/components/club/`        | The club page's tabs and settings groups, one component a section                                             |
+| `src/pages/`                  | One file a route: the super admin's club list, a club's workspace, a sheet's game history, a league, a bonspiel, sign-in, help |
+| `src/components/club/`        | The club's sidebar and its pages, one component a section                                                    |
 | `src/components/bonspiel/`    | The bonspiel page: draw board, game and template dialogs, bracket view                                         |
 | `src/lib/`                    | Logic with no React in it, with its tests beside it                                                            |
 | `src/hooks/useAuth.ts`        | The signed in user and their role claims                                                                       |
@@ -50,6 +50,7 @@ themselves and check every link between them.
 | File                    | Does                                                                                               |
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `firebase.ts`           | Firebase setup for dev and prod, and the scoreboard site's address                                 |
+| `clubPaths.ts`          | The path of each page in a club, and where old `?tab=` links go                                    |
 | `leagues.ts`            | League checks, draw times and overlaps                                                             |
 | `leagueCsv.ts`          | Parsing a league CSV and working out what an import changes                                        |
 | `bonspiels.ts`          | Bonspiel plans: checking them before they save, draws, sides, brackets and duplicating            |

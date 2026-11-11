@@ -1,9 +1,0 @@
-.loading, .error {
-  color: #666;
-  padding: 2rem 0;
-  font-size: 0.9rem;
-}
-
-.error {
-  color: #d93025;
-}

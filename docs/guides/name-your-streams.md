@@ -6,7 +6,7 @@ to type one. [How it works](../architecture/api-and-webhook.md#what-is-on-a-shee
 
 ## 1. Set the club's time zone
 
-Open **Settings**, then **Integrations**. Under **Time Zone**, choose where
+Open **Settings**, then **Club**. Under **Time Zone**, choose where
 the club is and press **Save**. League and bonspiel times are in this zone,
 and the API needs it to tell what is on now. It starts on your own zone.
 

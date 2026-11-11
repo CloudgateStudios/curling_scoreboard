@@ -50,7 +50,7 @@ mindmap
 | -------------------------- | ------------------------------------------------------ | ------------------------------------- |
 | Players at the sheet       | The scoreboard app on a tablet or screen at each sheet | Nothing; a club admin pairs it once   |
 | Club admins                | The admin portal                                       | Email and password                    |
-| Bonspiel coordinators      | The admin portal's Bonspiels tab                       | Email and password, as bonspiel admin |
+| Bonspiel coordinators      | The admin portal's Bonspiels page                      | Email and password, as bonspiel admin |
 | Streamers, bar and lobby   | Display screens: score bug, linescore, warm room, bonspiel screen | A display link from a club admin      |
 | Members                    | The public scores page on their phones                 | Nothing, once the club turns it on    |
 | The club's website or chat | The REST API, the completed game webhook               | The club's API key; a webhook URL     |
@@ -96,7 +96,9 @@ How it works: [Scoreboard app](architecture/scoreboard.md),
 
 ## Running the club: the admin portal
 
-Club admins run their club from the admin portal in a browser.
+Club admins run their club from the admin portal in a browser. The club's
+pages are in a sidebar, a menu on a phone, and every role uses the same
+address for each page, so a link sent for help opens the same page.
 
 - **Sheets and scoreboards.** Each sheet shows the game on it now, live, and
   whether its scoreboard is online, which version it runs, and whether it is
@@ -111,14 +113,16 @@ Club admins run their club from the admin portal in a browser.
   league that shares the ice with another can be given each draw's sheets.
 - **Scoreboard settings.** The club's rock colors, if not red and yellow,
   and the admin PIN that scoreboards ask for before they disconnect.
-- **Displays.** Links for the club's screens, the warm room screen's title
-  and logo, and the switch for the public scores page.
-- **Integrations.** The club's time zone and API key, a switch to turn the
-  club's API off without changing the key, where to post finished games, and
-  what streams on each sheet are called.
+- **Displays.** Links for the club's screens, and the warm room screen's
+  title and logo.
+- **Club settings.** The club's name and time zone.
+- **Public page.** The switch for the public scores page, and its address.
+- **Integrations.** The club's API key, a switch to turn the club's API off
+  without changing the key, where to post finished games, and what streams
+  on each sheet are called.
 
 - **Help.** The [guides for club admins](guides/README.md), in the portal
-  under Help, with a link on each tab to its guide. They need no sign-in.
+  under Help, with a link on each page to its guide. They need no sign-in.
 
 How it works: [Admin portal](architecture/admin-portal.md#help).
 

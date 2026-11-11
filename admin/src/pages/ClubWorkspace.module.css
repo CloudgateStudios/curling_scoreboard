@@ -1,0 +1,115 @@
+/* The club's sidebar beside the page open. */
+.workspace {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.content {
+  min-width: 0;
+}
+
+.loading {
+  color: #666;
+  padding: 2rem 0;
+  font-size: 0.9rem;
+}
+
+/* Shown only on narrow windows, where the sidebar is a menu. */
+.menuBar {
+  display: none;
+}
+
+/* The page's title, with its guide at the other end. The guide opens in a
+   new tab, like Help in the top bar, so a half-made change is not lost. */
+.pageHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.guideLink {
+  font-size: 0.85rem;
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.guideLink:hover {
+  text-decoration: underline;
+}
+
+/* Two sections side by side, stacked when the window is narrow. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.columns > * {
+  margin-bottom: 0;
+}
+
+/* Settings pages are forms, which read better not stretched too wide. */
+.narrow {
+  max-width: 52rem;
+}
+
+/* The grid display would otherwise show a hidden page. */
+.columns[hidden] {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .menuBar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .menuIcon {
+    font-size: 1.1rem;
+    line-height: 1;
+    color: #1a1a2e;
+  }
+
+  .menuClub {
+    font-weight: 700;
+    color: #1a1a2e;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menuSection {
+    margin-left: auto;
+    color: #1967d2;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
