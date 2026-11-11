@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from '
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
+import { ServiceControls } from './pages/ServiceControls';
+import { SystemDataProvider } from './hooks/useSystemData';
 import { ClubWorkspace } from './pages/ClubWorkspace';
 import { Help } from './pages/Help';
 import { Layout } from './components/Layout';
@@ -43,11 +45,14 @@ function Portal({ user, loading }: ReturnType<typeof useAuth>) {
 
   // Every role uses the same club paths. Super admins open on every club;
   // everyone else opens on their own.
-  return (
+  const portal = (
     <Layout user={user}>
       <Routes>
         {user.role === 'superadmin' ? (
-          <Route path="/" element={<SuperAdminDashboard />} />
+          <>
+            <Route path="/" element={<SuperAdminDashboard />} />
+            <Route path="/service" element={<ServiceControls />} />
+          </>
         ) : (
           <Route path="/" element={<OwnClub user={user} />} />
         )}
@@ -60,6 +65,8 @@ function Portal({ user, loading }: ReturnType<typeof useAuth>) {
       </Routes>
     </Layout>
   );
+  // Super admins share one set of listeners over every club.
+  return user.role === 'superadmin' ? <SystemDataProvider>{portal}</SystemDataProvider> : portal;
 }
 
 /** A club admin's or bonspiel admin's `/`: their club, on the section an old

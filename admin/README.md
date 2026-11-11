@@ -37,11 +37,12 @@ themselves and check every link between them.
 | Path                          | What is in it                                                                                                  |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `src/App.tsx`                 | Sign-in and the routes for each role                                                                           |
-| `src/pages/`                  | One file a route: the super admin's club list, a club's workspace, a sheet's game history, a league, a bonspiel, sign-in, help |
+| `src/pages/`                  | One file a route: the super admin's overview and service controls, a club's workspace, a sheet's game history, a league, a bonspiel, sign-in, help |
 | `src/components/club/`        | The club's sidebar and its pages, one component a section                                                    |
 | `src/components/bonspiel/`    | The bonspiel page: draw board, game and template dialogs, bracket view                                         |
 | `src/lib/`                    | Logic with no React in it, with its tests beside it                                                            |
 | `src/hooks/useAuth.ts`        | The signed in user and their role claims                                                                       |
+| `src/hooks/useSystemData.tsx` | Super admins only: every club, sheet and display link, and the service switches, shared by their pages        |
 | `src/types/index.ts`          | Firestore document types                                                                                       |
 | `src/styles/common.module.css`| Shared styles; each component has its own CSS module                                                           |
 
@@ -51,6 +52,8 @@ themselves and check every link between them.
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `firebase.ts`           | Firebase setup for dev and prod, and the scoreboard site's address                                 |
 | `clubPaths.ts`          | The path of each page in a club, and where old `?tab=` links go                                    |
+| `systemHealth.ts`       | Every club's scoreboard and screen health, what needs a look, matching clubs by name, and the Devices page's report |
+| `recentClubs.ts`        | The clubs a super admin opened last, kept in the browser                                           |
 | `clubNow.ts`            | What is on the ice now and next, the bonspiel a bonspiel admin opens on, and the setup checklist; the lead time matches `functions/src/now.ts` |
 | `leagues.ts`            | League checks, draw times and overlaps                                                             |
 | `leagueCsv.ts`          | Parsing a league CSV and working out what an import changes                                        |

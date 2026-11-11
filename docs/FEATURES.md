@@ -120,7 +120,11 @@ address for each page, so a link sent for help opens the same page.
   and the admin PIN that scoreboards ask for before they disconnect.
 - **Displays.** Links for the club's screens, and the warm room screen's
   title and logo.
-- **Club settings.** The club's name and time zone.
+- **Devices.** Every scoreboard and screen with what it last reported, and
+  whether the API, public page and webhook are working, with a report to
+  copy when asking for help.
+- **Club settings.** The club's name and time zone, and who can sign in for
+  the club.
 - **Public page.** The switch for the public scores page, and its address.
 - **Integrations.** The club's API key, a switch to turn the club's API off
   without changing the key, where to post finished games, and what streams
@@ -213,9 +217,16 @@ How it works: [REST API and webhook](architecture/api-and-webhook.md).
 
 Super admins look after every club: they create clubs and their users (club
 admins and bonspiel admins), add and remove sheets, and rotate API keys.
+They start on an overview of every club: how many scoreboards are online,
+which need a look and why, and each club with its health, problems first.
+A club switcher in the top bar (⌘K) opens any club or a page in one. In a
+club they see what its admins see, plus what only they can change, in
+purple, and can switch to seeing it exactly as a club admin or bonspiel
+admin does.
 When something is flooded or misused, they can turn off the REST API, the
 public scores pages, display sign-ins or scoreboard pairing for every club
-at once, from the list of clubs. Scoring on the sheets carries on. They can
+at once, from Service controls, and a red bar on every page says so while
+one is off. Scoring on the sheets carries on. They can
 also block a single address that is misbehaving.
 
 How it works: [Auth and roles](architecture/auth-and-roles.md).

@@ -108,6 +108,29 @@
   max-width: 18rem;
 }
 
+/* Red across every page while a service switch is off. Sticks under the
+   top bar. */
+.switchBanner {
+  position: sticky;
+  top: 56px;
+  z-index: 99;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 1.5rem;
+  background: #c5221f;
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.switchBannerLink {
+  color: white;
+  white-space: nowrap;
+}
+
 /* Phones: drop what the nav can live without so it stays on one line. */
 @media (max-width: 640px) {
   .nav {

@@ -60,3 +60,10 @@ yellow. Scoreboards use them from their next game.
 The scoreboard says this when its sheet has been connected to another device
 since. Press and hold the connection, **Disconnect**, then connect it again
 with a new code, or leave it disconnected if the other device replaced it.
+
+## Checking on every scoreboard
+
+**Devices** lists every scoreboard and screen with what it last reported:
+whether it is online, its version, whether an update is waiting, and the
+last time it failed to save something. When you ask for help, press **Copy
+report** and paste what it copies into your message.

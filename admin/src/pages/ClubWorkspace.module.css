@@ -120,3 +120,53 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* Super admins only: whose club this is, and seeing it as its admins do. */
+.viewAs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: #f3e8fd;
+  color: #7b1fa2;
+  font-size: 0.85rem;
+}
+
+.viewAsText {
+  min-width: 0;
+}
+
+.viewAsChoice {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.viewAsLabel {
+  margin-right: 0.25rem;
+  font-weight: 600;
+}
+
+.viewAsOn,
+.viewAsOff {
+  border: 1px solid #7b1fa2;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.viewAsOn {
+  background: #7b1fa2;
+  color: white;
+}
+
+.viewAsOff {
+  background: transparent;
+  color: #7b1fa2;
+}

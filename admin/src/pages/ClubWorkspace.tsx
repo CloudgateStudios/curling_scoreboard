@@ -13,6 +13,8 @@ import { ClubSidebar } from '../components/club/ClubSidebar';
 import { sectionOfPath, sectionsFor, type SectionInfo } from '../components/club/sections';
 import { RecentGames } from '../components/club/RecentGames';
 import { ClubOverview } from '../components/club/ClubOverview';
+import { DevicesSection } from '../components/club/DevicesSection';
+import { rememberClub } from '../lib/recentClubs';
 import { ApiKeySection } from '../components/club/ApiKeySection';
 import { LeaguesSection } from '../components/club/LeaguesSection';
 import { RockColorsSection } from '../components/club/RockColorsSection';
@@ -42,7 +44,11 @@ interface Props {
  *  sidebar of the club's pages beside the one open. What a role cannot use
  *  is left out of the sidebar and not mounted. */
 export function ClubWorkspace({ clubId, user }: Props) {
-  const role = user.role ?? 'clubadmin';
+  const realRole = user.role ?? 'clubadmin';
+  // A super admin can see the club as its own admins do. It changes what is
+  // shown, never what they can do or what is saved.
+  const [viewAs, setViewAs] = useState<ViewAs>('superadmin');
+  const role = realRole === 'superadmin' ? viewAs : realRole;
   const isBonspielAdmin = role === 'bonspieladmin';
   const sections = sectionsFor(role);
   // The path after /clubs/:clubId/, such as "leagues" or "leagues/abc".
@@ -62,6 +68,11 @@ export function ClubWorkspace({ clubId, user }: Props) {
   const [menuOpenOn, setMenuOpenOn] = useState<string | null>(null);
   const menuOpen = menuOpenOn === pathname;
   const closeMenu = useCallback(() => setMenuOpenOn(null), []);
+
+  // For the super admin's list of clubs opened lately.
+  useEffect(() => {
+    if (realRole === 'superadmin') rememberClub(clubId);
+  }, [clubId, realRole]);
 
   useEffect(() => {
     return onSnapshot(
@@ -122,13 +133,14 @@ export function ClubWorkspace({ clubId, user }: Props) {
         sections={sections}
         current={current?.id}
         counts={counts}
-        showAllClubs={role === 'superadmin'}
+        showAllClubs={realRole === 'superadmin'}
         onDetailPage={!onSectionPage}
         open={menuOpen}
         onClose={closeMenu}
       />
 
       <div className={styles.content}>
+        {realRole === 'superadmin' && <ViewAsBar viewAs={viewAs} onChange={setViewAs} clubName={club.name} />}
         {/* Phones: the sidebar is a menu opened from here. */}
         <button type="button" className={styles.menuBar} aria-expanded={menuOpen} onClick={() => setMenuOpenOn(pathname)}>
           <span className={styles.menuIcon} aria-hidden="true">☰</span>
@@ -162,6 +174,42 @@ export function ClubWorkspace({ clubId, user }: Props) {
           />
         </Routes>
       </div>
+    </div>
+  );
+}
+
+type ViewAs = 'superadmin' | 'clubadmin' | 'bonspieladmin';
+
+const VIEW_AS: { id: ViewAs; label: string }[] = [
+  { id: 'superadmin', label: 'Super admin' },
+  { id: 'clubadmin', label: 'Club admin' },
+  { id: 'bonspieladmin', label: 'Bonspiel admin' },
+];
+
+/** Says a super admin is in someone else's club, and lets them see it as
+ *  the club's admins do. */
+function ViewAsBar({ viewAs, onChange, clubName }: { viewAs: ViewAs; onChange: (v: ViewAs) => void; clubName: string }) {
+  return (
+    <div className={styles.viewAs}>
+      <span className={styles.viewAsText}>
+        {viewAs === 'superadmin'
+          ? <>You are in {clubName} as a super admin. Purple is hidden from the club's own admins.</>
+          : <>Showing {clubName} as a {viewAs === 'clubadmin' ? 'club' : 'bonspiel'} admin sees it. What you do still counts as you.</>}
+      </span>
+      <span className={styles.viewAsChoice} role="group" aria-label="See it as">
+        <span className={styles.viewAsLabel}>See it as</span>
+        {VIEW_AS.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            aria-pressed={viewAs === v.id}
+            className={viewAs === v.id ? styles.viewAsOn : styles.viewAsOff}
+            onClick={() => onChange(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </span>
     </div>
   );
 }
@@ -273,9 +321,15 @@ function ClubSections({ club, role, section, sheets, leagues, bonspiels, onDispl
             <DisplayBrandingSection clubId={clubId} clubName={club.name} />
           </div>
 
+          <div hidden={!shown('devices')}>
+            <DevicesSection club={club} sheets={sheets} />
+          </div>
+
           <div hidden={!shown('settings/club')} className={styles.narrow}>
             <ClubNameSection club={club} canRename={isSuperAdmin} />
             <TimeZoneSection clubId={clubId} />
+            {/* Super admins manage these under Users. */}
+            {!isSuperAdmin && <AdminsSection clubId={clubId} clubName={club.name} readOnly />}
           </div>
 
           <div hidden={!shown('settings/scoreboards')} className={styles.narrow}>

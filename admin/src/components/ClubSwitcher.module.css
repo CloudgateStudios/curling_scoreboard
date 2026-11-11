@@ -1,0 +1,125 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(18rem, 30vw);
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #b8c0d0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
+}
+
+.triggerText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kbd {
+  font-family: inherit;
+  font-size: 0.75rem;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 1rem 1rem;
+}
+
+.dialog {
+  width: min(32rem, 100%);
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 0.5rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #1a73e8;
+  border-radius: 7px;
+  font-size: 1rem;
+  outline: none;
+}
+
+.results {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.item,
+.itemActive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  color: #1a1a2e;
+}
+
+.itemActive {
+  background: #e8f0fe;
+}
+
+.itemText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemSub {
+  margin-left: 0.5rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.none {
+  padding: 0.75rem;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+/* Phones: the button is just the shortcut's job, so it shrinks to a search
+   mark beside the rest of the top bar. */
+@media (max-width: 640px) {
+  .trigger {
+    width: auto;
+  }
+
+  .triggerText {
+    display: none;
+  }
+
+  .kbd {
+    display: none;
+  }
+
+  .trigger::before {
+    content: 'Clubs';
+  }
+}
