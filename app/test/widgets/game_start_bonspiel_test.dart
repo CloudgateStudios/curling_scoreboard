@@ -1,9 +1,9 @@
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/widgets/game_start/game_start_dialog.dart';
 import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 // Two A event games on Friday evening, then the A final and a B game for
 // their losers on Saturday morning. Two more teams are entered but not
@@ -98,7 +98,7 @@ void main() {
     CurlingGame? started;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         // As the app sets it from the club's clock.
         builder: (context, child) => MediaQuery(

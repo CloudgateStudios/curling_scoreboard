@@ -1,7 +1,7 @@
 import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/l10n/app_localizations.dart';
 import 'package:curling_scoreboard/models/curling_team.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// One color of rocks: what it is called and how it is drawn.
 @immutable

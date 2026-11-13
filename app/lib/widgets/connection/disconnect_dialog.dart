@@ -1,7 +1,7 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Asks for the club's admin PIN and disconnects the scoreboard once it is
 /// accepted. Pops with true when the scoreboard was disconnected.

@@ -1,6 +1,6 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The report shown when a game finishes: the final score, then each end.
 /// It fills the display, like the game setup screen that follows it.

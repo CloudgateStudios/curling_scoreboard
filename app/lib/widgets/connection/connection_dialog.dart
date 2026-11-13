@@ -1,7 +1,7 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/widgets/connection/disconnect_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The club and sheet a connected scoreboard is paired with, and the way to
 /// disconnect it. Pops with true when the scoreboard was disconnected.

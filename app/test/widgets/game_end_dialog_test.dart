@@ -1,15 +1,15 @@
 import 'package:curling_scoreboard/constants.dart';
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/curling_end.dart';
 import 'package:curling_scoreboard/models/curling_game.dart';
 import 'package:curling_scoreboard/models/curling_team.dart';
 import 'package:curling_scoreboard/widgets/game_end/game_end_dialog.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 Widget wrapWithMaterialApp(Widget child) {
   return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(body: child),
   );

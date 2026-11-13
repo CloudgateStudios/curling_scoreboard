@@ -1,7 +1,7 @@
 import 'package:curling_scoreboard/main.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The scoreboard is built for a large, landscape display. The default test

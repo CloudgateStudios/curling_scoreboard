@@ -18,7 +18,7 @@ import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _firebaseEnv = String.fromEnvironment(
@@ -84,7 +84,7 @@ class CurlingScoreboardApp extends StatelessWidget {
                 child: child!,
               ),
             ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(
         colorSchemeSeed: Constants.primaryThemeColor,

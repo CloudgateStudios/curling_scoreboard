@@ -1,5 +1,5 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class ScoreboardStaticNumberRow extends StatelessWidget {
   const ScoreboardStaticNumberRow({

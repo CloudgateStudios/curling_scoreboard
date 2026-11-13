@@ -6,7 +6,7 @@ import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/src/version.dart';
 import 'package:curling_scoreboard/widgets/game_start/bonspiel_bar.dart';
 import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The screen a game is set up on. It fills the display: there is nothing
 /// behind it worth seeing, and it cannot be dismissed without starting a

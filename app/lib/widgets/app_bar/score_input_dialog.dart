@@ -1,7 +1,7 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
-import 'package:flutter/material.dart';
 import 'package:material_segmented_control/material_segmented_control.dart';
+import 'package:material_ui/material_ui.dart';
 
 class ScoreInputDialog extends StatelessWidget {
   const ScoreInputDialog({

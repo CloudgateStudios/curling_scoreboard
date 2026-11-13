@@ -4,7 +4,7 @@ import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/widgets/connection/connect_to_club_dialog.dart';
 import 'package:curling_scoreboard/widgets/connection/connection_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The scoreboard's club connection, as the game setup screen shows it.
 ///

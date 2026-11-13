@@ -80,6 +80,15 @@ Every string the app shows is in `lib/l10n/app_en.arb` with an `@key`
 description, read through `context.l10n`. `flutter pub get` regenerates
 `app_localizations*.dart`; commit those too. CI fails on unused strings.
 
+Material widgets come from `package:material_ui`, not
+`package:flutter/material.dart`, which Flutter 3.50 deprecated. Give every
+`MaterialApp`, in the app and in tests, `appLocalizationsDelegates` from
+`l10n.dart` rather than `AppLocalizations.localizationsDelegates`. The
+generated list still holds the old `flutter_localizations` delegates, which
+`material_ui` widgets never read, and `l10n.yaml` adds an ignore to the
+generated files for them. Both go away once gen-l10n writes the new
+delegates ([flutter#191072](https://github.com/flutter/flutter/issues/191072)).
+
 ## The API docs pages
 
 `web/openapi.yaml` describes the public REST API and the completed game

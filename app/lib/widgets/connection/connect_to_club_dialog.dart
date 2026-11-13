@@ -1,6 +1,6 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/services/registration_service.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class ConnectToClubDialog extends StatefulWidget {
   const ConnectToClubDialog({required this.registrationService, super.key});

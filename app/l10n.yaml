@@ -2,3 +2,8 @@ arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 format: true
+# gen-l10n still writes the delegates from flutter_localizations, which are
+# deprecated in Flutter 3.50. The app uses appLocalizationsDelegates in
+# l10n.dart instead. Drop this once gen-l10n writes the new ones
+# (https://github.com/flutter/flutter/issues/191072).
+header: "// ignore_for_file: deprecated_member_use"
