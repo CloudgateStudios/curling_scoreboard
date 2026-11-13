@@ -1,6 +1,6 @@
 import 'package:curling_scoreboard/widgets/scoreboard/scoreboard_curling_club_layout.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   testWidgets('ScoreboardClubLayout displays numbers 1-12', (tester) async {

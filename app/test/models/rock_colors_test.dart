@@ -1,8 +1,8 @@
 import 'package:curling_scoreboard/constants.dart';
 import 'package:curling_scoreboard/l10n/app_localizations_en.dart';
 import 'package:curling_scoreboard/models/models.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   group('RockColor', () {

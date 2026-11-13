@@ -6,8 +6,8 @@ import 'package:curling_scoreboard/services/registration_service.dart';
 import 'package:curling_scoreboard/services/update_service.dart';
 import 'package:curling_scoreboard/widgets/widgets.dart';
 import 'package:fake_async/fake_async.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../helpers/pump_app.dart';

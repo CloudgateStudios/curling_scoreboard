@@ -1,6 +1,6 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The league and the two teams of a league game. [team1] throws the first
 /// rock color and [team2] the second.

@@ -1,12 +1,11 @@
 import 'package:curling_scoreboard/constants.dart';
-import 'package:curling_scoreboard/l10n/app_localizations.dart';
+import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/src/version.dart';
 import 'package:curling_scoreboard/widgets/game_start/game_start_dialog.dart';
 import 'package:curling_scoreboard/widgets/game_start/league_matchup_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   testWidgets('GameStartDialog displays version number', (tester) async {
@@ -15,12 +14,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
-        localizationsDelegates: [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: [Locale('en', '')],
         home: GameStartDialog(),
       ),
@@ -47,7 +41,7 @@ void main() {
     CurlingGame? started;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(

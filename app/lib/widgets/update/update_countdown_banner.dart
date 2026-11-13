@@ -1,6 +1,6 @@
 import 'package:curling_scoreboard/l10n/l10n.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Tells anyone at the scoreboard that it is about to reload onto a new
 /// version, and that touching it will hold the reload off.

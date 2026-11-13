@@ -3,8 +3,8 @@ import 'package:curling_scoreboard/controllers/controllers.dart';
 import 'package:curling_scoreboard/models/models.dart';
 import 'package:curling_scoreboard/services/sync_service.dart';
 import 'package:fake_async/fake_async.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Records what would have been written to Firestore instead of writing it.
 class _FakeSyncService implements SyncService {
