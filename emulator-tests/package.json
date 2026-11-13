@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "firebase-admin": "^14.5.0",
-    "firebase-tools": "^15.34.2"
+    "firebase-tools": "^15.35.0"
   },
   "overrides": {
     "@grpc/grpc-js": "^1.14.5",
