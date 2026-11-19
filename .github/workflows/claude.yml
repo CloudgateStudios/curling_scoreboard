@@ -1,4 +1,4 @@
-# Thin caller: hands Claude-related events to the shared workflow in CloudgateStudios/.github.
+# Thin caller: hands Claude-related events to the shared workflow in CloudgateStudios/claude-ops.
 # The `if` filter keeps unrelated events from spending Actions minutes.
 
 name: Claude
@@ -20,7 +20,7 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
-    uses: CloudgateStudios/.github/.github/workflows/claude-agent.yml@main
+    uses: CloudgateStudios/claude-ops/.github/workflows/claude-agent.yml@main
     permissions:
       contents: write
       pull-requests: write
