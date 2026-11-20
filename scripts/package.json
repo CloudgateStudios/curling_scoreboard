@@ -13,8 +13,8 @@
     "setup-monitoring": "node setup-monitoring.mjs"
   },
   "dependencies": {
-    "firebase": "^13.2.0",
-    "firebase-admin": "^14.0.0"
+    "firebase": "^13.4.0",
+    "firebase-admin": "^14.5.1"
   },
   "overrides": {
     "@grpc/grpc-js": "^1.14.5",
